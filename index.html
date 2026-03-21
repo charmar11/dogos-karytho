@@ -815,39 +815,19 @@ body{
   <div class="login-card">
     <div class="login-field">
       <label class="login-lbl">Usuario</label>
-      <input class="login-input" id="login-user" type="text" autocomplete="username" placeholder="Usuario" autocapitalize="characters" />
+      <input class="login-input" id="login-user" type="text" autocomplete="username" placeholder="Usuario" autocapitalize="characters" value="CIDOP"/>
     </div>
     <div class="login-field">
       <label class="login-lbl">Contraseña</label>
-      <input class="login-input" id="login-pass" type="password" autocomplete="current-password" placeholder="Contraseña" />
+      <input class="login-input" id="login-pass" type="password" autocomplete="current-password" placeholder="Contraseña" value="POS."/>
     </div>
     <div class="login-error" id="login-error"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
   </div>
 </div>
 
-<!-- ===== FIREBASE SETUP ===== -->
-<div class="fb-setup hidden" id="fb-setup">
-  <div class="fb-setup-box">
-    <div class="fb-setup-title">🔥 Configurar sincronizacion</div>
-    <div class="fb-setup-sub">Conecta con Firebase para sincronizar ventas y productos entre todos tus dispositivos. Es gratis para siempre, sin tarjeta de credito.</div>
-    <div class="fb-steps">
-      <div class="fb-step"><div class="fb-step-num"></div><div class="fb-step-txt">Ve a <strong>firebase.google.com</strong> e inicia sesion con tu cuenta Google</div></div>
-      <div class="fb-step"><div class="fb-step-num"></div><div class="fb-step-txt">Toca <strong>Agregar proyecto</strong>, ponle nombre (ej. <code>dogos-karytho</code>) y crea el proyecto</div></div>
-      <div class="fb-step"><div class="fb-step-num"></div><div class="fb-step-txt">En el menu izquierdo ve a <strong>Compilacion → Realtime Database</strong>, crea la base de datos en <strong>modo de prueba</strong></div></div>
-      <div class="fb-step"><div class="fb-step-num"></div><div class="fb-step-txt">Ve a <strong>Configuracion del proyecto</strong> (icono engrane ⚙) → pestaña <strong>General</strong> → desplazate abajo y toca el icono <code>&lt;/&gt;</code> para registrar una app web</div></div>
-      <div class="fb-step"><div class="fb-step-num"></div><div class="fb-step-txt">Copia los datos del objeto <code>firebaseConfig</code> y pegaos en los campos de abajo</div></div>
-    </div>
-    <div class="fb-input-grid">
-      <div class="fb-input-wrap"><label class="fb-lbl">API Key</label><input class="fb-input" id="fb-apiKey" placeholder="AIzaSy..."/></div>
-      <div class="fb-input-wrap"><label class="fb-lbl">Auth Domain</label><input class="fb-input" id="fb-authDomain" placeholder="mi-proyecto.firebaseapp.com"/></div>
-      <div class="fb-input-wrap"><label class="fb-lbl">Database URL</label><input class="fb-input" id="fb-dbUrl" placeholder="https://mi-proyecto-default-rtdb.firebaseio.com"/></div>
-      <div class="fb-input-wrap"><label class="fb-lbl">Project ID</label><input class="fb-input" id="fb-projectId" placeholder="mi-proyecto"/></div>
-    </div>
-    <button class="btn-fb-save" onclick="saveFirebaseConfig()">Guardar y conectar</button>
-    <button class="btn-fb-skip" onclick="skipFirebase()">Usar sin sincronizacion (solo este celular)</button>
-  </div>
-</div>
+<!-- Firebase setup hidden - config hardcoded -->
+<div id="fb-setup" class="fb-setup hidden"></div>
 
 <!-- ===== MAIN APP ===== -->
 <div id="main-app" style="display:none">
@@ -947,14 +927,13 @@ body{
   </div>
   <div class="sec-label">⚙ Ajustes</div>
   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px">
-    <button class="fb-status-row" onclick="openFbSetup()" style="width:100%;justify-content:flex-start;padding:14px 16px">
+    <div class="fb-status-row" style="cursor:default">
       <span class="fb-status-dot" id="fb-dot2"></span>
-      <div style="flex:1;text-align:left">
-        <div style="font-size:13px;font-weight:700;color:var(--text2)">Sincronizacion Firebase</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="fb-status-txt2">Toca para configurar</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text2)">Sincronizacion en la nube</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="fb-status-txt2">Conectando...</div>
       </div>
-      <span style="font-size:16px;color:var(--text3)">›</span>
-    </button>
+    </div>
     <button onclick="doLogout()" style="width:100%;padding:14px 16px;border-radius:var(--radius-sm);border:1px solid #3a1a1a;background:transparent;color:var(--red);font-size:14px;font-weight:700;cursor:pointer;text-align:left;transition:background .15s" onmouseenter="this.style.background='var(--red-dim)'" onmouseleave="this.style.background='transparent'">
       🔒 Cerrar sesion
     </button>
@@ -1162,10 +1141,22 @@ function doLogout(){
 const SK_FB='dk_firebase_cfg';
 let fbDb=null,fbConnected=false,fbListening=false;
 
-function getFbConfig(){
-  try{return JSON.parse(safeStorage.getItem(SK_FB));}catch{return null;}
+/* ─── Firebase config (fija, no necesita configuracion) ─── */
+const FB_CONFIG={
+  apiKey:"AIzaSyDCOG_gEFQLjaKtcoqiwli20cYmjU6lJrg",
+  authDomain:"dogos-karytho.firebaseapp.com",
+  databaseURL:"https://dogos-karytho-default-rtdb.firebaseio.com",
+  projectId:"dogos-karytho",
+  storageBucket:"dogos-karytho.firebasestorage.app",
+  messagingSenderId:"209427968216",
+  appId:"1:209427968216:web:e46706a909ddb2616067ad"
+};
+
+function getFbConfig(){return FB_CONFIG;}
+function saveFbConfig(){}
+function openFbSetup(){
+  showToast('Sincronizacion ya configurada','green');
 }
-function saveFbConfig(cfg){safeStorage.setItem(SK_FB,JSON.stringify(cfg));}
 
 function initFirebase(cfg){
   try{
@@ -1232,32 +1223,6 @@ function fbSaveSales(){
   fbDb.ref('sales').set(obj).catch(()=>{});
 }
 
-function saveFirebaseConfig(){
-  const cfg={
-    apiKey:document.getElementById('fb-apiKey').value.trim(),
-    authDomain:document.getElementById('fb-authDomain').value.trim(),
-    databaseURL:document.getElementById('fb-dbUrl').value.trim(),
-    projectId:document.getElementById('fb-projectId').value.trim(),
-  };
-  if(!cfg.apiKey||!cfg.databaseURL){showToast('Completa los campos requeridos','red');return;}
-  saveFbConfig(cfg);
-  document.getElementById('fb-setup').classList.add('hidden');
-  initFirebase(cfg);
-  showToast('Firebase conectado','green');
-}
-function skipFirebase(){
-  document.getElementById('fb-setup').classList.add('hidden');
-  setFbStatus('none');
-}
-function openFbSetup(){
-  const cfg=getFbConfig()||{};
-  document.getElementById('fb-apiKey').value=cfg.apiKey||'';
-  document.getElementById('fb-authDomain').value=cfg.authDomain||'';
-  document.getElementById('fb-dbUrl').value=cfg.databaseURL||'';
-  document.getElementById('fb-projectId').value=cfg.projectId||'';
-  document.getElementById('fb-setup').classList.remove('hidden');
-}
-
 /* ─── Data keys ─── */
 const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const DEFAULT_PRODUCTS=[
@@ -1302,18 +1267,8 @@ const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 function bootApp(){
   document.getElementById('main-app').style.display='block';
   load();updateDate();renderGrid();renderFavStrip();renderOrder();
-  setFbStatus('none');
-  const cfg=getFbConfig();
-  if(cfg&&cfg.apiKey){
-    initFirebase(cfg);
-  } else {
-    // First time: show setup screen
-    const seenSetup=safeStorage.getItem('dk_seen_setup');
-    if(!seenSetup){
-      safeStorage.setItem('dk_seen_setup','1');
-      setTimeout(()=>openFbSetup(),800);
-    }
-  }
+  setFbStatus('connecting');
+  initFirebase(FB_CONFIG);
 }
 
 /* ─── Toast ─── */
