@@ -1105,6 +1105,30 @@ body{
   animation:onlinePing 1.8s ease-in-out infinite;
 }
 
+/* ── AVATAR EDITOR ── */
+.avatar-edit-wrap{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+.avatar-edit-overlay{
+  position:absolute;inset:0;border-radius:50%;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .2s;font-size:16px;
+}
+.avatar-edit-wrap:hover .avatar-edit-overlay{opacity:1}
+.avatar-edit-wrap:active .avatar-edit-overlay{opacity:1}
+.avatar-photo{
+  width:100%;height:100%;border-radius:50%;
+  object-fit:cover;display:block;
+}
+.avatar-upload-progress{
+  font-size:11px;color:var(--text3);margin-top:6px;text-align:center;
+  min-height:16px;transition:color .2s;
+}
+.avatar-upload-progress.ok{color:#6fcf6f}
+.avatar-upload-progress.err{color:#f57474}
+
 ::-webkit-scrollbar{width:2px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 </style>
@@ -1176,10 +1200,15 @@ body{
       <button class="btn-settings-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-user-card">
-      <div class="settings-avatar" id="settings-avatar">?</div>
+      <div class="avatar-edit-wrap" onclick="document.getElementById('avatar-file-input').click()" title="Cambiar foto">
+        <div class="settings-avatar" id="settings-avatar">?</div>
+        <div class="avatar-edit-overlay">📷</div>
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
       <div>
         <div class="settings-user-name" id="settings-user-name">—</div>
         <div class="settings-user-role" id="settings-user-role">Sesion activa</div>
+        <div class="avatar-upload-progress" id="avatar-progress">Toca la foto para cambiarla</div>
       </div>
     </div>
     <div class="fb-status-row" style="cursor:default;margin-bottom:16px">
@@ -1574,6 +1603,7 @@ function showPicker(){
 }
 
 function renderPickerGrid(activeNames){
+  currentActiveNames=activeNames;
   const grid=document.getElementById('picker-grid');
   if(!grid)return;
   grid.innerHTML='';
@@ -1581,20 +1611,26 @@ function renderPickerGrid(activeNames){
     const isOccupied=activeNames.includes(name.toLowerCase());
     const btn=document.createElement('button');
     btn.className='picker-btn'+(isOccupied?' occupied':'');
+    // Avatar placeholder — load async
+    const avatarHtml=`<div class="picker-avatar" id="pavatar-${name.toLowerCase()}" style="${isOccupied?'background:linear-gradient(135deg,#5a2020,#3a1515);padding:0':''}">
+      ${isOccupied?'🔒':name.charAt(0)}
+    </div>`;
     btn.innerHTML=`
       ${isOccupied?'<div class="picker-occupied-badge">🔴 Activo</div>':''}
-      <div class="picker-avatar" style="${isOccupied?'background:linear-gradient(135deg,#5a2020,#3a1515)':''}">
-        ${isOccupied?'🔒':name.charAt(0)}
-      </div>
+      ${avatarHtml}
       <div class="picker-name">${name}</div>
       ${isOccupied?'<div class="picker-status">Ya esta conectado</div>':''}
     `;
-    if(isOccupied){
-      btn.disabled=true;
-    } else {
-      btn.onclick=()=>selectPerson(name);
-    }
+    if(isOccupied){btn.disabled=true;}
+    else{btn.onclick=()=>selectPerson(name);}
     grid.appendChild(btn);
+    // Load avatar async and inject
+    if(!isOccupied){
+      loadAvatar(name,url=>{
+        const el=document.getElementById('pavatar-'+name.toLowerCase());
+        if(el&&url)setAvatarEl(el,name,url,52);
+      });
+    }
   });
 }
 
@@ -1738,13 +1774,22 @@ function renderPresenceBadge(users){
   badge.classList.toggle('has-users',n>0);
   if(list){
     if(!n){list.innerHTML='<div style="color:var(--text4);font-size:13px;padding:4px 0">Nadie conectado</div>';return;}
-    list.innerHTML=users
-      .sort((a,b)=>a.ts-b.ts)
-      .map(u=>`<div class="online-user-row">
-        <span class="online-user-dot"></span>
+    list.innerHTML='';
+    users.sort((a,b)=>a.ts-b.ts).forEach(u=>{
+      const row=document.createElement('div');
+      row.className='online-user-row';
+      row.innerHTML=`
+        <div id="ou-avatar-${u.name.toLowerCase().replace(/\s/g,'')}" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--red),#c01818);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden">${u.name.charAt(0)}</div>
         <span class="online-user-name">${u.name}</span>
         <span class="online-user-since">desde ${u.since}</span>
-      </div>`).join('');
+      `;
+      list.appendChild(row);
+      // Load avatar
+      loadAvatar(u.name,url=>{
+        const el=document.getElementById('ou-avatar-'+u.name.toLowerCase().replace(/\s/g,''));
+        if(el&&url){el.style.padding='0';el.style.background='transparent';el.innerHTML=`<img src="${url}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;display:block"/>`;}
+      });
+    });
   }
 }
 
@@ -2524,14 +2569,92 @@ function exportWhatsApp(){
 }
 
 /* ─── Settings panel ─── */
+/* ─── Avatars ─── */
+const avatarCache={};
+
+function getAvatarKey(name){return 'avatars/'+name.toLowerCase().replace(/\s+/g,'_');}
+
+function loadAvatar(name,cb){
+  if(avatarCache[name]){cb(avatarCache[name]);return;}
+  if(!fbDb){cb(null);return;}
+  fbDb.ref(getAvatarKey(name)).once('value')
+    .then(snap=>{
+      const url=snap.val();
+      if(url)avatarCache[name]=url;
+      cb(url||null);
+    }).catch(()=>cb(null));
+}
+
+function setAvatarEl(el,name,url,size){
+  // size: px number for width/height
+  const s=size||'100%';
+  if(url){
+    el.style.padding='0';
+    el.style.background='transparent';
+    el.innerHTML=`<img class="avatar-photo" src="${url}" alt="${name}" style="width:${typeof s==='number'?s+'px':s};height:${typeof s==='number'?s+'px':s}"/>`;
+  } else {
+    el.style.padding='';
+    el.style.background='';
+    el.innerHTML=name.charAt(0).toUpperCase();
+  }
+}
+
+function handleAvatarUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const name=safeStorage.getItem(SK_DISPLAY);
+  if(!name)return;
+  const prog=document.getElementById('avatar-progress');
+  prog.textContent='Subiendo...';prog.className='avatar-upload-progress';
+
+  // Compress image using canvas
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const MAX=200;
+      let w=img.width,h=img.height;
+      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
+      else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.75);
+
+      // Save to Firebase
+      if(!fbDb){prog.textContent='Sin conexion';prog.className='avatar-upload-progress err';return;}
+      fbDb.ref(getAvatarKey(name)).set(compressed)
+        .then(()=>{
+          avatarCache[name]=compressed;
+          // Update settings avatar
+          const el=document.getElementById('settings-avatar');
+          setAvatarEl(el,name,compressed);
+          prog.textContent='✓ Foto actualizada';prog.className='avatar-upload-progress ok';
+          setTimeout(()=>{prog.textContent='Toca la foto para cambiarla';prog.className='avatar-upload-progress';},3000);
+          // Refresh picker if open
+          renderPickerGrid(currentActiveNames);
+        })
+        .catch(()=>{prog.textContent='Error al subir';prog.className='avatar-upload-progress err';});
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+let currentActiveNames=[];
+
 function openSettings(){
   const name=safeStorage.getItem(SK_DISPLAY)||'—';
   const role=safeStorage.getItem(SK_ROLE)||'user';
   document.getElementById('settings-user-name').textContent=name;
-  document.getElementById('settings-avatar').textContent=name.charAt(0).toUpperCase();
   document.getElementById('settings-user-role').textContent=role==='admin'?'Administrador':'Cajero';
+  document.getElementById('avatar-progress').textContent='Toca la foto para cambiarla';
+  document.getElementById('avatar-progress').className='avatar-upload-progress';
+  // Load avatar
+  const avatarEl=document.getElementById('settings-avatar');
+  loadAvatar(name,url=>setAvatarEl(avatarEl,name,url));
   document.getElementById('settings-overlay').classList.remove('hidden');
-  // Close online tooltip if open
   document.getElementById('online-tooltip').classList.add('hidden');
   tooltipOpen=false;
 }
