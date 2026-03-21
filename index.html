@@ -781,9 +781,24 @@ body{
   padding:20px 12px;cursor:pointer;text-align:center;
   transition:all .18s;color:var(--text);
   display:flex;flex-direction:column;align-items:center;gap:10px;
+  position:relative;
 }
 .picker-btn:hover{border-color:rgba(245,200,0,.5);box-shadow:0 0 20px rgba(245,200,0,.12);transform:translateY(-3px)}
 .picker-btn:active{transform:scale(.93)}
+.picker-btn.occupied{
+  border-color:rgba(224,32,32,.4);background:var(--red-dim);
+  cursor:not-allowed;opacity:.75;
+}
+.picker-btn.occupied:hover{transform:none;box-shadow:none;border-color:rgba(224,32,32,.5)}
+.picker-btn.occupied:active{transform:none}
+.picker-occupied-badge{
+  position:absolute;top:-8px;right:-8px;
+  background:var(--red);color:#fff;
+  font-size:10px;font-weight:800;padding:3px 7px;
+  border-radius:10px;white-space:nowrap;
+  border:2px solid var(--bg);
+}
+.picker-status{font-size:10px;color:#f57474;font-weight:700;margin-top:-4px}
 .picker-avatar{
   width:52px;height:52px;border-radius:50%;
   background:linear-gradient(135deg,var(--red),#c01818);
@@ -1539,19 +1554,53 @@ function loginWithFirebase(user,pass,cb){
 
 /* ─── Person Picker ─── */
 function showPicker(){
-  const grid=document.getElementById('picker-grid');
-  grid.innerHTML='';
-  CIDOP_MEMBERS.forEach(name=>{
-    const btn=document.createElement('button');
-    btn.className='picker-btn';
-    btn.innerHTML=`<div class="picker-avatar">${name.charAt(0)}</div><div class="picker-name">${name}</div>`;
-    btn.onclick=()=>selectPerson(name);
-    grid.appendChild(btn);
-  });
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('picker-screen').classList.add('active');
+  renderPickerGrid([]);
+  // Fetch who is currently online
+  if(fbDb){
+    fbDb.ref('presence').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const activeNames=Object.values(data).map(u=>u.name.toLowerCase());
+      renderPickerGrid(activeNames);
+      // Also listen for real-time changes while on picker screen
+      fbDb.ref('presence').on('value',snap2=>{
+        const d=snap2.val()||{};
+        const names=Object.values(d).map(u=>u.name.toLowerCase());
+        renderPickerGrid(names);
+      });
+    }).catch(()=>renderPickerGrid([]));
+  }
 }
+
+function renderPickerGrid(activeNames){
+  const grid=document.getElementById('picker-grid');
+  if(!grid)return;
+  grid.innerHTML='';
+  CIDOP_MEMBERS.forEach(name=>{
+    const isOccupied=activeNames.includes(name.toLowerCase());
+    const btn=document.createElement('button');
+    btn.className='picker-btn'+(isOccupied?' occupied':'');
+    btn.innerHTML=`
+      ${isOccupied?'<div class="picker-occupied-badge">🔴 Activo</div>':''}
+      <div class="picker-avatar" style="${isOccupied?'background:linear-gradient(135deg,#5a2020,#3a1515)':''}">
+        ${isOccupied?'🔒':name.charAt(0)}
+      </div>
+      <div class="picker-name">${name}</div>
+      ${isOccupied?'<div class="picker-status">Ya esta conectado</div>':''}
+    `;
+    if(isOccupied){
+      btn.disabled=true;
+    } else {
+      btn.onclick=()=>selectPerson(name);
+    }
+    grid.appendChild(btn);
+  });
+}
+
 function selectPerson(name){
+  // Detener listener de presencia del picker
+  if(fbDb)fbDb.ref('presence').off();
   safeStorage.setItem(SK_ROLE,'user');
   safeStorage.removeItem(SK_SESSION);
   safeStorage.setItem(SK_DISPLAY,name);
