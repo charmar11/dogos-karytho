@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Dogos Karytho">
 <title>Dogos Karytho</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
@@ -413,6 +414,26 @@ body{
 .corte-prod-title{font-size:10px;color:var(--text4);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 9px;font-weight:700}
 .corte-prod-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
 .corte-prod-row:last-child{border-bottom:none}
+.btn-excel{
+  width:100%;padding:16px;border-radius:var(--radius-md);border:none;
+  background:linear-gradient(135deg,#1a7a1a,#156015);
+  color:#fff;font-size:15px;font-weight:800;cursor:pointer;
+  margin-top:12px;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;letter-spacing:.4px;
+  box-shadow:0 4px 18px rgba(26,122,26,.25);
+}
+.btn-excel:hover{box-shadow:0 6px 26px rgba(26,122,26,.38);transform:translateY(-2px)}
+.btn-excel:active{transform:scale(.97)}
+.btn-excel-hist{
+  width:100%;padding:14px;border-radius:var(--radius-md);
+  border:1.5px solid rgba(26,180,26,.3);
+  background:linear-gradient(135deg,#152015,#111811);
+  color:#6fcf6f;font-size:14px;font-weight:800;cursor:pointer;
+  margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .2s;
+}
+.btn-excel-hist:hover{border-color:rgba(26,180,26,.6);box-shadow:0 4px 18px rgba(26,180,26,.12);transform:translateY(-2px)}
+.btn-excel-hist:active{transform:scale(.97)}
 .btn-whatsapp{
   width:100%;padding:17px;border-radius:var(--radius-md);border:none;
   background:linear-gradient(135deg,#25D366,#1aad52);
@@ -801,6 +822,94 @@ body{
 }
 .fb-status-row:hover{border-color:var(--border2)}
 
+/* ── ADMIN PANEL ── */
+.admin-screen{
+  position:fixed;inset:0;z-index:800;
+  background:var(--bg);
+  display:none;flex-direction:column;
+  overflow-y:auto;
+}
+.admin-screen.active{display:flex}
+.admin-header{
+  background:linear-gradient(180deg,#1e1e1e,#1a1a1a);
+  border-bottom:2px solid var(--gold);
+  padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:10;
+  box-shadow:0 2px 20px rgba(245,200,0,.1);
+}
+.admin-title{font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px}
+.admin-sub{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:.5px}
+.btn-admin-logout{
+  padding:9px 16px;border-radius:8px;border:1px solid #3a1a1a;
+  background:transparent;color:var(--red);font-size:13px;font-weight:700;
+  cursor:pointer;transition:background .15s;white-space:nowrap;
+}
+.btn-admin-logout:active{background:var(--red-dim)}
+.admin-body{padding:18px 16px 60px;flex:1}
+.admin-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.admin-stat{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:16px;position:relative;overflow:hidden;
+}
+.admin-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(245,200,0,.3),transparent)}
+.admin-stat-lbl{font-size:10px;color:var(--text4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
+.admin-stat-val{font-size:26px;font-weight:800;color:var(--gold)}
+.admin-stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.export-card{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:18px;margin-bottom:14px;
+}
+.export-card-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px}
+.export-card-sub{font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:16px}
+.export-btns{display:flex;flex-direction:column;gap:9px}
+.btn-export{
+  width:100%;padding:15px;border-radius:var(--radius-sm);border:none;
+  font-size:15px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .2s;letter-spacing:.3px;
+}
+.btn-export-excel{
+  background:linear-gradient(135deg,#1a7a3a,#155f2e);
+  color:#fff;box-shadow:0 4px 16px rgba(26,122,58,.3);
+}
+.btn-export-excel:hover{box-shadow:0 6px 22px rgba(26,122,58,.45);transform:translateY(-2px)}
+.btn-export-excel:active{transform:scale(.97)}
+.btn-export-csv{
+  background:linear-gradient(135deg,#1a4a7a,#133d6e);
+  color:#fff;box-shadow:0 4px 16px rgba(26,74,122,.3);
+}
+.btn-export-csv:hover{box-shadow:0 6px 22px rgba(26,74,122,.45);transform:translateY(-2px)}
+.btn-export-csv:active{transform:scale(.97)}
+.btn-export-wa{
+  background:linear-gradient(135deg,#1a7a3a,#155f2e);
+  color:#fff;opacity:.85;
+}
+.btn-export-wa:active{transform:scale(.97)}
+.admin-range-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.admin-range-btn{
+  flex:1;padding:10px 8px;border-radius:9px;border:1px solid var(--border);
+  background:transparent;color:var(--text3);font-size:12px;font-weight:700;
+  cursor:pointer;text-align:center;transition:all .18s;text-transform:uppercase;
+  letter-spacing:.5px;user-select:none;min-width:70px;
+}
+.admin-range-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.admin-preview{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:14px;
+  margin-bottom:14px;max-height:220px;overflow-y:auto;
+}
+.admin-preview-row{
+  display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);
+  font-size:12px;align-items:flex-start;
+}
+.admin-preview-row:last-child{border-bottom:none}
+.admin-preview-date{color:var(--text3);min-width:80px;flex-shrink:0}
+.admin-preview-items{flex:1;color:var(--text2);line-height:1.7}
+.admin-preview-total{color:var(--gold);font-weight:800;min-width:60px;text-align:right;flex-shrink:0}
+.admin-empty{color:var(--text4);font-size:13px;text-align:center;padding:24px 0}
+
 ::-webkit-scrollbar{width:2px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 </style>
@@ -1037,6 +1146,65 @@ body{
 
 </div><!-- end #main-app -->
 
+<!-- ===== ADMIN PANEL ===== -->
+<div class="admin-screen" id="admin-screen">
+  <div class="admin-header">
+    <div>
+      <div class="admin-title">🔐 Panel Admin</div>
+      <div class="admin-sub">DOGOS KARYTHO — EXPORTACION DE DATOS</div>
+    </div>
+    <button class="btn-admin-logout" onclick="adminLogout()">Cerrar sesion</button>
+  </div>
+  <div class="admin-body">
+
+    <div class="sec-label">📊 Resumen general</div>
+    <div class="admin-stat-grid">
+      <div class="admin-stat"><div class="admin-stat-lbl">Total ventas</div><div class="admin-stat-val" id="adm-total-count">0</div><div class="admin-stat-sub">registradas</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Ingresos totales</div><div class="admin-stat-val" id="adm-total-money">$0</div><div class="admin-stat-sub">historico</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Primer venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-first-date">—</div><div class="admin-stat-sub">fecha</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Ultima venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-last-date">—</div><div class="admin-stat-sub">fecha</div></div>
+    </div>
+
+    <div class="sec-label">📁 Exportar datos</div>
+    <div class="export-card">
+      <div class="export-card-title">Selecciona el periodo</div>
+      <div class="export-card-sub">Elige que ventas quieres exportar. Los archivos se descargan directo a tu celular o PC.</div>
+      <div class="admin-range-row">
+        <button class="admin-range-btn active" onclick="setAdminRange('hoy')">Hoy</button>
+        <button class="admin-range-btn" onclick="setAdminRange('semana')">Semana</button>
+        <button class="admin-range-btn" onclick="setAdminRange('mes')">Mes</button>
+        <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
+      </div>
+
+      <div class="sec-label" style="margin-top:0">Vista previa (<span id="adm-preview-count">0</span> ventas)</div>
+      <div class="admin-preview" id="adm-preview">
+        <div class="admin-empty">Sin ventas en este periodo</div>
+      </div>
+
+      <div class="export-btns">
+        <button class="btn-export btn-export-excel" onclick="exportExcel()">
+          <span style="font-size:20px">📊</span>
+          <div style="text-align:left"><div>Descargar Excel (.xlsx)</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Compatible con Excel, Google Sheets</div></div>
+        </button>
+        <button class="btn-export btn-export-csv" onclick="exportCSV()">
+          <span style="font-size:20px">📄</span>
+          <div style="text-align:left"><div>Descargar CSV (.csv)</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Para cualquier programa de hojas de calculo</div></div>
+        </button>
+        <button class="btn-export btn-export-wa" onclick="exportWhatsApp()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          <div style="text-align:left"><div>Resumen por WhatsApp</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto con totales para guardar o compartir</div></div>
+        </button>
+      </div>
+    </div>
+
+    <div class="sec-label">🏆 Productos mas vendidos (historico)</div>
+    <div class="form-card" style="padding:12px 15px">
+      <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
+    </div>
+
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1110,17 +1278,25 @@ const safeStorage={
 
 /* ─── Credentials ─── */
 const CREDS={user:'CIDOP',pass:'POS.'};
+const ADMIN_CREDS={user:'ADMIN',pass:'EXCEL'};
 const SK_SESSION='dk_session';
+const SK_ROLE='dk_role'; // 'user' or 'admin'
 
 /* ─── Login ─── */
 function doLogin(){
-  const u=document.getElementById('login-user').value.trim();
+  const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
   if(u===CREDS.user && p===CREDS.pass){
     safeStorage.setItem(SK_SESSION,'1');
+    safeStorage.setItem(SK_ROLE,'user');
     document.getElementById('login-screen').classList.add('hidden');
     bootApp();
-  }else{
+  } else if(u===ADMIN_CREDS.user && p===ADMIN_CREDS.pass){
+    safeStorage.setItem(SK_SESSION,'1');
+    safeStorage.setItem(SK_ROLE,'admin');
+    document.getElementById('login-screen').classList.add('hidden');
+    bootAdmin();
+  } else {
     const err=document.getElementById('login-error');
     err.textContent='Usuario o contraseña incorrectos';
     document.getElementById('login-pass').value='';
@@ -1133,8 +1309,14 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 function doLogout(){
   customConfirm('Cerrar sesion?','Salir',()=>{
     safeStorage.removeItem(SK_SESSION);
+    safeStorage.removeItem(SK_ROLE);
     location.reload();
   });
+}
+function adminLogout(){
+  safeStorage.removeItem(SK_SESSION);
+  safeStorage.removeItem(SK_ROLE);
+  location.reload();
 }
 
 /* ─── Firebase ─── */
@@ -1651,6 +1833,179 @@ function saveNewProduct(){
   newVars=[];newExtras=[];renderVarFields();renderExtraFields();showToast('Producto guardado','green');
 }
 
+/* ─── Admin panel ─── */
+let adminRange='hoy';
+
+function bootAdmin(){
+  load(); // Load local data first so we have something to show
+  const screen=document.getElementById('admin-screen');
+  screen.classList.add('active');
+  renderAdmin(); // Show with local data immediately
+  // Also connect Firebase to get latest cloud data
+  if(!fbDb){
+    initFirebase(FB_CONFIG);
+    // Re-render once Firebase data arrives
+    setTimeout(renderAdmin, 2000);
+  }
+}
+
+function renderAdmin(){
+  const screen=document.getElementById('admin-screen');
+  screen.classList.add('active');
+
+  // Global stats
+  const total=sales.reduce((s,v)=>s+v.total,0);
+  document.getElementById('adm-total-count').textContent=sales.length;
+  document.getElementById('adm-total-money').textContent='$'+total.toFixed(2);
+  const sorted=[...sales].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  document.getElementById('adm-first-date').textContent=sorted.length?sorted[0].date:'—';
+  document.getElementById('adm-last-date').textContent=sorted.length?sorted[sorted.length-1].date:'—';
+
+  // Top products
+  const counts={},totals={};
+  sales.forEach(s=>s.items.forEach(it=>{
+    const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+    counts[k]=(counts[k]||0)+it.qty;
+    totals[k]=(totals[k]||0)+(it.price*it.qty);
+  }));
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topEl=document.getElementById('adm-top-products');
+  if(!top.length){topEl.innerHTML='<div class="admin-empty">Sin datos aun</div>';return;}
+  const mx=top[0][1];
+  topEl.innerHTML=top.map(([name,cnt])=>`
+    <div class="top-item">
+      <div class="top-name">${name}</div>
+      <div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div>
+      <div class="top-count" style="min-width:80px;text-align:right">${cnt}x &nbsp;<span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div>
+    </div>`).join('');
+
+  setAdminRange('hoy');
+}
+
+function getAdminSales(){
+  const today=toDateKey(new Date());
+  if(adminRange==='hoy') return sales.filter(s=>s.date===today);
+  if(adminRange==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
+  if(adminRange==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
+  return [...sales];
+}
+
+function setAdminRange(r){
+  adminRange=r;
+  document.querySelectorAll('.admin-range-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['hoy','semana','mes','todo'][i]===r);
+  });
+  const ps=getAdminSales();
+  document.getElementById('adm-preview-count').textContent=ps.length;
+  const prev=document.getElementById('adm-preview');
+  if(!ps.length){prev.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
+  prev.innerHTML=[...ps].slice(0,50).map(s=>{
+    const its=s.items.map(it=>`${it.qty}x ${it.name}`).join(', ');
+    return `<div class="admin-preview-row">
+      <div class="admin-preview-date">${s.date}<br><span style="color:var(--text4)">${s.time}</span></div>
+      <div class="admin-preview-items">${its}</div>
+      <div class="admin-preview-total">$${s.total.toFixed(2)}</div>
+    </div>`;
+  }).join('')+(ps.length>50?`<div style="color:var(--text4);font-size:11px;text-align:center;padding:8px">... y ${ps.length-50} ventas mas</div>`:'');
+}
+
+function buildExcelRows(){
+  const ps=getAdminSales();
+  const rows=[['Fecha','Hora','Producto','Variacion','Extras','Cantidad','Precio unitario','Subtotal','Total venta','Cambio dado']];
+  ps.forEach(s=>{
+    s.items.forEach((it,i)=>{
+      rows.push([
+        s.date, s.time,
+        it.name, it.var||'', it.extras||'',
+        it.qty, it.price,
+        (it.price*it.qty).toFixed(2),
+        i===0?s.total.toFixed(2):'',
+        i===0&&s.cambio!=null?s.cambio.toFixed(2):''
+      ]);
+    });
+  });
+  return rows;
+}
+
+function exportExcel(){
+  const ps=getAdminSales();
+  if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
+  const rows=buildExcelRows();
+  const wb=XLSX.utils.book_new();
+
+  // Sales sheet
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:8},{wch:22},{wch:14},{wch:16},{wch:10},{wch:14},{wch:12},{wch:13},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws,'Ventas');
+
+  // Summary sheet
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  const avg=ps.length?total/ps.length:0;
+  const counts={},totals={};
+  ps.forEach(s=>s.items.forEach(it=>{
+    const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+    counts[k]=(counts[k]||0)+it.qty;
+    totals[k]=(totals[k]||0)+(it.price*it.qty);
+  }));
+  const sumRows=[
+    ['RESUMEN — DOGOS KARYTHO'],[''],
+    ['Periodo',{hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico completo'}[adminRange]],
+    ['Total de ventas',ps.length],
+    ['Ingresos totales','$'+total.toFixed(2)],
+    ['Ticket promedio','$'+avg.toFixed(2)],[''],
+    ['Producto','Cantidad vendida','Ingresos'],
+    ...Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([name,qty])=>[name,qty,'$'+(totals[name]||0).toFixed(2)])
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(sumRows);
+  ws2['!cols']=[{wch:28},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+
+  const fname=`dogos-karytho-${adminRange}-${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`;
+  XLSX.writeFile(wb,fname);
+  showToast('Excel descargado','green');
+}
+
+function exportCSV(){
+  const ps=getAdminSales();
+  if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
+  const rows=buildExcelRows();
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`dogos-karytho-${adminRange}-${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  showToast('CSV descargado','green');
+}
+
+function exportWhatsApp(){
+  const ps=getAdminSales();
+  if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  const avg=ps.length?total/ps.length:0;
+  const counts={},totals={};
+  ps.forEach(s=>s.items.forEach(it=>{
+    const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+    counts[k]=(counts[k]||0)+it.qty;
+    totals[k]=(totals[k]||0)+(it.price*it.qty);
+  }));
+  const periodo={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico completo'}[adminRange];
+  const now=new Date();
+  let txt=`🌭 *DOGOS KARYTHO — REPORTE*\n`;
+  txt+=`📅 ${periodo} | ${now.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})}\n\n`;
+  txt+=`📊 *Resumen*\n`;
+  txt+=`• Ventas: ${ps.length}\n`;
+  txt+=`• Ingresos: $${total.toFixed(2)}\n`;
+  txt+=`• Ticket promedio: $${avg.toFixed(2)}\n\n`;
+  txt+=`🏆 *Productos*\n`;
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([name,qty])=>{
+    txt+=`• ${name}: ${qty} pzas — $${(totals[name]||0).toFixed(2)}\n`;
+  });
+  txt+=`\n💰 *TOTAL: $${total.toFixed(2)}*`;
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+
 /* ─── Custom Confirm ─── */
 let confirmCallback=null;
 function customConfirm(msg,yesLabel,cb){
@@ -1666,13 +2021,21 @@ function confirmResolve(yes){
 }
 
 /* ─── Init ─── */
-// Check if already logged in
-if(safeStorage.getItem(SK_SESSION)==='1'){
+const savedSession=safeStorage.getItem(SK_SESSION);
+const savedRole=safeStorage.getItem(SK_ROLE);
+if(savedSession==='1' && savedRole==='admin'){
+  document.getElementById('login-screen').classList.add('hidden');
+  // Load data then boot admin
+  load();
+  const cfg=getFbConfig();
+  if(cfg&&cfg.apiKey){
+    initFirebase(cfg);
+    setTimeout(()=>bootAdmin(),800);
+  } else bootAdmin();
+} else if(savedSession==='1'){
   document.getElementById('login-screen').classList.add('hidden');
   bootApp();
-}
-// Focus login field
-else{
+} else {
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
