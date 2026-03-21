@@ -1516,27 +1516,25 @@ const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
 
 /* ─── Firebase login helper ─── */
-// Inicia Firebase solo para autenticar (antes de bootApp)
 let fbAuthDb=null;
 function initAuthDb(){
-  if(fbAuthDb)return;
-  try{
-    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
-    fbAuthDb=firebase.database();
-  }catch(e){console.error('Auth DB error',e);}
+  // Reusar fbDb que ya fue inicializado al cargar la pagina
+  if(!fbAuthDb)fbAuthDb=fbDb;
 }
 
 function loginWithFirebase(user,pass,cb){
-  initAuthDb();
-  if(!fbAuthDb){cb(null,'Sin conexion a internet');return;}
-  fbAuthDb.ref('users/'+user.toLowerCase()).once('value')
+  if(!fbDb){cb(null,'Sin conexion a internet');return;}
+  fbDb.ref('users/'+user.toLowerCase()).once('value')
     .then(snap=>{
       const data=snap.val();
       if(!data){cb(null,'Usuario o contraseña incorrectos');return;}
       if(data.pass!==pass){cb(null,'Usuario o contraseña incorrectos');return;}
       cb(data,null);
     })
-    .catch(()=>cb(null,'Error de conexion. Revisa tu internet.'));
+    .catch(e=>{
+      console.error('Login error:',e);
+      cb(null,'Error de conexion. Revisa tu internet.');
+    });
 }
 
 /* ─── Person Picker ─── */
@@ -1623,7 +1621,7 @@ function adminLogout(){
 const SK_FB='dk_firebase_cfg';
 let fbDb=null,fbConnected=false,fbListening=false;
 
-/* ─── Firebase config (fija, no necesita configuracion) ─── */
+/* ─── Firebase config (fija) ─── */
 const FB_CONFIG={
   apiKey:"AIzaSyDCOG_gEFQLjaKtcoqiwli20cYmjU6lJrg",
   authDomain:"dogos-karytho.firebaseapp.com",
@@ -1636,9 +1634,15 @@ const FB_CONFIG={
 
 function getFbConfig(){return FB_CONFIG;}
 function saveFbConfig(){}
-function openFbSetup(){
-  showToast('Sincronizacion ya configurada','green');
-}
+function openFbSetup(){showToast('Sincronizacion ya configurada','green');}
+
+/* ─── Inicializar Firebase UNA sola vez al cargar la pagina ─── */
+(function(){
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    fbDb=firebase.database();
+  }catch(e){console.error('Firebase init error:',e);}
+})();
 
 /* ─── Presence ─── */
 let presenceSessionId=null;
@@ -1711,9 +1715,11 @@ document.addEventListener('click',e=>{
 
 function initFirebase(cfg){
   try{
-    if(firebase.apps.length)firebase.apps.forEach(a=>a.delete().catch(()=>{}));
-    firebase.initializeApp(cfg);
-    fbDb=firebase.database();
+    // Firebase ya fue inicializado al cargar — solo conectar listeners
+    if(!fbDb){
+      if(!firebase.apps.length)firebase.initializeApp(cfg);
+      fbDb=firebase.database();
+    }
     setFbStatus('connecting');
     fbDb.ref('.info/connected').on('value',snap=>{
       fbConnected=!!snap.val();
@@ -1721,7 +1727,7 @@ function initFirebase(cfg){
     });
     startFbListeners();
   }catch(e){
-    console.error('Firebase init error:',e);
+    console.error('Firebase listeners error:',e);
     setFbStatus('error');
   }
 }
