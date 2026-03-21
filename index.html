@@ -705,6 +705,45 @@ body{
   font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;
 }
 
+/* ── ONLINE PRESENCE BADGE ── */
+.online-badge{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:20px;padding:5px 10px;cursor:pointer;
+  transition:all .3s;
+}
+.online-badge.has-users{border-color:rgba(45,138,45,.4);background:var(--green-dim)}
+.online-pulse{
+  width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0;
+  transition:background .4s,box-shadow .4s;
+}
+.online-badge.has-users .online-pulse{
+  background:#4fcf4f;
+  animation:onlinePing 1.8s ease-in-out infinite;
+}
+@keyframes onlinePing{
+  0%{box-shadow:0 0 0 0 rgba(79,207,79,.5)}
+  70%{box-shadow:0 0 0 7px rgba(79,207,79,0)}
+  100%{box-shadow:0 0 0 0 rgba(79,207,79,0)}
+}
+.online-count{font-size:11px;font-weight:800;color:var(--text3);transition:color .3s;white-space:nowrap}
+.online-badge.has-users .online-count{color:#6fcf6f}
+.online-tooltip{
+  position:fixed;top:68px;right:10px;z-index:200;
+  background:linear-gradient(135deg,#1e1e1e,#1a1a1a);
+  border:1px solid var(--border2);border-radius:var(--radius-md);
+  padding:14px 16px;min-width:190px;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  animation:fadeIn .2s ease;
+}
+.online-tooltip.hidden{display:none}
+.online-tooltip-title{font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.online-user-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)}
+.online-user-row:last-child{border-bottom:none}
+.online-user-dot{width:8px;height:8px;border-radius:50%;background:#4fcf4f;flex-shrink:0;animation:onlinePing 1.8s ease-in-out infinite}
+.online-user-name{font-size:14px;font-weight:700;color:var(--text);flex:1}
+.online-user-since{font-size:10px;color:var(--text3)}
+
 /* ── LOGIN SCREEN ── */
 .login-screen{
   position:fixed;inset:0;z-index:1000;
@@ -910,6 +949,117 @@ body{
 .admin-preview-total{color:var(--gold);font-weight:800;min-width:60px;text-align:right;flex-shrink:0}
 .admin-empty{color:var(--text4);font-size:13px;text-align:center;padding:24px 0}
 
+/* ── SETTINGS PANEL ── */
+.settings-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  z-index:500;display:flex;align-items:flex-start;justify-content:flex-end;
+}
+.settings-overlay.hidden{display:none}
+.settings-panel{
+  background:linear-gradient(180deg,#1e1e1e,#1a1a1a);
+  border-left:1px solid var(--border2);border-bottom:1px solid var(--border2);
+  border-radius:0 0 0 var(--radius-xl);
+  padding:20px 20px 28px;
+  width:min(300px,90vw);
+  min-height:100px;
+  box-shadow:-8px 8px 40px rgba(0,0,0,.5);
+  animation:slideIn .25s cubic-bezier(.32,0,.67,0);
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.settings-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;
+}
+.settings-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:.5px}
+.btn-settings-close{
+  width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--border2);background:transparent;
+  color:var(--text3);cursor:pointer;font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.btn-settings-close:active{background:var(--bg3)}
+.settings-user-card{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-md);padding:13px 15px;
+  margin-bottom:16px;display:flex;align-items:center;gap:12px;
+}
+.settings-avatar{
+  width:40px;height:40px;border-radius:50%;
+  background:linear-gradient(135deg,var(--red),#c01818);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.settings-user-name{font-size:15px;font-weight:700;color:var(--text)}
+.settings-user-role{font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:.3px}
+.settings-item{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;
+  border-radius:var(--radius-sm);cursor:pointer;
+  transition:background .15s;border:1px solid transparent;
+  margin-bottom:8px;width:100%;text-align:left;background:transparent;
+}
+.settings-item:hover{background:var(--bg3);border-color:var(--border)}
+.settings-item:active{transform:scale(.97)}
+.settings-item-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.settings-item-lbl{font-size:14px;font-weight:700;flex:1}
+.settings-item-sub{font-size:11px;margin-top:2px}
+.settings-item.danger .settings-item-lbl{color:var(--red)}
+.settings-item.danger:hover{background:var(--red-dim);border-color:#3a1a1a}
+.settings-divider{height:1px;background:var(--border);margin:8px 0 16px}
+.btn-settings-gear{
+  width:36px;height:36px;border-radius:50%;
+  border:1px solid var(--border2);background:transparent;
+  color:var(--text3);cursor:pointer;font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.btn-settings-gear:hover{border-color:var(--border3);color:var(--text);transform:rotate(30deg)}
+.btn-settings-gear:active{background:var(--bg3)}
+
+/* ── ACTIVITY LOG ── */
+.log-filters{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+.log-filter-btn{
+  padding:7px 13px;border-radius:20px;border:1px solid var(--border);
+  background:transparent;color:var(--text3);font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .18s;white-space:nowrap;user-select:none;
+}
+.log-filter-btn.active{background:var(--bg3);border-color:var(--border2);color:var(--text)}
+.log-filter-btn.f-conectar.active{background:#1a2e1a;border-color:rgba(45,138,45,.5);color:#6fcf6f}
+.log-filter-btn.f-venta.active{background:var(--gold-dim);border-color:rgba(245,200,0,.4);color:var(--gold)}
+.log-filter-btn.f-eliminar.active{background:var(--red-dim);border-color:rgba(224,32,32,.4);color:#f57474}
+.log-filter-btn.f-producto.active{background:#1a1a2e;border-color:rgba(100,100,245,.4);color:#9b9bff}
+.log-entry{
+  display:flex;gap:11px;padding:11px 0;
+  border-bottom:1px solid var(--border);
+  animation:fadeSlide .18s ease both;
+}
+.log-entry:last-child{border-bottom:none}
+.log-icon-wrap{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.log-icon-wrap.c-green{background:#1a2e1a}
+.log-icon-wrap.c-red2{background:var(--red-dim)}
+.log-icon-wrap.c-gold{background:var(--gold-dim)}
+.log-icon-wrap.c-blue{background:#1a1a2e}
+.log-icon-wrap.c-gray{background:var(--bg3)}
+.log-content{flex:1;min-width:0}
+.log-action{font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+.log-detail{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.5}
+.log-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.log-user-badge{
+  font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;
+  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+}
+.log-time{font-size:10px;color:var(--text4)}
+.log-live-dot{
+  width:6px;height:6px;border-radius:50%;background:#4fcf4f;
+  display:inline-block;margin-right:4px;
+  animation:onlinePing 1.8s ease-in-out infinite;
+}
+
 ::-webkit-scrollbar{width:2px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 </style>
@@ -951,10 +1101,49 @@ body{
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <div class="header-date" id="header-date"></div>
-    <div class="fb-status-row" onclick="openFbSetup()" title="Estado de sincronizacion">
-      <span class="fb-status-dot" id="fb-dot"></span>
-      <span id="fb-status-txt" style="font-size:10px;color:var(--text3)">Sync</span>
+    <div class="online-badge" id="online-badge" onclick="toggleOnlineTooltip()">
+      <span class="online-pulse" id="online-pulse"></span>
+      <span class="online-count" id="online-count">...</span>
     </div>
+    <button class="btn-settings-gear" onclick="openSettings()" title="Ajustes">⚙</button>
+  </div>
+</div>
+
+<!-- Online tooltip -->
+<div class="online-tooltip hidden" id="online-tooltip">
+  <div class="online-tooltip-title">En linea ahora</div>
+  <div id="online-users-list"><div style="color:var(--text4);font-size:13px">Cargando...</div></div>
+</div>
+
+<!-- Settings panel -->
+<div class="settings-overlay hidden" id="settings-overlay" onclick="closeSettingsOutside(event)">
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-header">
+      <div class="settings-title">⚙ Ajustes</div>
+      <button class="btn-settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-user-card">
+      <div class="settings-avatar" id="settings-avatar">?</div>
+      <div>
+        <div class="settings-user-name" id="settings-user-name">—</div>
+        <div class="settings-user-role" id="settings-user-role">Sesion activa</div>
+      </div>
+    </div>
+    <div class="fb-status-row" style="cursor:default;margin-bottom:16px">
+      <span class="fb-status-dot" id="fb-dot2"></span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text2)">Sincronizacion</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="fb-status-txt2">Conectando...</div>
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <button class="settings-item danger" onclick="closeSettings();doLogout()">
+      <span class="settings-item-icon">🔒</span>
+      <div>
+        <div class="settings-item-lbl">Cerrar sesion</div>
+        <div class="settings-item-sub" style="color:var(--text3)">Vuelve a la pantalla de login</div>
+      </div>
+    </button>
   </div>
 </div>
 
@@ -1033,19 +1222,6 @@ body{
     <div id="new-extras-list"></div>
     <button class="btn-add-var" onclick="addExtraField()">+ Agregar extra</button>
     <button class="btn-primary" onclick="saveNewProduct()">Guardar producto</button>
-  </div>
-  <div class="sec-label">⚙ Ajustes</div>
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px">
-    <div class="fb-status-row" style="cursor:default">
-      <span class="fb-status-dot" id="fb-dot2"></span>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:700;color:var(--text2)">Sincronizacion en la nube</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px" id="fb-status-txt2">Conectando...</div>
-      </div>
-    </div>
-    <button onclick="doLogout()" style="width:100%;padding:14px 16px;border-radius:var(--radius-sm);border:1px solid #3a1a1a;background:transparent;color:var(--red);font-size:14px;font-weight:700;cursor:pointer;text-align:left;transition:background .15s" onmouseenter="this.style.background='var(--red-dim)'" onmouseleave="this.style.background='transparent'">
-      🔒 Cerrar sesion
-    </button>
   </div>
 </div>
 
@@ -1202,6 +1378,24 @@ body{
       <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
     </div>
 
+    <div class="sec-label">📋 Registro de actividad</div>
+    <div style="margin-bottom:12px">
+      <div class="log-filters">
+        <button class="log-filter-btn active" onclick="setLogFilter('todo')">Todo</button>
+        <button class="log-filter-btn f-conectar" onclick="setLogFilter('sesion')">Sesiones</button>
+        <button class="log-filter-btn f-venta" onclick="setLogFilter('venta')">Ventas</button>
+        <button class="log-filter-btn f-producto" onclick="setLogFilter('producto')">Productos</button>
+        <button class="log-filter-btn f-eliminar" onclick="setLogFilter('eliminar')">Eliminados</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span class="log-live-dot"></span>
+        <span style="font-size:11px;color:var(--text3)">En tiempo real — <span id="log-count">0</span> eventos</span>
+      </div>
+    </div>
+    <div class="form-card" style="padding:10px 14px;max-height:500px;overflow-y:auto">
+      <div id="adm-activity-log"><div class="admin-empty">Sin actividad registrada aun</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -1277,25 +1471,28 @@ const safeStorage={
 };
 
 /* ─── Credentials ─── */
-const CREDS={user:'CIDOP',pass:'POS.'};
-const ADMIN_CREDS={user:'ADMIN',pass:'EXCEL'};
+const ALL_USERS=[
+  {user:'CIDOP',    pass:'POS.',     role:'user',  display:'Principal'},
+  {user:'OSCAR',    pass:'Oscar.',   role:'user',  display:'Oscar'},
+  {user:'DENISSE',  pass:'Denisse.', role:'user',  display:'Denisse'},
+  {user:'ADMIN',    pass:'EXCEL',    role:'admin', display:'Admin'},
+];
 const SK_SESSION='dk_session';
-const SK_ROLE='dk_role'; // 'user' or 'admin'
+const SK_ROLE='dk_role';
+const SK_DISPLAY='dk_display';
 
 /* ─── Login ─── */
 function doLogin(){
   const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
-  if(u===CREDS.user && p===CREDS.pass){
+  const found=ALL_USERS.find(c=>c.user===u&&c.pass===p);
+  if(found){
     safeStorage.setItem(SK_SESSION,'1');
-    safeStorage.setItem(SK_ROLE,'user');
+    safeStorage.setItem(SK_ROLE,found.role);
+    safeStorage.setItem(SK_DISPLAY,found.display);
     document.getElementById('login-screen').classList.add('hidden');
-    bootApp();
-  } else if(u===ADMIN_CREDS.user && p===ADMIN_CREDS.pass){
-    safeStorage.setItem(SK_SESSION,'1');
-    safeStorage.setItem(SK_ROLE,'admin');
-    document.getElementById('login-screen').classList.add('hidden');
-    bootAdmin();
+    if(found.role==='admin') bootAdmin();
+    else bootApp();
   } else {
     const err=document.getElementById('login-error');
     err.textContent='Usuario o contraseña incorrectos';
@@ -1308,14 +1505,24 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 
 function doLogout(){
   customConfirm('Cerrar sesion?','Salir',()=>{
+    const name=safeStorage.getItem(SK_DISPLAY)||'Usuario';
+    logActivity('desconectar',name+' cerro sesion manualmente');
+    if(fbDb&&presenceSessionId){
+      fbDb.ref('presence/'+presenceSessionId).remove().catch(()=>{});
+    }
     safeStorage.removeItem(SK_SESSION);
     safeStorage.removeItem(SK_ROLE);
+    safeStorage.removeItem(SK_DISPLAY);
     location.reload();
   });
 }
 function adminLogout(){
+  if(fbDb&&presenceSessionId){
+    fbDb.ref('presence/'+presenceSessionId).remove().catch(()=>{});
+  }
   safeStorage.removeItem(SK_SESSION);
   safeStorage.removeItem(SK_ROLE);
+  safeStorage.removeItem(SK_DISPLAY);
   location.reload();
 }
 
@@ -1340,13 +1547,81 @@ function openFbSetup(){
   showToast('Sincronizacion ya configurada','green');
 }
 
+/* ─── Presence ─── */
+let presenceSessionId=null;
+
+function startPresence(userName){
+  if(!fbDb||!userName)return;
+  presenceSessionId='sess_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  const sessRef=fbDb.ref('presence/'+presenceSessionId);
+  const connRef=fbDb.ref('.info/connected');
+  connRef.on('value',snap=>{
+    if(!snap.val())return;
+    sessRef.onDisconnect().remove();
+    // Log disconnect via onDisconnect
+    const logRef=fbDb.ref('activity_log').push();
+    fbDb.ref('activity_log/'+logRef.key).onDisconnect().set({
+      type:'desconectar',detail:userName+' cerro sesion o perdio conexion',
+      user:userName,date:toDateKey(new Date()),
+      time:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+      ts:Date.now()+1
+    });
+    sessRef.set({
+      name:userName,
+      since:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+      ts:Date.now()
+    });
+    // Log connect
+    logActivity('conectar', userName+' inicio sesion');
+  });
+  // Listen to all presence
+  fbDb.ref('presence').on('value',snap=>{
+    const data=snap.val()||{};
+    const users=Object.values(data);
+    renderPresenceBadge(users);
+  });
+}
+
+function renderPresenceBadge(users){
+  const badge=document.getElementById('online-badge');
+  const count=document.getElementById('online-count');
+  const list=document.getElementById('online-users-list');
+  if(!badge||!count)return;
+  const n=users.length;
+  count.textContent=n===1?'1 en linea':`${n} en linea`;
+  badge.classList.toggle('has-users',n>0);
+  if(list){
+    if(!n){list.innerHTML='<div style="color:var(--text4);font-size:13px;padding:4px 0">Nadie conectado</div>';return;}
+    list.innerHTML=users
+      .sort((a,b)=>a.ts-b.ts)
+      .map(u=>`<div class="online-user-row">
+        <span class="online-user-dot"></span>
+        <span class="online-user-name">${u.name}</span>
+        <span class="online-user-since">desde ${u.since}</span>
+      </div>`).join('');
+  }
+}
+
+let tooltipOpen=false;
+function toggleOnlineTooltip(){
+  const tip=document.getElementById('online-tooltip');
+  if(!tip)return;
+  tooltipOpen=!tooltipOpen;
+  tip.classList.toggle('hidden',!tooltipOpen);
+}
+document.addEventListener('click',e=>{
+  if(tooltipOpen&&!e.target.closest('#online-badge')&&!e.target.closest('#online-tooltip')){
+    document.getElementById('online-tooltip').classList.add('hidden');
+    tooltipOpen=false;
+  }
+});
+
 function initFirebase(cfg){
   try{
     if(firebase.apps.length)firebase.apps.forEach(a=>a.delete().catch(()=>{}));
     firebase.initializeApp(cfg);
     fbDb=firebase.database();
     setFbStatus('connecting');
-    // Test connection
     fbDb.ref('.info/connected').on('value',snap=>{
       fbConnected=!!snap.val();
       setFbStatus(fbConnected?'ok':'offline');
@@ -1359,8 +1634,8 @@ function initFirebase(cfg){
 }
 
 function setFbStatus(s){
-  const dots=[document.getElementById('fb-dot'),document.getElementById('fb-dot2')];
-  const txts=[document.getElementById('fb-status-txt'),document.getElementById('fb-status-txt2')];
+  const dots=[document.getElementById('fb-dot2')].filter(Boolean);
+  const txts=[document.getElementById('fb-status-txt2')].filter(Boolean);
   const map={
     ok:['green','Sincronizado'],
     offline:['','Sin conexion'],
@@ -1369,8 +1644,8 @@ function setFbStatus(s){
     none:['','Sin sincronizacion']
   };
   const[cls,label]=map[s]||['',''];
-  dots.forEach(d=>{if(d){d.className='fb-status-dot';if(cls)d.classList.add(cls);}});
-  txts.forEach(t=>{if(t)t.textContent=label;});
+  dots.forEach(d=>{d.className='fb-status-dot';if(cls)d.classList.add(cls);});
+  txts.forEach(t=>{t.textContent=label;});
 }
 
 function startFbListeners(){
@@ -1403,6 +1678,83 @@ function fbSaveSales(){
   if(!fbDb)return;
   const obj={};sales.forEach(s=>obj[s.id]=s);
   fbDb.ref('sales').set(obj).catch(()=>{});
+}
+
+/* ─── Activity Log ─── */
+const LOG_ICONS={
+  conectar:  {icon:'🟢', color:'c-green'},
+  desconectar:{icon:'🔴',color:'c-red2'},
+  venta:     {icon:'💰', color:'c-gold'},
+  venta_del: {icon:'🗑', color:'c-red2'},
+  ventas_del:{icon:'🗑', color:'c-red2'},
+  prod_nuevo:{icon:'➕', color:'c-blue'},
+  prod_edit: {icon:'✏️', color:'c-blue'},
+  prod_del:  {icon:'❌', color:'c-red2'},
+  corte:     {icon:'🧾', color:'c-gray'},
+};
+
+function logActivity(type, detail){
+  if(!fbDb)return;
+  const user=safeStorage.getItem(SK_DISPLAY)||'Usuario';
+  const now=new Date();
+  const entry={
+    type, detail, user,
+    date: toDateKey(now),
+    time: now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    ts: Date.now()
+  };
+  fbDb.ref('activity_log').push(entry).catch(()=>{});
+}
+
+let activityLogData=[];
+let logFilter='todo';
+
+function startActivityListener(){
+  if(!fbDb)return;
+  fbDb.ref('activity_log').orderByChild('ts').limitToLast(200).on('value',snap=>{
+    const data=snap.val()||{};
+    activityLogData=Object.values(data).sort((a,b)=>b.ts-a.ts);
+    if(document.getElementById('adm-activity-log'))renderActivityLog();
+  });
+}
+
+function setLogFilter(f){
+  logFilter=f;
+  document.querySelectorAll('.log-filter-btn').forEach(b=>{
+    b.classList.toggle('active',b.getAttribute('onclick').includes("'"+f+"'"));
+  });
+  renderActivityLog();
+}
+
+function renderActivityLog(){
+  const el=document.getElementById('adm-activity-log');
+  if(!el)return;
+  let data=activityLogData;
+  if(logFilter!=='todo'){
+    const map={
+      sesion:   ['conectar','desconectar'],
+      venta:    ['venta'],
+      producto: ['prod_nuevo','prod_edit','prod_del'],
+      eliminar: ['venta_del','ventas_del','prod_del']
+    };
+    const types=map[logFilter]||[];
+    data=data.filter(e=>types.includes(e.type));
+  }
+  document.getElementById('log-count').textContent=activityLogData.length;
+  if(!data.length){el.innerHTML='<div class="admin-empty">Sin actividad en este filtro</div>';return;}
+  el.innerHTML=data.map((e,i)=>{
+    const cfg=LOG_ICONS[e.type]||{icon:'📌',color:'c-gray'};
+    return `<div class="log-entry" style="animation-delay:${Math.min(i,.15)*0.03}s">
+      <div class="log-icon-wrap ${cfg.color}">${cfg.icon}</div>
+      <div class="log-content">
+        <div class="log-action">${e.detail}</div>
+        <div class="log-meta">
+          <span class="log-user-badge">${e.user}</span>
+          <span class="log-time">${e.date} · ${e.time}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ─── Data keys ─── */
@@ -1451,6 +1803,9 @@ function bootApp(){
   load();updateDate();renderGrid();renderFavStrip();renderOrder();
   setFbStatus('connecting');
   initFirebase(FB_CONFIG);
+  // Start presence after Firebase connects (short delay)
+  const displayName=safeStorage.getItem(SK_DISPLAY)||'Usuario';
+  setTimeout(()=>startPresence(displayName),1200);
 }
 
 /* ─── Toast ─── */
@@ -1664,6 +2019,7 @@ function confirmarCobro(){
   const now=new Date();
   sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
   saveSales();clearOrder();closeCash();
+  logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
   const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
   showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
   setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
@@ -1748,14 +2104,20 @@ function renderHistorial(){
 }
 function deleteSale(id){
   customConfirm('Eliminar esta venta del historial?','Eliminar',()=>{
-    sales=sales.filter(s=>String(s.id)!==String(id));saveSales();renderHistorial();showToast('Venta eliminada');
+    const sale=sales.find(s=>String(s.id)===String(id));
+    const desc=sale?`Venta eliminada — $${sale.total.toFixed(2)} del ${sale.date}`:'Venta eliminada';
+    sales=sales.filter(s=>String(s.id)!==String(id));saveSales();renderHistorial();
+    logActivity('venta_del',desc);
+    showToast('Venta eliminada');
   });
 }
 function clearAllSales(){
   const ps=getPeriodSales();if(!ps.length)return;
   const lbl={dia:'de hoy',semana:'de esta semana',mes:'de este mes'}[currentPeriod];
   customConfirm('Borrar TODAS las ventas '+lbl+'?\nEsta accion no se puede deshacer.','Borrar todo',()=>{
-    const ids=new Set(ps.map(s=>s.id));sales=sales.filter(s=>!ids.has(s.id));saveSales();renderHistorial();showToast('Ventas borradas');
+    const ids=new Set(ps.map(s=>s.id));sales=sales.filter(s=>!ids.has(s.id));saveSales();renderHistorial();
+    logActivity('ventas_del',`${ps.length} ventas eliminadas (${lbl})`);
+    showToast('Ventas borradas');
   });
 }
 
@@ -1809,11 +2171,17 @@ function saveEditProduct(id){
   if(!name){showToast('Escribe un nombre','red');return;}
   products[idx]={...products[idx],name,basePrice:bp,variations:(editVars[id]||[]).filter(v=>v.name.trim()),extras:(editExtras[id]||[]).filter(e=>e.name.trim())};
   saveProd();delete editVars[id];delete editExtras[id];editingId=null;
+  logActivity('prod_edit',`Producto editado — "${name}"`);
   renderGrid();renderFavStrip();renderProdAdmin();showToast('Cambios guardados','green');
 }
 function deleteProd(id){
   customConfirm('Eliminar este producto del menu?','Eliminar',()=>{
-    products=products.filter(p=>p.id!==id);favorites=favorites.filter(f=>f!==id);saveProd();saveFavs();renderGrid();renderFavStrip();renderProdAdmin();showToast('Producto eliminado');
+    const p=products.find(x=>x.id===id);
+    const pname=p?p.name:'producto';
+    products=products.filter(p=>p.id!==id);favorites=favorites.filter(f=>f!==id);
+    saveProd();saveFavs();renderGrid();renderFavStrip();renderProdAdmin();
+    logActivity('prod_del',`Producto eliminado — "${pname}"`);
+    showToast('Producto eliminado');
   });
 }
 
@@ -1829,6 +2197,7 @@ function saveNewProduct(){
   if(!name){showToast('Escribe el nombre','red');return;}
   products.push({id:nextId++,name,basePrice:bp,variations:newVars.filter(v=>v.name.trim()).map(v=>({name:v.name.trim(),price:parseFloat(v.price)||bp})),extras:newExtras.filter(e=>e.name.trim()).map(e=>({name:e.name.trim(),price:parseFloat(e.price)||0}))});
   saveProd();renderGrid();renderProdAdmin();
+  logActivity('prod_nuevo',`Producto agregado — "${name}" ($${bp})`);
   document.getElementById('new-name').value='';document.getElementById('new-price').value='';
   newVars=[];newExtras=[];renderVarFields();renderExtraFields();showToast('Producto guardado','green');
 }
@@ -1837,15 +2206,15 @@ function saveNewProduct(){
 let adminRange='hoy';
 
 function bootAdmin(){
-  load(); // Load local data first so we have something to show
+  load();
   const screen=document.getElementById('admin-screen');
   screen.classList.add('active');
-  renderAdmin(); // Show with local data immediately
-  // Also connect Firebase to get latest cloud data
+  renderAdmin();
   if(!fbDb){
     initFirebase(FB_CONFIG);
-    // Re-render once Firebase data arrives
-    setTimeout(renderAdmin, 2000);
+    setTimeout(()=>{renderAdmin();startActivityListener();},2000);
+  } else {
+    startActivityListener();
   }
 }
 
@@ -2006,6 +2375,25 @@ function exportWhatsApp(){
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
+/* ─── Settings panel ─── */
+function openSettings(){
+  const name=safeStorage.getItem(SK_DISPLAY)||'—';
+  const role=safeStorage.getItem(SK_ROLE)||'user';
+  document.getElementById('settings-user-name').textContent=name;
+  document.getElementById('settings-avatar').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('settings-user-role').textContent=role==='admin'?'Administrador':'Cajero';
+  document.getElementById('settings-overlay').classList.remove('hidden');
+  // Close online tooltip if open
+  document.getElementById('online-tooltip').classList.add('hidden');
+  tooltipOpen=false;
+}
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.add('hidden');
+}
+function closeSettingsOutside(e){
+  if(e.target.id==='settings-overlay')closeSettings();
+}
+
 /* ─── Custom Confirm ─── */
 let confirmCallback=null;
 function customConfirm(msg,yesLabel,cb){
@@ -2025,13 +2413,12 @@ const savedSession=safeStorage.getItem(SK_SESSION);
 const savedRole=safeStorage.getItem(SK_ROLE);
 if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
-  // Load data then boot admin
   load();
-  const cfg=getFbConfig();
-  if(cfg&&cfg.apiKey){
-    initFirebase(cfg);
-    setTimeout(()=>bootAdmin(),800);
-  } else bootAdmin();
+  initFirebase(FB_CONFIG);
+  setTimeout(()=>{
+    startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
+    bootAdmin();
+  },800);
 } else if(savedSession==='1'){
   document.getElementById('login-screen').classList.add('hidden');
   bootApp();
