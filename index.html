@@ -1104,11 +1104,11 @@ body{
   <div class="login-card">
     <div class="login-field">
       <label class="login-lbl">Usuario</label>
-      <input class="login-input" id="login-user" type="text" autocomplete="username" placeholder="Usuario" autocapitalize="characters" value="CIDOP"/>
+      <input class="login-input" id="login-user" type="text" autocomplete="username" placeholder="Usuario" autocapitalize="characters"/>
     </div>
     <div class="login-field">
       <label class="login-lbl">Contraseña</label>
-      <input class="login-input" id="login-pass" type="password" autocomplete="current-password" placeholder="Contraseña" value="POS."/>
+      <input class="login-input" id="login-pass" type="password" autocomplete="current-password" placeholder="Contraseña"/>
     </div>
     <div class="login-error" id="login-error"></div>
     <button class="btn-login" onclick="doLogin()">Entrar</button>
@@ -1509,17 +1509,35 @@ const safeStorage={
 };
 
 /* ─── Credentials ─── */
-const ALL_USERS=[
-  {user:'CIDOP',    pass:'POS.',     role:'user',  display:null}, // display set by picker
-  {user:'OSCAR',    pass:'Oscar.',   role:'user',  display:'Oscar'},
-  {user:'DENISSE',  pass:'Denisse.', role:'user',  display:'Denisse'},
-  {user:'ADMIN',    pass:'EXCEL',    role:'admin', display:'Admin'},
-];
-// Names shown in picker when logging in with CIDOP
+// Usuarios guardados en Firebase bajo /users — no hay contrasenas en este codigo
 const CIDOP_MEMBERS=['Caro','Ivan','Denisse','Oscar','Piers'];
 const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
+
+/* ─── Firebase login helper ─── */
+// Inicia Firebase solo para autenticar (antes de bootApp)
+let fbAuthDb=null;
+function initAuthDb(){
+  if(fbAuthDb)return;
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    fbAuthDb=firebase.database();
+  }catch(e){console.error('Auth DB error',e);}
+}
+
+function loginWithFirebase(user,pass,cb){
+  initAuthDb();
+  if(!fbAuthDb){cb(null,'Sin conexion a internet');return;}
+  fbAuthDb.ref('users/'+user.toLowerCase()).once('value')
+    .then(snap=>{
+      const data=snap.val();
+      if(!data){cb(null,'Usuario o contraseña incorrectos');return;}
+      if(data.pass!==pass){cb(null,'Usuario o contraseña incorrectos');return;}
+      cb(data,null);
+    })
+    .catch(()=>cb(null,'Error de conexion. Revisa tu internet.'));
+}
 
 /* ─── Person Picker ─── */
 function showPicker(){
@@ -1536,8 +1554,8 @@ function showPicker(){
   document.getElementById('picker-screen').classList.add('active');
 }
 function selectPerson(name){
-  // NO guardamos sesion para CIDOP — siempre pedira quien es al abrir
   safeStorage.setItem(SK_ROLE,'user');
+  safeStorage.removeItem(SK_SESSION);
   safeStorage.setItem(SK_DISPLAY,name);
   document.getElementById('picker-screen').classList.remove('active');
   bootApp();
@@ -1547,27 +1565,33 @@ function selectPerson(name){
 function doLogin(){
   const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
-  const found=ALL_USERS.find(c=>c.user===u&&c.pass===p);
-  if(found){
+  if(!u||!p){
+    showLoginError('Escribe usuario y contraseña');return;
+  }
+  const btn=document.querySelector('.btn-login');
+  btn.textContent='Verificando...';btn.disabled=true;
+  loginWithFirebase(u,p,(data,err)=>{
+    btn.textContent='Entrar';btn.disabled=false;
+    if(err){showLoginError(err);return;}
     if(u==='CIDOP'){
-      // Solo guardamos el rol sin sesion completa — el picker aparece siempre al abrir
       safeStorage.setItem(SK_ROLE,'user');
       safeStorage.removeItem(SK_SESSION);
       showPicker();
     } else {
       safeStorage.setItem(SK_SESSION,'1');
-      safeStorage.setItem(SK_ROLE,found.role);
-      safeStorage.setItem(SK_DISPLAY,found.display);
+      safeStorage.setItem(SK_ROLE,data.role||'user');
+      safeStorage.setItem(SK_DISPLAY,data.display||u);
       document.getElementById('login-screen').classList.add('hidden');
-      if(found.role==='admin') bootAdmin();
+      if(data.role==='admin') bootAdmin();
       else bootApp();
     }
-  } else {
-    const err=document.getElementById('login-error');
-    err.textContent='Usuario o contraseña incorrectos';
-    document.getElementById('login-pass').value='';
-    setTimeout(()=>err.textContent='',3000);
-  }
+  });
+}
+function showLoginError(msg){
+  const err=document.getElementById('login-error');
+  err.textContent=msg;
+  document.getElementById('login-pass').value='';
+  setTimeout(()=>err.textContent='',3500);
 }
 document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
