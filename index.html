@@ -761,6 +761,36 @@ body{
   padding:28px 24px;width:100%;max-width:340px;
   box-shadow:0 20px 60px rgba(0,0,0,.5);
 }
+/* ── PERSON PICKER ── */
+.picker-screen{
+  position:fixed;inset:0;z-index:1001;
+  background:linear-gradient(160deg,#0f0f0f 0%,#1a0808 50%,#0f0f0f 100%);
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;animation:fadeIn .3s ease;
+}
+.picker-screen.active{display:flex}
+.picker-title{font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px;text-align:center}
+.picker-sub{font-size:13px;color:var(--text3);margin-bottom:32px;text-align:center}
+.picker-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:12px;width:100%;max-width:340px;
+}
+.picker-btn{
+  background:linear-gradient(135deg,#1e1e1e,#1a1a1a);
+  border:1.5px solid var(--border2);border-radius:var(--radius-lg);
+  padding:20px 12px;cursor:pointer;text-align:center;
+  transition:all .18s;color:var(--text);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.picker-btn:hover{border-color:rgba(245,200,0,.5);box-shadow:0 0 20px rgba(245,200,0,.12);transform:translateY(-3px)}
+.picker-btn:active{transform:scale(.93)}
+.picker-avatar{
+  width:52px;height:52px;border-radius:50%;
+  background:linear-gradient(135deg,var(--red),#c01818);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:800;color:#fff;
+}
+.picker-name{font-size:15px;font-weight:800;color:var(--text)}
 .login-field{margin-bottom:16px}
 .login-lbl{font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;display:block}
 .login-input{
@@ -1087,6 +1117,14 @@ body{
 
 <!-- Firebase setup hidden - config hardcoded -->
 <div id="fb-setup" class="fb-setup hidden"></div>
+
+<!-- ===== PERSON PICKER ===== -->
+<div class="picker-screen" id="picker-screen">
+  <div class="login-logo">🌭</div>
+  <div class="picker-title">¿Quién eres?</div>
+  <div class="picker-sub">Toca tu nombre para entrar</div>
+  <div class="picker-grid" id="picker-grid"></div>
+</div>
 
 <!-- ===== MAIN APP ===== -->
 <div id="main-app" style="display:none">
@@ -1472,14 +1510,38 @@ const safeStorage={
 
 /* ─── Credentials ─── */
 const ALL_USERS=[
-  {user:'CIDOP',    pass:'POS.',     role:'user',  display:'Principal'},
+  {user:'CIDOP',    pass:'POS.',     role:'user',  display:null}, // display set by picker
   {user:'OSCAR',    pass:'Oscar.',   role:'user',  display:'Oscar'},
   {user:'DENISSE',  pass:'Denisse.', role:'user',  display:'Denisse'},
   {user:'ADMIN',    pass:'EXCEL',    role:'admin', display:'Admin'},
 ];
+// Names shown in picker when logging in with CIDOP
+const CIDOP_MEMBERS=['Caro','Ivan','Denisse','Oscar','Piers'];
 const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
+
+/* ─── Person Picker ─── */
+function showPicker(){
+  const grid=document.getElementById('picker-grid');
+  grid.innerHTML='';
+  CIDOP_MEMBERS.forEach(name=>{
+    const btn=document.createElement('button');
+    btn.className='picker-btn';
+    btn.innerHTML=`<div class="picker-avatar">${name.charAt(0)}</div><div class="picker-name">${name}</div>`;
+    btn.onclick=()=>selectPerson(name);
+    grid.appendChild(btn);
+  });
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('picker-screen').classList.add('active');
+}
+function selectPerson(name){
+  // NO guardamos sesion para CIDOP — siempre pedira quien es al abrir
+  safeStorage.setItem(SK_ROLE,'user');
+  safeStorage.setItem(SK_DISPLAY,name);
+  document.getElementById('picker-screen').classList.remove('active');
+  bootApp();
+}
 
 /* ─── Login ─── */
 function doLogin(){
@@ -1487,12 +1549,19 @@ function doLogin(){
   const p=document.getElementById('login-pass').value;
   const found=ALL_USERS.find(c=>c.user===u&&c.pass===p);
   if(found){
-    safeStorage.setItem(SK_SESSION,'1');
-    safeStorage.setItem(SK_ROLE,found.role);
-    safeStorage.setItem(SK_DISPLAY,found.display);
-    document.getElementById('login-screen').classList.add('hidden');
-    if(found.role==='admin') bootAdmin();
-    else bootApp();
+    if(u==='CIDOP'){
+      // Solo guardamos el rol sin sesion completa — el picker aparece siempre al abrir
+      safeStorage.setItem(SK_ROLE,'user');
+      safeStorage.removeItem(SK_SESSION);
+      showPicker();
+    } else {
+      safeStorage.setItem(SK_SESSION,'1');
+      safeStorage.setItem(SK_ROLE,found.role);
+      safeStorage.setItem(SK_DISPLAY,found.display);
+      document.getElementById('login-screen').classList.add('hidden');
+      if(found.role==='admin') bootAdmin();
+      else bootApp();
+    }
   } else {
     const err=document.getElementById('login-error');
     err.textContent='Usuario o contraseña incorrectos';
@@ -1506,7 +1575,7 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 function doLogout(){
   customConfirm('Cerrar sesion?','Salir',()=>{
     const name=safeStorage.getItem(SK_DISPLAY)||'Usuario';
-    logActivity('desconectar',name+' cerro sesion manualmente');
+    logActivity('desconectar',name+' cerro sesion');
     if(fbDb&&presenceSessionId){
       fbDb.ref('presence/'+presenceSessionId).remove().catch(()=>{});
     }
@@ -2412,6 +2481,7 @@ function confirmResolve(yes){
 const savedSession=safeStorage.getItem(SK_SESSION);
 const savedRole=safeStorage.getItem(SK_ROLE);
 if(savedSession==='1' && savedRole==='admin'){
+  // Admin — sesion guardada, entra directo
   document.getElementById('login-screen').classList.add('hidden');
   load();
   initFirebase(FB_CONFIG);
@@ -2419,10 +2489,15 @@ if(savedSession==='1' && savedRole==='admin'){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     bootAdmin();
   },800);
-} else if(savedSession==='1'){
+} else if(savedSession==='1' && savedRole==='user'){
+  // Oscar o Denisse — sesion individual guardada, entra directo
   document.getElementById('login-screen').classList.add('hidden');
   bootApp();
+} else if(savedRole==='user' && !savedSession){
+  // CIDOP — nunca guarda sesion, siempre muestra picker
+  showPicker();
 } else {
+  // Sin sesion — mostrar login
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
