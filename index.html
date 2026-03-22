@@ -89,14 +89,13 @@ body{
 
 /* ── COBRAR FIXED LAYOUT ── */
 .view-cobrar-layout{
-  /* Fill exactly the space between tabs and bottom of screen */
   height:calc(100dvh - 58px - 40px);
-  display:flex !important;
+  display:none;
   flex-direction:column;
   padding:0 !important;
   overflow:hidden;
-  gap:0;
 }
+.view-cobrar-layout.active{display:flex}
 .cobrar-top{
   flex:1;
   overflow-y:auto;
@@ -2098,7 +2097,13 @@ function startFbListeners(){
   fbDb.ref('sales').on('value',snap=>{
     const data=snap.val();
     sales=data?Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];
-    if(document.getElementById('view-historial').classList.contains('active'))renderHistorial();
+    // Update cajero historial if open
+    if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
+    // Update admin panel if open
+    const adminScreen=document.getElementById('admin-screen');
+    if(adminScreen&&adminScreen.classList.contains('active')){
+      renderAdmin();
+    }
   });
 }
 
@@ -2644,13 +2649,15 @@ function bootAdmin(){
   load();
   const screen=document.getElementById('admin-screen');
   screen.classList.add('active');
-  // Init Firebase first, then start listeners and render
   if(!fbDb)initFirebase(FB_CONFIG);
+  // Show whatever we have locally right away
+  renderAdmin();
+  // Then start all listeners — sales listener will call renderAdmin() again when Firebase data arrives
   setTimeout(()=>{
-    startMembersListener(); // loads cidop_members from Firebase + keeps in sync
+    startFbListeners();
+    startMembersListener();
     startActivityListener();
-    renderAdmin();
-  },1200);
+  },800);
 }
 
 function renderAdmin(){
