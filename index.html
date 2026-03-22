@@ -1933,6 +1933,7 @@ body{
   <div class="inv-tabs">
     <button class="inv-tab active" onclick="setInvTab('stock')">📦 Stock</button>
     <button class="inv-tab" onclick="setInvTab('entradas')">📥 Entradas</button>
+    <button class="inv-tab" onclick="setInvTab('salidas')">📤 Salidas</button>
     <button class="inv-tab" onclick="setInvTab('recetas')">🍳 Recetas</button>
     <button class="inv-tab" onclick="setInvTab('costos')">💰 Costos</button>
     <button class="inv-tab" onclick="setInvTab('historial')">📋 Historial</button>
@@ -1954,14 +1955,15 @@ body{
   <!-- ── ENTRADAS ── -->
   <div class="inv-tab-view" id="inv-tab-entradas">
     <div class="form-card" style="margin-bottom:16px">
-      <div class="sec-label" style="margin-top:0">Registrar compra</div>
+      <div class="sec-label" style="margin-top:0">📥 Registrar compra</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">Registra lo que compraste. El stock sube automáticamente.</div>
+
       <label class="form-lbl">Ingrediente</label>
       <select class="form-input" id="inv-entry-ing" style="background:var(--bg3);color:var(--text)" onchange="onEntryIngChange()">
         <option value="">Selecciona un ingrediente</option>
       </select>
       <div id="inv-entry-conv-info" style="display:none;background:rgba(42,184,184,.07);border:1px solid rgba(42,184,184,.25);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:12px;color:#2ab8b8;font-weight:600"></div>
 
-      <!-- Toggle unit type -->
       <div style="display:flex;gap:8px;margin:10px 0 8px" id="inv-entry-unit-toggle">
         <button id="btn-entry-pkg" onclick="setEntryMode('pkg')" class="btn-ing teal" style="flex:1;padding:9px;font-size:12px;justify-content:center">📦 Por paquete/caja</button>
         <button id="btn-entry-unit" onclick="setEntryMode('unit')" class="btn-ing" style="flex:1;padding:9px;font-size:12px;justify-content:center">🔢 Por unidad</button>
@@ -1971,46 +1973,69 @@ body{
       <div style="display:flex;gap:8px;align-items:center">
         <input class="form-input" id="inv-entry-qty" type="number" inputmode="decimal" placeholder="0" style="flex:1" oninput="updateEntryPreview()"/>
         <select class="form-input" id="inv-entry-unit-show" style="width:110px;flex-shrink:0;background:var(--bg3);color:var(--text)" onchange="updateEntryPreview()">
-          <option value="pza">pza</option>
-          <option value="kg">kg</option>
-          <option value="g">g</option>
-          <option value="l">l</option>
-          <option value="ml">ml</option>
-          <option value="bolsa">bolsa</option>
-          <option value="paquete">paquete</option>
-          <option value="caja">caja</option>
-          <option value="sobre">sobre</option>
-          <option value="lata">lata</option>
-          <option value="docena">docena</option>
+          <option value="pza">pza</option><option value="kg">kg</option><option value="g">g</option>
+          <option value="l">l</option><option value="ml">ml</option><option value="bolsa">bolsa</option>
+          <option value="paquete">paquete</option><option value="caja">caja</option>
+          <option value="sobre">sobre</option><option value="lata">lata</option><option value="docena">docena</option>
         </select>
       </div>
       <div id="inv-entry-preview" style="font-size:12px;color:#2ab8b8;margin:6px 0 8px;min-height:16px;font-weight:700"></div>
+
       <label class="form-lbl">Costo total pagado ($)</label>
       <input class="form-input" id="inv-entry-cost" type="number" inputmode="decimal" placeholder="0.00"/>
-      <label class="form-lbl">Tipo de entrada</label>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <button id="btn-type-real"   onclick="setEntryType('real')"   class="btn-ing teal"  style="flex:1;padding:9px;font-size:12px">✅ Real</button>
-        <button id="btn-type-prueba" onclick="setEntryType('prueba')" class="btn-ing"       style="flex:1;padding:9px;font-size:12px">🧪 Prueba</button>
-        <button id="btn-type-error"  onclick="setEntryType('error')"  class="btn-ing"       style="flex:1;padding:9px;font-size:12px">❌ Error</button>
-      </div>
-      <div id="inv-entry-type-note" style="font-size:11px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(42,184,184,.07);color:#2ab8b8;font-weight:600">
-        ✅ Real — cuenta en finanzas y costos
-      </div>
       <label class="form-lbl">Nota (opcional)</label>
       <input class="form-input" id="inv-entry-note" placeholder="Ej: Mercado del martes"/>
-      <button class="btn-primary" style="background:linear-gradient(135deg,#0e4a4a,#0a3838);margin-top:4px" onclick="registerEntry()">📥 Registrar entrada</button>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#0e4a4a,#0a3838);margin-top:8px" onclick="registerEntry()">📥 Registrar compra</button>
     </div>
+  </div>
+
+  <!-- ── SALIDAS ── -->
+  <div class="inv-tab-view" id="inv-tab-salidas">
+    <div class="form-card" style="margin-bottom:16px">
+      <div class="sec-label" style="margin-top:0">📤 Registrar salida de stock</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.6">Para mermas, errores, pruebas o cualquier salida que <strong style="color:var(--text2)">no sea una venta</strong>.</div>
+
+      <label class="form-lbl">Ingrediente</label>
+      <select class="form-input" id="inv-out-ing" style="background:var(--bg3);color:var(--text)" onchange="onOutIngChange()">
+        <option value="">Selecciona un ingrediente</option>
+      </select>
+      <div id="inv-out-stock-info" style="display:none;font-size:12px;color:var(--text3);margin:6px 0 10px"></div>
+
+      <label class="form-lbl">Cantidad a retirar</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" id="inv-out-qty" type="number" inputmode="decimal" placeholder="0" style="flex:1"/>
+        <span id="inv-out-unit" style="font-size:13px;color:var(--text3);min-width:40px;flex-shrink:0"></span>
+      </div>
+
+      <label class="form-lbl">Tipo de salida</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <button id="btn-out-merma"    onclick="setOutType('merma')"    class="btn-ing" style="padding:10px;font-size:12px;text-align:center">🗑️ Merma</button>
+        <button id="btn-out-prueba"   onclick="setOutType('prueba')"   class="btn-ing" style="padding:10px;font-size:12px;text-align:center">🧪 Prueba</button>
+        <button id="btn-out-error"    onclick="setOutType('error')"    class="btn-ing" style="padding:10px;font-size:12px;text-align:center">❌ Error</button>
+        <button id="btn-out-personal" onclick="setOutType('personal')" class="btn-ing" style="padding:10px;font-size:12px;text-align:center">🎁 Uso personal</button>
+        <button id="btn-out-otro"     onclick="setOutType('otro')"     class="btn-ing" style="padding:10px;font-size:12px;text-align:center;grid-column:1/-1">📦 Otro</button>
+      </div>
+      <div id="inv-out-type-note" style="font-size:11px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(224,32,32,.07);color:#f57474;font-weight:600">
+        Selecciona el tipo de salida
+      </div>
+
+      <label class="form-lbl">Nota (opcional)</label>
+      <input class="form-input" id="inv-out-note" placeholder="Ej: Se cayó, se venció, etc"/>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#3a1515,#2a1010);margin-top:8px;border:1px solid rgba(224,32,32,.3)" onclick="registerOutput()">📤 Registrar salida</button>
+    </div>
+
     <div class="sec-label">Ajuste manual de stock</div>
     <div class="form-card" style="margin-bottom:16px">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Corrige el stock a una cantidad exacta después de un conteo físico.</div>
       <label class="form-lbl">Ingrediente</label>
       <select class="form-input" id="inv-adj-ing" style="background:var(--bg3);color:var(--text)">
         <option value="">Selecciona un ingrediente</option>
       </select>
       <label class="form-lbl">Nueva cantidad actual</label>
       <input class="form-input" id="inv-adj-qty" type="number" inputmode="decimal" placeholder="0"/>
-      <label class="form-lbl">Razon</label>
-      <input class="form-input" id="inv-adj-note" placeholder="Ej: Conteo fisico, merma, etc"/>
-      <button class="btn-secondary" onclick="registerAdjust()">⚖️ Aplicar ajuste</button>
+      <label class="form-lbl">Razón</label>
+      <input class="form-input" id="inv-adj-note" placeholder="Ej: Conteo físico, corrección"/>
+      <button class="btn-secondary" style="margin-top:8px" onclick="registerAdjust()">⚖️ Aplicar ajuste</button>
     </div>
   </div>
 
@@ -2090,9 +2115,10 @@ body{
   <div class="inv-tab-view" id="inv-tab-historial">
     <div class="log-filters" style="margin-bottom:12px">
       <button class="log-filter-btn active" onclick="setInvHistFilter('todo')">Todo</button>
-      <button class="log-filter-btn f-venta" onclick="setInvHistFilter('entrada')">Compras</button>
-      <button class="log-filter-btn f-eliminar" onclick="setInvHistFilter('consumo')">Consumos</button>
-      <button class="log-filter-btn f-producto" onclick="setInvHistFilter('ajuste')">Ajustes</button>
+      <button class="log-filter-btn f-venta" onclick="setInvHistFilter('entrada')">📥 Compras</button>
+      <button class="log-filter-btn f-eliminar" onclick="setInvHistFilter('salida')">📤 Salidas</button>
+      <button class="log-filter-btn f-eliminar" onclick="setInvHistFilter('consumo')">🍽️ Ventas</button>
+      <button class="log-filter-btn f-producto" onclick="setInvHistFilter('ajuste')">⚖️ Ajustes</button>
     </div>
     <div id="inv-history-list"><div class="admin-empty">Sin movimientos registrados</div></div>
   </div>
@@ -3926,12 +3952,13 @@ function logInvHistory(type,desc,data={}){
 /* ── Tab navigation ── */
 function setInvTab(tab){
   document.querySelectorAll('.inv-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['stock','entradas','recetas','costos','historial'][i]===tab);
+    b.classList.toggle('active',['stock','entradas','salidas','recetas','costos','historial'][i]===tab);
   });
   document.querySelectorAll('.inv-tab-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('inv-tab-'+tab).classList.add('active');
   if(tab==='stock')renderInvStock();
   if(tab==='entradas')renderInvEntrySelects();
+  if(tab==='salidas'){renderInvOutputSelects();setOutType(outType);}
   if(tab==='recetas'){renderInvRecipes();renderGeneralRecipeList();}
   if(tab==='costos')renderInvCostos();
   if(tab==='historial')renderInvHistory();
@@ -4132,23 +4159,80 @@ function updateEntryPreview(){
   }
 }
 
-let entryType='real';
-function setEntryType(t){
-  entryType=t;
-  const cfg={
-    real:  {btn:'btn-type-real',  note:'✅ Real — cuenta en finanzas y costos',        bg:'rgba(42,184,184,.07)',color:'#2ab8b8'},
-    prueba:{btn:'btn-type-prueba',note:'🧪 Prueba — no afecta finanzas ni costos',      bg:'rgba(245,200,0,.07)',  color:'#F5C800'},
-    error: {btn:'btn-type-error', note:'❌ Error — movimiento incorrecto, no cuenta',   bg:'rgba(224,32,32,.07)', color:'#f57474'},
-  };
-  ['real','prueba','error'].forEach(k=>{
-    const b=document.getElementById('btn-type-'+k);
-    if(b)b.className='btn-ing'+(k===t?' teal':'');
-    if(k==='prueba'&&t===k&&b)b.style.cssText='flex:1;padding:9px;font-size:12px;border-color:rgba(245,200,0,.4);color:var(--gold)';
-    if(k==='error'&&t===k&&b)b.style.cssText='flex:1;padding:9px;font-size:12px;border-color:rgba(224,32,32,.4);color:var(--red)';
-    if(k===t&&b)b.style.flex='1';
+/* ── SALIDAS ── */
+let outType='merma';
+
+const outTypeCfg={
+  merma:   {label:'🗑️ Merma',    note:'Producto vencido o echado a perder — sí afecta pérdidas',  color:'#f57474', bg:'rgba(224,32,32,.07)'},
+  prueba:  {label:'🧪 Prueba',   note:'Salida de testing — no afecta finanzas',                    color:'#F5C800', bg:'rgba(245,200,0,.07)'},
+  error:   {label:'❌ Error',    note:'Registro incorrecto — no afecta finanzas',                  color:'#f57474', bg:'rgba(224,32,32,.07)'},
+  personal:{label:'🎁 Personal', note:'Uso personal — se descuenta pero no cuenta como venta',     color:'#a78bfa', bg:'rgba(167,139,250,.07)'},
+  otro:    {label:'📦 Otro',     note:'Otro motivo — especifica en la nota',                       color:'var(--text2)', bg:'var(--bg3)'},
+};
+
+function setOutType(t){
+  outType=t;
+  const cfg=outTypeCfg[t]||outTypeCfg.otro;
+  ['merma','prueba','error','personal','otro'].forEach(k=>{
+    const b=document.getElementById('btn-out-'+k);if(!b)return;
+    b.style.borderColor=k===t?cfg.color:'';
+    b.style.color=k===t?cfg.color:'';
+    b.style.background=k===t?cfg.bg:'';
   });
-  const n=document.getElementById('inv-entry-type-note');
-  if(n){n.textContent=cfg[t].note;n.style.background=cfg[t].bg;n.style.color=cfg[t].color;}
+  const n=document.getElementById('inv-out-type-note');
+  if(n){n.textContent=cfg.note;n.style.background=cfg.bg;n.style.color=cfg.color;}
+}
+
+function renderInvOutputSelects(){
+  const sel=document.getElementById('inv-out-ing');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Selecciona un ingrediente</option>'+
+    ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.stock} ${i.unit})</option>`).join('');
+  if(cur)sel.value=cur;
+  // Also refresh adj select
+  const adj=document.getElementById('inv-adj-ing');if(!adj)return;
+  const curAdj=adj.value;
+  adj.innerHTML='<option value="">Selecciona un ingrediente</option>'+
+    ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.stock} ${i.unit})</option>`).join('');
+  if(curAdj)adj.value=curAdj;
+}
+
+function onOutIngChange(){
+  const ingId=document.getElementById('inv-out-ing').value;
+  const ing=ingredients.find(i=>i.id===ingId);
+  const info=document.getElementById('inv-out-stock-info');
+  const unitLbl=document.getElementById('inv-out-unit');
+  if(ing){
+    info.style.display='block';
+    info.textContent=`Stock actual: ${ing.stock} ${ing.unit}`;
+    if(unitLbl)unitLbl.textContent=ing.unit;
+  } else {
+    info.style.display='none';
+    if(unitLbl)unitLbl.textContent='';
+  }
+}
+
+function registerOutput(){
+  const ingId=document.getElementById('inv-out-ing').value;
+  const qty=parseFloat(document.getElementById('inv-out-qty').value)||0;
+  const note=document.getElementById('inv-out-note').value.trim();
+  const type=outType||'merma';
+  if(!ingId){showToast('Selecciona un ingrediente','red');return;}
+  if(!qty){showToast('Escribe la cantidad','red');return;}
+  const idx=ingredients.findIndex(i=>i.id===ingId);if(idx<0)return;
+  const ing=ingredients[idx];
+  const cfg=outTypeCfg[type]||outTypeCfg.otro;
+
+  ing.stock=parseFloat(Math.max(0,ing.stock-qty).toFixed(3));
+  fbSaveIngredients();
+
+  const desc=`${cfg.label} — ${qty} ${ing.unit} de ${ing.name}${note?' ('+note+')':''}`;
+  // Merma counts as real loss; others don't affect finances
+  logInvHistory('salida',desc,{ingId,qty,unit:ing.unit,outType:type,countAsLoss:type==='merma'});
+  document.getElementById('inv-out-qty').value='';
+  document.getElementById('inv-out-note').value='';
+  onOutIngChange(); // refresh stock display
+  showToast(desc,'green');
 }
 
 function registerEntry(){
@@ -4157,13 +4241,11 @@ function registerEntry(){
   const unit=document.getElementById('inv-entry-unit-show').value;
   const cost=parseFloat(document.getElementById('inv-entry-cost').value)||0;
   const note=document.getElementById('inv-entry-note').value.trim();
-  const type=entryType||'real';
   if(!ingId){showToast('Selecciona un ingrediente','red');return;}
   if(!qty){showToast('Escribe la cantidad','red');return;}
   const idx=ingredients.findIndex(i=>i.id===ingId);if(idx<0)return;
   const ing=ingredients[idx];
 
-  // Apply conversion if buying in purchase unit
   let addedUsage=qty;
   let entryDesc=`+${qty} ${unit} de ${ing.name}`;
   if(ing.buyUnit&&unit===ing.buyUnit&&ing.unit!==ing.buyUnit&&(ing.conversion||1)>1){
@@ -4171,26 +4253,20 @@ function registerEntry(){
     entryDesc=`+${qty} ${unit} (${addedUsage} ${ing.unit}) de ${ing.name}`;
   }
 
-  // Stock always updates regardless of type
   ing.stock=parseFloat((ing.stock+addedUsage).toFixed(3));
-
-  // Only update cost averages for real entries
-  if(type==='real'&&cost>0){
+  if(cost>0){
     ing.totalQtyBought=(ing.totalQtyBought||0)+addedUsage;
     ing.totalCostPaid=(ing.totalCostPaid||0)+cost;
     ing.costPerUnit=ing.totalQtyBought>0?ing.totalCostPaid/ing.totalQtyBought:0;
   }
-
   fbSaveIngredients();
-  const typeTag=type!=='real'?` [${type==='prueba'?'🧪 Prueba':'❌ Error'}]`:'';
-  logInvHistory('entrada',entryDesc+(note?' — '+note:'')+typeTag,{ingId,qty,unit,addedUsage,cost:type==='real'?cost:0,note,entryType:type});
+  logInvHistory('entrada',entryDesc+(note?' — '+note:''),{ingId,qty,unit,addedUsage,cost,note,entryType:'real'});
   document.getElementById('inv-entry-qty').value='';
   document.getElementById('inv-entry-cost').value='';
   document.getElementById('inv-entry-note').value='';
   document.getElementById('inv-entry-preview').textContent='';
   document.getElementById('inv-entry-conv-info').style.display='none';
-  const typeLabel={real:'✅',prueba:'🧪',error:'❌'}[type];
-  showToast(`${typeLabel} ${entryDesc}`,'green');
+  showToast(entryDesc,'green');
 }
 function registerAdjust(){
   const ingId=document.getElementById('inv-adj-ing').value;
@@ -4393,19 +4469,22 @@ function renderInvHistory(){
   if(!data.length){el.innerHTML='<div class="admin-empty">Sin movimientos en este filtro</div>';return;}
   const cfg={
     entrada:{icon:'📥',color:'#2ab8b8',bg:'rgba(42,184,184,.07)',border:'rgba(42,184,184,.4)'},
-    consumo:{icon:'📤',color:'#f57474',bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.35)'},
+    salida: {icon:'📤',color:'#f57474',bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.35)'},
+    consumo:{icon:'🍽️',color:'#f57474',bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.35)'},
     ajuste: {icon:'⚖️',color:'#F5C800',bg:'rgba(245,200,0,.06)',border:'rgba(245,200,0,.3)'},
   };
   el.innerHTML=data.slice(0,100).map((h,i)=>{
-    const c=cfg[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'};
+    // Salidas: non-merma types are shown differently
+    let c=cfg[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'};
+    if(h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'){
+      c={...c,bg:'rgba(245,200,0,.06)',border:'rgba(245,200,0,.3)',color:'#F5C800'};
+    }
     const costTag=h.data?.cost&&h.data.cost>0?`<span style="margin-left:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(42,184,184,.12);color:#2ab8b8">+$${h.data.cost.toFixed(2)}</span>`:'';
-    // Entry type badge
-    const et=h.data?.entryType;
-    const typeBadge=h.type==='entrada'&&et&&et!=='real'
-      ?`<span style="margin-left:6px;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;background:${et==='prueba'?'rgba(245,200,0,.15)':'rgba(224,32,32,.15)'};color:${et==='prueba'?'#F5C800':'#f57474'}">${et==='prueba'?'🧪 Prueba':'❌ Error'} — no cuenta</span>`:'';
+    const noCountBadge=h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'
+      ?`<span style="margin-left:6px;padding:2px 6px;border-radius:5px;font-size:10px;background:rgba(245,200,0,.15);color:#F5C800">no afecta finanzas</span>`:'';
     return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;animation:fadeSlide .15s ease both;animation-delay:${Math.min(i,.12)*0.03}s">
       <div style="font-size:10px;color:var(--text4);margin-bottom:3px">${h.date} · ${h.time} · ${h.user}</div>
-      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${typeBadge}</div>
+      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${noCountBadge}</div>
     </div>`;
   }).join('');
 }
