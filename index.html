@@ -1998,6 +1998,7 @@ body{
         </select>
       </div>
       <button class="btn-ing teal" onclick="openAddIngredient()" style="font-size:13px;padding:9px 14px;white-space:nowrap">+ Agregar</button>
+      <button onclick="resetInventarioCompleto()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(224,32,32,.4);background:rgba(224,32,32,.07);color:#f57474;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 Reset</button>
     </div>
 
     <div id="inv-ingredients-list"><div class="admin-empty">Sin ingredientes. Agrega uno arriba.</div></div>
@@ -2749,12 +2750,14 @@ function bootApp(){
     if(fbDb){
       fbDb.ref('ingredients').on('value',snap=>{
         const d=snap.val();
-        if(d)ingredients=Object.values(d);
+        if(d){
+          const vals=Object.values(d);
+          // Deduplicate by id
+          const seen=new Set();
+          ingredients=vals.filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
+        }
       });
-      fbDb.ref('recipes').on('value',snap=>{
-        const d=snap.val();
-        if(d)recipes=d;
-      });
+      fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
       fbDb.ref('general_recipe').on('value',snap=>{
         const d=snap.val();
         generalRecipe=d?Object.values(d).filter(Boolean):[];
@@ -3948,7 +3951,11 @@ function startInvListeners(){
   if(!fbDb)return;
   fbDb.ref('ingredients').on('value',snap=>{
     const d=snap.val();
-    if(d)ingredients=Object.values(d);
+    if(d){
+      const vals=Object.values(d);
+      const seen=new Set();
+      ingredients=vals.filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
+    }
     safeStorage.setItem(SK_ING,JSON.stringify(ingredients));
     const inv=document.getElementById('inv-screen');
     if(inv&&inv.classList.contains('active')){
@@ -4270,7 +4277,35 @@ function setEntryMode(mode){
   onEntryIngChange(); // re-apply unit suggestion
 }
 
-/* ── ENTRADAS ── */
+function resetInventarioCompleto(){
+  customConfirm(
+    '⚠️ Reset completo de inventario. Esto borra: historial de movimientos, costos acumulados y stock de todos los ingredientes. Los ingredientes en sí se conservan. ¿Continuar?',
+    '🔄 Reset',
+    ()=>{
+      // 1. Zero out all cost/stock data on every ingredient
+      ingredients=ingredients.map(ing=>({
+        ...ing,
+        stock:0,
+        totalCostPaid:0,
+        totalQtyBought:0,
+        costPerUnit:0,
+      }));
+      // 2. Save to Firebase
+      if(fbDb){
+        const obj={};ingredients.forEach(i=>obj[i.id]=i);
+        fbDb.ref('ingredients').set(obj).catch(()=>{});
+        // 3. Clear inv_history
+        fbDb.ref('inv_history').remove().catch(()=>{});
+      }
+      safeStorage.setItem(SK_ING,JSON.stringify(ingredients));
+      safeStorage.removeItem(SK_INV_HIST);
+      invHistory=[];
+      renderInvStock();
+      renderInvCostos();
+      showToast('✅ Inventario reseteado — stock y costos en cero','green');
+    }
+  );
+}
 function renderInvEntrySelects(){
   const selects=['inv-entry-ing','inv-adj-ing'];
   selects.forEach(sid=>{
