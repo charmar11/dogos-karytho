@@ -790,7 +790,7 @@ body{
 .modal-confirm-btn:active{transform:scale(.96)}
 
 /* ── CUSTOM CONFIRM ── */
-.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1100;display:flex;align-items:center;justify-content:center;padding:20px;animation:backdropIn .2s ease}
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:backdropIn .2s ease}
 .confirm-overlay.hidden{display:none}
 .confirm-box{background:#1e1e1e;border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px 22px;width:100%;max-width:320px;animation:popIn .25s ease}
 .confirm-msg{font-size:16px;font-weight:600;color:var(--text);text-align:center;line-height:1.5;margin-bottom:20px}
@@ -4676,15 +4676,21 @@ function renderInvCostos(){
   else ps=[...sales];
 
   // ── Bloque 0: Gasto REAL vs Ingresos REALES ──
+  // gastoReal = sum of totalCostPaid on all ingredients (reflects salidas por error/prueba)
   const lbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico'}[invCostoPeriod];
+
+  // For period-specific gasto: sum from history entries (real purchases only, supports negatives for reversals)
   let gastoReal=0;
-  invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real').forEach(h=>{
+  invHistory.filter(h=>h.type==='entrada').forEach(h=>{
+    // Include entries with entryType:'real' OR entries without entryType (backward compat)
+    const isReal=!h.data?.entryType||h.data?.entryType==='real';
+    if(!isReal)return;
     const inPeriod=
       invCostoPeriod==='hoy'?h.date===today:
       invCostoPeriod==='semana'?isSameWeek(h.ts):
       invCostoPeriod==='mes'?isSameMonth(h.ts):true;
     if(!inPeriod)return;
-    gastoReal+=h.data?.cost||0;
+    gastoReal+=(h.data?.cost||0); // supports negative reversals
   });
   const ingresosR=ps.reduce((s,v)=>s+v.total,0);
   const difReal=ingresosR-gastoReal;
