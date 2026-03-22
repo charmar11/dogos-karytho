@@ -4709,7 +4709,6 @@ function renderInvHistory(){
   // Filter by type
   let data=invHistory;
   if(invHistFilter==='entrada'){
-    // Only real purchases — exclude ingredient-created logs and non-real entries
     data=invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&h.data?.cost>0);
   } else if(invHistFilter!=='todo'){
     data=invHistory.filter(h=>h.type===invHistFilter);
@@ -4719,17 +4718,9 @@ function renderInvHistory(){
 
   // Summary bar
   if(summaryEl){
-    const total=data.length;
-    if(invHistFilter==='entrada'){
-      const totalGasto=data.reduce((s,h)=>s+(h.data?.cost||0),0);
-      summaryEl.innerHTML=`${total} compra${total!==1?'s':''} · <span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span> gastados`;
-    } else if(invHistFilter==='salida'){
-      summaryEl.innerHTML=`${total} salida${total!==1?'s':''} registrada${total!==1?'s':''}`;
-    } else if(invHistFilter==='consumo'){
-      summaryEl.innerHTML=`${total} consumo${total!==1?'s':''} por venta`;
-    } else {
-      summaryEl.innerHTML=`${total} movimiento${total!==1?'s':''} en este periodo`;
-    }
+    const totalGasto=data.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
+    const gastoStr=totalGasto>0?` · <span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span>`:'';
+    summaryEl.innerHTML=`${data.length} movimiento${data.length!==1?'s':''}${gastoStr}`;
   }
 
   if(!data.length){el.innerHTML='<div class="admin-empty">Sin movimientos en este filtro y periodo</div>';return;}
@@ -4740,24 +4731,174 @@ function renderInvHistory(){
     consumo:{icon:'🍽️',color:'#f57474',bg:'rgba(224,32,32,.06)',border:'rgba(224,32,32,.3)'},
     ajuste: {icon:'⚖️',color:'var(--text3)',bg:'var(--bg2)',border:'var(--border2)'},
   };
-
-  el.innerHTML=data.slice(0,150).map((h,i)=>{
-    let c=cfgMap[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'};
-    // Salidas that don't count: show gold; merma shows red
-    if(h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'){
-      c={...c,bg:'rgba(245,200,0,.06)',border:'rgba(245,200,0,.3)',color:'#F5C800'};
-    } else if(h.type==='salida'){
-      c={...c,bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.35)',color:'#f57474'};
-    }
-    const costTag=h.data?.cost&&h.data.cost>0
-      ?`<span style="margin-left:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(224,32,32,.15);color:#f57474">-$${h.data.cost.toFixed(2)}</span>`:'' ;
-    const noCountBadge=h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'
-      ?`<span style="margin-left:6px;padding:2px 5px;border-radius:5px;font-size:10px;background:rgba(245,200,0,.15);color:#F5C800">no afecta finanzas</span>`:'';
-    return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:7px;animation:fadeSlide .12s ease both;animation-delay:${Math.min(i,.1)*0.025}s">
-      <div style="font-size:10px;color:var(--text4);margin-bottom:2px">${h.date} · ${h.time} · ${h.user}</div>
-      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${noCountBadge}</div>
+  function renderItem(h,i){
+    let c={...cfgMap[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'}};
+    if(h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'){c.bg='rgba(245,200,0,.06)';c.border='rgba(245,200,0,.3)';c.color='#F5C800';}
+    else if(h.type==='salida'){c.bg='rgba(224,32,32,.07)';c.border='rgba(224,32,32,.35)';c.color='#f57474';}
+    const costTag=h.data?.cost>0?`<span style="margin-left:8px;font-size:11px;font-weight:800;color:#f57474">-$${h.data.cost.toFixed(2)}</span>`:'';
+    const noCount=h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'?`<span style="margin-left:6px;font-size:10px;color:#F5C800;opacity:.8">no afecta finanzas</span>`:'';
+    return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:5px">
+      <div style="font-size:10px;color:var(--text4);margin-bottom:2px">${h.time||''} · ${h.user||''}</div>
+      <div style="font-size:12px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${noCount}</div>
     </div>`;
-  }).join('');
+  }
+
+  // ── HOY → individual entries ──
+  if(invHistPeriod==='hoy'){
+    el.innerHTML=data.slice(0,150).map((h,i)=>renderItem(h,i)).join('');
+    return;
+  }
+
+  // Helper: render aggregated summary for a group of entries
+  function renderGroupSummary(items){
+    const html=[];
+
+    // Compras → group by ingredient
+    const compras=items.filter(h=>h.type==='entrada'&&h.data?.cost>0);
+    if(compras.length){
+      const byIng={};
+      compras.forEach(h=>{
+        const ing=ingredients.find(i=>i.id===h.data?.ingId)||{name:h.desc};
+        const k=ing.name;
+        if(!byIng[k])byIng[k]={name:k,qty:0,unit:h.data?.unit||'',cost:0,count:0};
+        byIng[k].qty+=h.data?.addedUsage||h.data?.qty||0;
+        byIng[k].cost+=h.data?.cost||0;
+        byIng[k].count++;
+      });
+      const totalCost=compras.reduce((s,h)=>s+(h.data?.cost||0),0);
+      html.push(`<div style="background:rgba(224,32,32,.06);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:800;color:#f57474;margin-bottom:6px">📥 COMPRAS — <span style="font-size:13px">-$${totalCost.toFixed(2)}</span></div>
+        ${Object.values(byIng).map(g=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span style="font-size:12px;color:var(--text2)">${ingEmoji(g.name)} ${g.name}</span>
+            <div style="text-align:right;flex-shrink:0;margin-left:12px">
+              ${g.qty>0?`<span style="font-size:11px;color:var(--text3)">${g.qty.toFixed(g.qty%1?2:0)} ${g.unit}</span> `:''}
+              <span style="font-size:12px;font-weight:700;color:#f57474">-$${g.cost.toFixed(2)}</span>
+            </div>
+          </div>`).join('')}
+      </div>`);
+    }
+
+    // Ventas/consumos → group by product
+    const consumos=items.filter(h=>h.type==='consumo');
+    if(consumos.length){
+      // Parse product names from desc e.g. "Consumo — 2x Dogo Sencillo, 1x Refresco"
+      const byProd={};
+      consumos.forEach(h=>{
+        const parts=(h.desc||'').replace(/^Consumo — /,'').split(', ');
+        parts.forEach(p=>{
+          const m=p.match(/^(\d+)x (.+)$/);
+          if(m){const qty=parseInt(m[1]),name=m[2];byProd[name]=(byProd[name]||0)+qty;}
+        });
+      });
+      html.push(`<div style="background:rgba(224,32,32,.04);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">🍽️ VENTAS — ${consumos.length} ticket${consumos.length!==1?'s':''}</div>
+        ${Object.entries(byProd).map(([name,qty])=>`
+          <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span style="font-size:12px;color:var(--text2)">${name}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text3)">${qty} pz</span>
+          </div>`).join('')}
+      </div>`);
+    }
+
+    // Salidas → group by type
+    const salidas=items.filter(h=>h.type==='salida');
+    if(salidas.length){
+      const byType={};
+      salidas.forEach(h=>{const t=h.data?.outType||'otro';byType[t]=(byType[t]||0)+1;});
+      const typeLabels={merma:'🗑️ Merma',prueba:'🧪 Prueba',error:'❌ Error',personal:'🎁 Personal',otro:'📦 Otro'};
+      html.push(`<div style="background:rgba(245,200,0,.04);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:800;color:#F5C800;margin-bottom:6px">📤 SALIDAS — ${salidas.length} movimiento${salidas.length!==1?'s':''}</div>
+        ${Object.entries(byType).map(([t,n])=>`
+          <div style="display:flex;justify-content:space-between;padding:3px 0">
+            <span style="font-size:12px;color:var(--text2)">${typeLabels[t]||t}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text3)">${n}</span>
+          </div>`).join('')}
+      </div>`);
+    }
+
+    // Ajustes
+    const ajustes=items.filter(h=>h.type==='ajuste');
+    if(ajustes.length){
+      html.push(`<div style="font-size:11px;color:var(--text4);padding:4px 0">⚖️ ${ajustes.length} ajuste${ajustes.length!==1?'s':''}</div>`);
+    }
+
+    return html.length?html.join(''):'<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin movimientos relevantes</div>';
+  }
+
+  function groupBlock(label, sublabel, items, defaultOpen=false){
+    const totalGasto=items.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
+    const badges=[];
+    if(totalGasto>0)badges.push(`<span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span>`);
+    const nVentas=items.filter(h=>h.type==='consumo').length;
+    if(nVentas>0)badges.push(`<span style="color:var(--text3)">${nVentas} venta${nVentas!==1?'s':''}</span>`);
+    const id='grp_'+Math.random().toString(36).slice(2);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg3);border-radius:10px;margin-bottom:4px;cursor:pointer" onclick="const c=document.getElementById('${id}');c.style.display=c.style.display==='none'?'block':'none'">
+        <div>
+          <span style="font-size:13px;font-weight:800;color:var(--text)">${label}</span>
+          ${sublabel?`<span style="font-size:10px;color:var(--text4);margin-left:6px">${sublabel}</span>`:''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:11px">${badges.join(' · ')} <span style="color:var(--text4);font-size:13px">›</span></div>
+      </div>
+      <div id="${id}" style="display:${defaultOpen?'block':'none'};padding:0 4px">${renderGroupSummary(items)}</div>
+    </div>`;
+  }
+
+  const dayNames=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  // ── SEMANA → group by day, each day shows aggregated totals ──
+  if(invHistPeriod==='semana'){
+    const byDay={};const dayOrder=[];
+    data.forEach(h=>{
+      if(!byDay[h.date]){byDay[h.date]=[];dayOrder.push(h.date);}
+      byDay[h.date].push(h);
+    });
+    const uniqueDays=[...new Set(dayOrder)].sort((a,b)=>new Date(b.split('/').reverse().join('-'))-new Date(a.split('/').reverse().join('-')));
+    const today=toDateKey(new Date());
+    el.innerHTML=uniqueDays.map(day=>{
+      const d=new Date(day.split('/').reverse().join('-')+'T12:00:00');
+      const label=`${dayNames[d.getDay()]} ${day}`;
+      const isToday=day===today;
+      return groupBlock(label+(isToday?' — Hoy':''), `${byDay[day].length} mov.`, byDay[day], isToday);
+    }).join('');
+    return;
+  }
+
+  // ── MES → group by week, each week shows day-by-day aggregated ──
+  if(invHistPeriod==='mes'){
+    const byWeek={};const weekOrder=[];
+    data.forEach(h=>{
+      const d=new Date(h.ts);
+      const ws=new Date(d);ws.setDate(d.getDate()-d.getDay());
+      const wk=ws.toISOString().slice(0,10);
+      if(!byWeek[wk]){
+        const we=new Date(ws);we.setDate(ws.getDate()+6);
+        byWeek[wk]={label:`${toDateKey(ws)} – ${toDateKey(we)}`,items:[]};
+        weekOrder.push(wk);
+      }
+      byWeek[wk].items.push(h);
+    });
+    const uniqueWeeks=[...new Set(weekOrder)].sort((a,b)=>b.localeCompare(a));
+    el.innerHTML=uniqueWeeks.map((wk,wi)=>{
+      const g=byWeek[wk];
+      return groupBlock(`Semana ${uniqueWeeks.length-wi}`,g.label,g.items,wi===0);
+    }).join('');
+    return;
+  }
+
+  // ── TODO → group by month, each month shows weekly aggregated ──
+  const monthNames2=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const byMonth={};const monthOrder=[];
+  data.forEach(h=>{
+    const d=new Date(h.ts);
+    const mk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const ml=`${monthNames2[d.getMonth()]} ${d.getFullYear()}`;
+    if(!byMonth[mk]){byMonth[mk]={label:ml,items:[]};monthOrder.push(mk);}
+    byMonth[mk].items.push(h);
+  });
+  const uniqueMonths=[...new Set(monthOrder)].sort((a,b)=>b.localeCompare(a));
+  el.innerHTML=uniqueMonths.map((mk,mi)=>groupBlock(byMonth[mk].label,`${byMonth[mk].items.length} movimientos`,byMonth[mk].items,mi===0)).join('');
 }
 /* ── GENERAL RECIPE (condimentos) ── */
 function renderGeneralRecipeList(){
