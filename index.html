@@ -523,12 +523,13 @@ body{
 .btn-corte-close:active{background:var(--bg3)}
 
 /* ── TOP PRODUCTS ── */
-.top-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.top-item{display:flex;flex-direction:column;gap:6px;padding:11px 0;border-bottom:1px solid var(--border)}
 .top-item:last-child{border-bottom:none}
+.top-item-row{display:flex;align-items:center;gap:10px}
 .top-bar-bg{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden}
 .top-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold),rgba(245,200,0,.6));border-radius:4px;transition:width .8s cubic-bezier(.34,1.1,.64,1)}
-.top-name{font-size:13px;font-weight:600;width:130px;min-width:130px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.top-count{font-size:12px;color:var(--text3);min-width:44px;text-align:right}
+.top-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.4}
+.top-count{font-size:12px;color:var(--text3);white-space:nowrap;text-align:right}
 
 /* ── SALE CARDS ── */
 .sale-card{
@@ -2524,7 +2525,7 @@ function renderHistorial(){
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topEl=document.getElementById('top-products-list');
   if(!sorted.length)topEl.innerHTML='<div class="no-data" style="padding:8px 0">Sin datos aun</div>';
-  else{const mx=sorted[0][1];topEl.innerHTML=sorted.map(([name,cnt],i)=>`<div class="top-item" style="animation:fadeSlide .2s ease ${i*.05}s both"><div class="top-name">${name}</div><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count">${cnt}x</div></div>`).join('');}
+  else{const mx=sorted[0][1];topEl.innerHTML=sorted.map(([name,cnt],i)=>`<div class="top-item" style="animation:fadeSlide .2s ease ${i*.05}s both"><div class="top-name">${name}</div><div class="top-item-row"><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count">${cnt}x</div></div></div>`).join('');}
   const list=document.getElementById('sales-list');
   if(!ps.length){list.innerHTML='<div class="no-data">Sin ventas en este periodo</div>';return;}
   list.innerHTML=ps.map((sale,i)=>{
@@ -2690,8 +2691,7 @@ function renderAdmin(){
     topEl.innerHTML=top.map(([name,cnt])=>`
       <div class="top-item">
         <div class="top-name">${name}</div>
-        <div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div>
-        <div class="top-count" style="min-width:80px;text-align:right">${cnt}x &nbsp;<span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div>
+        <div class="top-item-row"><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count">${cnt}x &nbsp;<span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div></div>
       </div>`).join('');
   }
 
@@ -2965,7 +2965,7 @@ function renderAdminVTop(ps){
   const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
   if(!sorted.length){el.innerHTML='<div class="admin-empty" style="padding:8px 0">Sin datos</div>';return;}
   const mx=sorted[0][1];
-  el.innerHTML=sorted.map(([name,cnt])=>`<div class="top-item"><div class="top-name">${name}</div><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count" style="min-width:90px;text-align:right">${cnt}x <span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div></div>`).join('');
+  el.innerHTML=sorted.map(([name,cnt])=>`<div class="top-item"><div class="top-name">${name}</div><div class="top-item-row"><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count">${cnt}x <span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div></div></div>`).join('');
 }
 
 function renderAdminVentas(ps){
