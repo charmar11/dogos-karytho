@@ -653,7 +653,7 @@ body{
 .modal-confirm-btn:active{transform:scale(.96)}
 
 /* ── CUSTOM CONFIRM ── */
-.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:700;display:flex;align-items:center;justify-content:center;padding:20px;animation:backdropIn .2s ease}
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:1100;display:flex;align-items:center;justify-content:center;padding:20px;animation:backdropIn .2s ease}
 .confirm-overlay.hidden{display:none}
 .confirm-box{background:#1e1e1e;border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px 22px;width:100%;max-width:320px;animation:popIn .25s ease}
 .confirm-msg{font-size:16px;font-weight:600;color:var(--text);text-align:center;line-height:1.5;margin-bottom:20px}
@@ -1651,20 +1651,41 @@ function loginWithFirebase(user,pass,cb){
 function showPicker(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('picker-screen').classList.add('active');
-  renderPickerGrid([]);
-  // Fetch who is currently online
+  // Show spinner while loading
+  document.getElementById('picker-grid').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text4);padding:24px;font-size:13px">Cargando...</div>';
+
+  // Always fetch fresh list from Firebase first
   if(fbDb){
-    fbDb.ref('presence').once('value').then(snap=>{
-      const data=snap.val()||{};
-      const activeNames=Object.values(data).map(u=>u.name.toLowerCase());
-      renderPickerGrid(activeNames);
-      // Also listen for real-time changes while on picker screen
-      fbDb.ref('presence').on('value',snap2=>{
+    fbDb.ref('cidop_members').once('value').then(snap=>{
+      const data=snap.val();
+      if(data){
+        const members=Object.values(data).filter(Boolean);
+        if(members.length){
+          CIDOP_MEMBERS.length=0;
+          members.forEach(m=>CIDOP_MEMBERS.push(m));
+        }
+      }
+      // Now fetch presence and render
+      fbDb.ref('presence').once('value').then(snap2=>{
         const d=snap2.val()||{};
-        const names=Object.values(d).map(u=>u.name.toLowerCase());
-        renderPickerGrid(names);
-      });
-    }).catch(()=>renderPickerGrid([]));
+        const activeNames=Object.values(d).map(u=>u.name.toLowerCase());
+        currentActiveNames=activeNames;
+        renderPickerGrid(activeNames);
+        // Keep listening for presence changes
+        fbDb.ref('presence').on('value',snap3=>{
+          const d3=snap3.val()||{};
+          const names=Object.values(d3).map(u=>u.name.toLowerCase());
+          currentActiveNames=names;
+          renderPickerGrid(names);
+        });
+      }).catch(()=>{renderPickerGrid([]);});
+    }).catch(()=>{
+      // No Firebase — render with local members
+      renderPickerGrid([]);
+    });
+  } else {
+    // No Firebase connection yet — render local
+    renderPickerGrid([]);
   }
 }
 
