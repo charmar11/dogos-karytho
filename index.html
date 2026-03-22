@@ -1987,6 +1987,15 @@ body{
       <div id="inv-entry-preview" style="font-size:12px;color:#2ab8b8;margin:6px 0 8px;min-height:16px;font-weight:700"></div>
       <label class="form-lbl">Costo total pagado ($)</label>
       <input class="form-input" id="inv-entry-cost" type="number" inputmode="decimal" placeholder="0.00"/>
+      <label class="form-lbl">Tipo de entrada</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="btn-type-real"   onclick="setEntryType('real')"   class="btn-ing teal"  style="flex:1;padding:9px;font-size:12px">✅ Real</button>
+        <button id="btn-type-prueba" onclick="setEntryType('prueba')" class="btn-ing"       style="flex:1;padding:9px;font-size:12px">🧪 Prueba</button>
+        <button id="btn-type-error"  onclick="setEntryType('error')"  class="btn-ing"       style="flex:1;padding:9px;font-size:12px">❌ Error</button>
+      </div>
+      <div id="inv-entry-type-note" style="font-size:11px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(42,184,184,.07);color:#2ab8b8;font-weight:600">
+        ✅ Real — cuenta en finanzas y costos
+      </div>
       <label class="form-lbl">Nota (opcional)</label>
       <input class="form-input" id="inv-entry-note" placeholder="Ej: Mercado del martes"/>
       <button class="btn-primary" style="background:linear-gradient(135deg,#0e4a4a,#0a3838);margin-top:4px" onclick="registerEntry()">📥 Registrar entrada</button>
@@ -4123,12 +4132,32 @@ function updateEntryPreview(){
   }
 }
 
+let entryType='real';
+function setEntryType(t){
+  entryType=t;
+  const cfg={
+    real:  {btn:'btn-type-real',  note:'✅ Real — cuenta en finanzas y costos',        bg:'rgba(42,184,184,.07)',color:'#2ab8b8'},
+    prueba:{btn:'btn-type-prueba',note:'🧪 Prueba — no afecta finanzas ni costos',      bg:'rgba(245,200,0,.07)',  color:'#F5C800'},
+    error: {btn:'btn-type-error', note:'❌ Error — movimiento incorrecto, no cuenta',   bg:'rgba(224,32,32,.07)', color:'#f57474'},
+  };
+  ['real','prueba','error'].forEach(k=>{
+    const b=document.getElementById('btn-type-'+k);
+    if(b)b.className='btn-ing'+(k===t?' teal':'');
+    if(k==='prueba'&&t===k&&b)b.style.cssText='flex:1;padding:9px;font-size:12px;border-color:rgba(245,200,0,.4);color:var(--gold)';
+    if(k==='error'&&t===k&&b)b.style.cssText='flex:1;padding:9px;font-size:12px;border-color:rgba(224,32,32,.4);color:var(--red)';
+    if(k===t&&b)b.style.flex='1';
+  });
+  const n=document.getElementById('inv-entry-type-note');
+  if(n){n.textContent=cfg[t].note;n.style.background=cfg[t].bg;n.style.color=cfg[t].color;}
+}
+
 function registerEntry(){
   const ingId=document.getElementById('inv-entry-ing').value;
   const qty=parseFloat(document.getElementById('inv-entry-qty').value)||0;
   const unit=document.getElementById('inv-entry-unit-show').value;
   const cost=parseFloat(document.getElementById('inv-entry-cost').value)||0;
   const note=document.getElementById('inv-entry-note').value.trim();
+  const type=entryType||'real';
   if(!ingId){showToast('Selecciona un ingrediente','red');return;}
   if(!qty){showToast('Escribe la cantidad','red');return;}
   const idx=ingredients.findIndex(i=>i.id===ingId);if(idx<0)return;
@@ -4142,18 +4171,26 @@ function registerEntry(){
     entryDesc=`+${qty} ${unit} (${addedUsage} ${ing.unit}) de ${ing.name}`;
   }
 
+  // Stock always updates regardless of type
   ing.stock=parseFloat((ing.stock+addedUsage).toFixed(3));
-  ing.totalQtyBought=(ing.totalQtyBought||0)+addedUsage;
-  ing.totalCostPaid=(ing.totalCostPaid||0)+cost;
-  ing.costPerUnit=ing.totalQtyBought>0?ing.totalCostPaid/ing.totalQtyBought:0;
+
+  // Only update cost averages for real entries
+  if(type==='real'&&cost>0){
+    ing.totalQtyBought=(ing.totalQtyBought||0)+addedUsage;
+    ing.totalCostPaid=(ing.totalCostPaid||0)+cost;
+    ing.costPerUnit=ing.totalQtyBought>0?ing.totalCostPaid/ing.totalQtyBought:0;
+  }
+
   fbSaveIngredients();
-  logInvHistory('entrada',entryDesc+(note?' — '+note:''),{ingId,qty,unit,addedUsage,cost,note});
+  const typeTag=type!=='real'?` [${type==='prueba'?'🧪 Prueba':'❌ Error'}]`:'';
+  logInvHistory('entrada',entryDesc+(note?' — '+note:'')+typeTag,{ingId,qty,unit,addedUsage,cost:type==='real'?cost:0,note,entryType:type});
   document.getElementById('inv-entry-qty').value='';
   document.getElementById('inv-entry-cost').value='';
   document.getElementById('inv-entry-note').value='';
   document.getElementById('inv-entry-preview').textContent='';
   document.getElementById('inv-entry-conv-info').style.display='none';
-  showToast(entryDesc,'green');
+  const typeLabel={real:'✅',prueba:'🧪',error:'❌'}[type];
+  showToast(`${typeLabel} ${entryDesc}`,'green');
 }
 function registerAdjust(){
   const ingId=document.getElementById('inv-adj-ing').value;
@@ -4361,10 +4398,14 @@ function renderInvHistory(){
   };
   el.innerHTML=data.slice(0,100).map((h,i)=>{
     const c=cfg[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'};
-    const costTag=h.data?.cost?`<span style="margin-left:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(42,184,184,.12);color:#2ab8b8">+$${h.data.cost.toFixed(2)}</span>`:'';
+    const costTag=h.data?.cost&&h.data.cost>0?`<span style="margin-left:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(42,184,184,.12);color:#2ab8b8">+$${h.data.cost.toFixed(2)}</span>`:'';
+    // Entry type badge
+    const et=h.data?.entryType;
+    const typeBadge=h.type==='entrada'&&et&&et!=='real'
+      ?`<span style="margin-left:6px;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;background:${et==='prueba'?'rgba(245,200,0,.15)':'rgba(224,32,32,.15)'};color:${et==='prueba'?'#F5C800':'#f57474'}">${et==='prueba'?'🧪 Prueba':'❌ Error'} — no cuenta</span>`:'';
     return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;animation:fadeSlide .15s ease both;animation-delay:${Math.min(i,.12)*0.03}s">
       <div style="font-size:10px;color:var(--text4);margin-bottom:3px">${h.date} · ${h.time} · ${h.user}</div>
-      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}</div>
+      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${typeBadge}</div>
     </div>`;
   }).join('');
 }
@@ -4389,7 +4430,7 @@ function renderInvCostos(){
   const lbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico'}[invCostoPeriod];
   let gastoReal=0;
   const comprasPeriodo=[];
-  invHistory.filter(h=>h.type==='entrada').forEach(h=>{
+  invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType!=='prueba'&&h.data?.entryType!=='error').forEach(h=>{
     const inPeriod=
       invCostoPeriod==='hoy'?h.date===today:
       invCostoPeriod==='semana'?isSameWeek(h.ts):
