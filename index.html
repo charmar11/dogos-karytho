@@ -3117,23 +3117,30 @@ function exportExcel(){
     });
   }
 
-  // Add a TOTAL row with SUM formulas for numeric columns
+  // Add a TOTAL row — writes real numeric value + formula so it works everywhere
   function addTotalRow(ws,rows,sumCols){
-    const dataStart=2; // row 2 (1-indexed)
-    const dataEnd=rows.length; // last data row (1-indexed)
-    const totalRowIdx=rows.length; // 0-indexed row in sheet
+    const dataStart=2;
+    const dataEnd=rows.length;
+    const totalRowIdx=rows.length; // 0-indexed
 
     sumCols.forEach(({col,label})=>{
       const addr=XLSX.utils.encode_cell({r:totalRowIdx, c:col-1});
       if(label){
         ws[addr]={t:'s', v:label};
       } else {
+        // Calculate actual sum from the data rows (skip empty strings)
+        let sum=0;
+        for(let r=1;r<rows.length;r++){
+          const val=rows[r][col-1];
+          if(typeof val==='number')sum+=val;
+        }
+        sum=parseFloat(sum.toFixed(2));
         const colLetter=XLSX.utils.encode_col(col-1);
-        ws[addr]={t:'n', f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`, z:PESO};
+        // Write value AND formula — value shows immediately, formula works for editing
+        ws[addr]={t:'n', v:sum, f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`, z:PESO};
       }
     });
 
-    // Extend sheet range to include the new total row
     const range=XLSX.utils.decode_range(ws['!ref']);
     range.e.r=totalRowIdx;
     ws['!ref']=XLSX.utils.encode_range(range);
@@ -3159,7 +3166,8 @@ function exportExcel(){
     const ws1=XLSX.utils.aoa_to_sheet(detRows);
     ws1['!cols']=[{wch:8},{wch:22},{wch:14},{wch:16},{wch:8},{wch:12},{wch:12},{wch:13},{wch:11}];
     fmtCols(ws1,detRows,[5,6,7,8]);
-    addTotalRow(ws1,detRows,[{col:1,label:'TOTAL'},{col:7,label:''},{col:8,label:''}]);
+    // Total row — sum only col 8 (Total venta) which has one value per sale
+    addTotalRow(ws1,detRows,[{col:1,label:'TOTAL'},{col:8,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws1,'Ventas del dia');
 
     const byHour={};
