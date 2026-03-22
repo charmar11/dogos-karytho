@@ -2470,13 +2470,13 @@ function bootAdmin(){
   load();
   const screen=document.getElementById('admin-screen');
   screen.classList.add('active');
-  renderAdmin();
-  if(!fbDb){
-    initFirebase(FB_CONFIG);
-    setTimeout(()=>{renderAdmin();startActivityListener();},2000);
-  } else {
+  // Init Firebase first, then start listeners and render
+  if(!fbDb)initFirebase(FB_CONFIG);
+  setTimeout(()=>{
+    startMembersListener(); // loads cidop_members from Firebase + keeps in sync
     startActivityListener();
-  }
+    renderAdmin();
+  },1200);
 }
 
 function renderAdmin(){
@@ -2524,6 +2524,8 @@ let cidopMembersLoaded=false;
 // Start real-time listener on cidop_members so picker is always in sync
 function startMembersListener(){
   if(!fbDb)return;
+  // Detach previous listener first to avoid duplicates
+  fbDb.ref('cidop_members').off();
   fbDb.ref('cidop_members').on('value',snap=>{
     const data=snap.val();
     if(data){
@@ -2532,12 +2534,16 @@ function startMembersListener(){
         CIDOP_MEMBERS.length=0;
         members.forEach(m=>CIDOP_MEMBERS.push(m));
       }
+    } else {
+      // No data in Firebase yet — save local defaults so they persist
+      saveCidopMembers(null);
     }
     cidopMembersLoaded=true;
-    // Refresh admin panel if open
-    if(document.getElementById('adm-users-list'))renderAdminUsersHTML(CIDOP_MEMBERS);
-    // Refresh picker if open
-    if(document.getElementById('picker-screen').classList.contains('active'))
+    // Always refresh UI with latest members
+    const adminList=document.getElementById('adm-users-list');
+    if(adminList)renderAdminUsersHTML(CIDOP_MEMBERS);
+    const pickerScreen=document.getElementById('picker-screen');
+    if(pickerScreen&&pickerScreen.classList.contains('active'))
       renderPickerGrid(currentActiveNames);
   });
 }
@@ -2670,7 +2676,7 @@ function saveCidopMembers(cb){
     if(cb)cb();return;
   }
   const obj={};
-  CIDOP_MEMBERS.forEach((m,i)=>obj[i]=m);
+  CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
   fbDb.ref('cidop_members').set(obj)
     .then(()=>{if(cb)cb();})
     .catch(()=>showToast('Error al guardar','red'));
