@@ -1245,6 +1245,7 @@ body{
 
 <!-- ===== PERSON PICKER ===== -->
 <div class="picker-screen" id="picker-screen">
+  <button onclick="backToLogin()" style="position:absolute;top:18px;left:18px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--text3);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px">← Regresar</button>
   <div class="login-logo">🌭</div>
   <div class="picker-title">¿Quién eres?</div>
   <div class="picker-sub">Toca tu nombre para entrar</div>
@@ -1712,6 +1713,17 @@ function loginWithFirebase(user,pass,cb){
       console.error('Login error:',e);
       cb(null,'Error de conexion. Revisa tu internet.');
     });
+}
+
+function backToLogin(){
+  // Stop presence listener on picker
+  if(fbDb)fbDb.ref('presence').off();
+  document.getElementById('picker-screen').classList.remove('active');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-pass').value='';
+  safeStorage.removeItem(SK_ROLE);
+  safeStorage.removeItem(SK_DISPLAY);
+  setTimeout(()=>document.getElementById('login-user').focus(),200);
 }
 
 /* ─── Person Picker ─── */
@@ -2804,7 +2816,7 @@ function setAdminRange(r){
   });
   const hints={
     hoy:  '📋 <strong>Hoy:</strong> por hora · productos individuales',
-    semana:'📋 <strong>Semana:</strong> por dia · productos por dia',
+    semana:'📋 <strong>Semana:</strong> ventas totales por dia',
     mes:  '📋 <strong>Mes:</strong> por semana · productos por semana',
     todo: '📋 <strong>Todo:</strong> por mes · productos por mes'
   };
