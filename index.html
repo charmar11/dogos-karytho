@@ -1496,12 +1496,11 @@ body{
     <button class="btn-admin-logout" onclick="adminLogout()">Salir</button>
   </div>
 
-  <!-- Admin tabs -->
+  <!-- Admin tabs — 4 tabs now -->
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('resumen')">📊 Resumen</button>
-    <button class="admin-tab" onclick="setAdminTab('exportar')">📁 Exportar</button>
-    <button class="admin-tab" onclick="setAdminTab('usuarios')">👥 Usuarios</button>
     <button class="admin-tab" onclick="setAdminTab('ventas')">💰 Ventas</button>
+    <button class="admin-tab" onclick="setAdminTab('usuarios')">👥 Usuarios</button>
     <button class="admin-tab" onclick="setAdminTab('actividad')">📋 Actividad</button>
   </div>
 
@@ -1519,39 +1518,65 @@ body{
     </div>
   </div>
 
-  <!-- ── TAB: EXPORTAR ── -->
-  <div class="admin-tab-view" id="adm-tab-exportar">
-    <div class="export-card">
-      <div class="export-card-title">Selecciona el periodo</div>
-      <div class="export-card-sub">El Excel se organiza automaticamente segun el periodo elegido.</div>
-      <div class="admin-range-row">
-        <button class="admin-range-btn active" onclick="setAdminRange('hoy')">Hoy</button>
-        <button class="admin-range-btn" onclick="setAdminRange('semana')">Semana</button>
-        <button class="admin-range-btn" onclick="setAdminRange('mes')">Mes</button>
-        <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
+  <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
+  <div class="admin-tab-view" id="adm-tab-ventas">
+    <!-- Period selector -->
+    <div class="admin-range-row" style="margin-bottom:10px">
+      <button class="admin-range-btn active" onclick="setAdminRange('hoy')">Hoy</button>
+      <button class="admin-range-btn" onclick="setAdminRange('semana')">Semana</button>
+      <button class="admin-range-btn" onclick="setAdminRange('mes')">Mes</button>
+      <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="admin-stat-grid" style="margin-bottom:14px">
+      <div class="admin-stat"><div class="admin-stat-lbl">Ventas</div><div class="admin-stat-val" id="adm-v-count">0</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Ingresos</div><div class="admin-stat-val" id="adm-v-total">$0</div><div class="admin-stat-sub" id="adm-v-avg">Promedio: $0</div></div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-card" style="margin-bottom:14px">
+      <div class="chart-title-row">
+        <div class="chart-title" id="adm-chart-title">Ventas por hora</div>
+        <div class="chart-badge" id="adm-chart-badge">Hoy</div>
       </div>
-      <div class="adm-export-hint" id="adm-export-hint">
-        📋 <strong>Hoy:</strong> detalle por hora del dia
-      </div>
-      <div class="sec-label" style="margin-top:14px">Vista previa — <span id="adm-preview-count">0</span> ventas</div>
-      <div class="admin-preview" id="adm-preview"><div class="admin-empty">Sin ventas en este periodo</div></div>
-      <div class="export-btns">
-        <button class="btn-export btn-export-excel" onclick="exportExcel()">
-          <span style="font-size:20px">📊</span>
-          <div style="text-align:left">
-            <div>Descargar Excel (.xlsx)</div>
-            <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Compatible con Excel y Google Sheets</div>
-          </div>
-        </button>
-        <button class="btn-export btn-export-wa" onclick="exportWhatsApp()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          <div style="text-align:left">
-            <div>Resumen por WhatsApp</div>
-            <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto listo para compartir</div>
-          </div>
-        </button>
+      <div style="position:relative;height:180px" id="adm-chart-wrap">
+        <canvas id="adm-sales-chart"></canvas>
       </div>
     </div>
+
+    <!-- Top products for this period -->
+    <div class="sec-label">🏆 Mas vendidos en el periodo</div>
+    <div class="form-card" style="padding:10px 14px;margin-bottom:14px">
+      <div id="adm-v-top"><div class="admin-empty" style="padding:8px 0">Sin datos</div></div>
+    </div>
+
+    <!-- Export hint -->
+    <div class="adm-export-hint" id="adm-export-hint" style="margin-bottom:12px">
+      📋 <strong>Hoy:</strong> detalle por hora y productos individuales
+    </div>
+
+    <!-- Export buttons -->
+    <div class="export-btns">
+      <button class="btn-export btn-export-excel" onclick="exportExcel()">
+        <span style="font-size:20px">📊</span>
+        <div style="text-align:left">
+          <div>Descargar Excel (.xlsx)</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Compatible con Excel y Google Sheets</div>
+        </div>
+      </button>
+      <button class="btn-export btn-export-wa" onclick="exportWhatsApp()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <div style="text-align:left">
+          <div>Resumen por WhatsApp</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto listo para compartir</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Sales list -->
+    <div class="sec-label" style="margin-top:18px">📋 Lista de ventas</div>
+    <div id="adm-ventas-list"><div class="admin-empty">Sin ventas</div></div>
   </div>
 
   <!-- ── TAB: USUARIOS ── -->
@@ -1563,20 +1588,6 @@ body{
       <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar usuario</button>
     </div>
     <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
-  </div>
-
-  <!-- ── TAB: VENTAS ── -->
-  <div class="admin-tab-view" id="adm-tab-ventas">
-    <div class="period-tabs" style="margin-bottom:14px">
-      <button class="period-tab active" onclick="setAdminVentasPeriod('dia')">Hoy</button>
-      <button class="period-tab" onclick="setAdminVentasPeriod('semana')">Semana</button>
-      <button class="period-tab" onclick="setAdminVentasPeriod('mes')">Mes</button>
-    </div>
-    <div class="admin-stat-grid" style="margin-bottom:14px">
-      <div class="admin-stat"><div class="admin-stat-lbl">Ventas</div><div class="admin-stat-val" id="adm-v-count">0</div></div>
-      <div class="admin-stat"><div class="admin-stat-lbl">Ingresos</div><div class="admin-stat-val" id="adm-v-total">$0</div></div>
-    </div>
-    <div id="adm-ventas-list"><div class="admin-empty">Sin ventas</div></div>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -2769,48 +2780,17 @@ function getAdminSales(){
 }
 
 /* ─── Admin tab navigation ─── */
+let admChartInstance=null;
+
 function setAdminTab(tab){
   document.querySelectorAll('.admin-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['resumen','exportar','usuarios','ventas','actividad'][i]===tab);
+    b.classList.toggle('active',['resumen','ventas','usuarios','actividad'][i]===tab);
   });
   document.querySelectorAll('.admin-tab-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('adm-tab-'+tab).classList.add('active');
+  if(tab==='ventas')setAdminRange(adminRange);
   if(tab==='usuarios')renderAdminUsers();
-  if(tab==='ventas')renderAdminVentas();
   if(tab==='actividad')renderActivityLog();
-}
-
-/* ─── Ventas tab ─── */
-let adminVentasPeriod='dia';
-function setAdminVentasPeriod(p){
-  adminVentasPeriod=p;
-  document.querySelectorAll('#adm-tab-ventas .period-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['dia','semana','mes'][i]===p);
-  });
-  renderAdminVentas();
-}
-function renderAdminVentas(){
-  const today=toDateKey(new Date());
-  let ps;
-  if(adminVentasPeriod==='dia') ps=sales.filter(s=>s.date===today);
-  else if(adminVentasPeriod==='semana') ps=sales.filter(s=>isSameWeek(s.timestamp));
-  else ps=sales.filter(s=>isSameMonth(s.timestamp));
-  const total=ps.reduce((s,v)=>s+v.total,0);
-  document.getElementById('adm-v-count').textContent=ps.length;
-  document.getElementById('adm-v-total').textContent='$'+total.toFixed(2);
-  const list=document.getElementById('adm-ventas-list');
-  if(!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
-  list.innerHTML=ps.map((s,i)=>{
-    const its=s.items.map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
-    return `<div class="sale-card" style="animation-delay:${i*.03}s">
-      <div class="sale-header">
-        <div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}</div></div>
-        <div class="sale-total-amt">$${s.total.toFixed(2)}</div>
-      </div>
-      <div class="sale-items-txt">${its}</div>
-      ${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}
-    </div>`;
-  }).join('');
 }
 
 function setAdminRange(r){
@@ -2819,25 +2799,85 @@ function setAdminRange(r){
     b.classList.toggle('active',['hoy','semana','mes','todo'][i]===r);
   });
   const hints={
-    hoy:  '📋 <strong>Hoy:</strong> detalle por hora — cada venta del dia con su hora exacta',
-    semana:'📋 <strong>Semana:</strong> dias acumulados — totales por cada dia de la semana',
-    mes:  '📋 <strong>Mes:</strong> semanas acumuladas — totales por semana del mes',
-    todo: '📋 <strong>Todo:</strong> meses acumulados — totales por cada mes del historial'
+    hoy:  '📋 <strong>Hoy:</strong> por hora · productos individuales',
+    semana:'📋 <strong>Semana:</strong> por dia · productos por dia',
+    mes:  '📋 <strong>Mes:</strong> por semana · productos por semana',
+    todo: '📋 <strong>Todo:</strong> por mes · productos por mes'
   };
   const hint=document.getElementById('adm-export-hint');
   if(hint)hint.innerHTML=hints[r]||'';
   const ps=getAdminSales();
-  document.getElementById('adm-preview-count').textContent=ps.length;
-  const prev=document.getElementById('adm-preview');
-  if(!ps.length){prev.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
-  prev.innerHTML=[...ps].slice(0,50).map(s=>{
-    const its=s.items.map(it=>`${it.qty}x ${it.name}`).join(', ');
-    return `<div class="admin-preview-row">
-      <div class="admin-preview-date">${s.date}<br><span style="color:var(--text4)">${s.time}</span></div>
-      <div class="admin-preview-items">${its}</div>
-      <div class="admin-preview-total">$${s.total.toFixed(2)}</div>
-    </div>`;
-  }).join('')+(ps.length>50?`<div style="color:var(--text4);font-size:11px;text-align:center;padding:8px">... y ${ps.length-50} ventas mas</div>`:'');
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  const avg=ps.length?total/ps.length:0;
+  const vc=document.getElementById('adm-v-count');
+  const vt=document.getElementById('adm-v-total');
+  const va=document.getElementById('adm-v-avg');
+  if(vc)vc.textContent=ps.length;
+  if(vt)vt.textContent='$'+total.toFixed(2);
+  if(va)va.textContent='Promedio: $'+avg.toFixed(2);
+  renderAdminChart(ps,r);
+  renderAdminVTop(ps);
+  renderAdminVentas(ps);
+}
+
+function renderAdminChart(ps,r){
+  const wrap=document.getElementById('adm-chart-wrap');
+  if(!wrap)return;
+  if(admChartInstance){admChartInstance.destroy();admChartInstance=null;}
+  let labels=[],data=[],title='',badge='';
+  if(r==='hoy'){
+    const byH=Array(24).fill(0);
+    ps.forEach(s=>{const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();byH[h]+=s.total;});
+    labels=Array.from({length:24},(_,i)=>(i<10?'0':'')+i+'h');data=byH;title='Ingresos por hora';badge='Hoy';
+  } else if(r==='semana'){
+    const byD=Array(7).fill(0);
+    ps.forEach(s=>{byD[(new Date(s.timestamp).getDay()+6)%7]+=s.total;});
+    labels=['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];data=byD;title='Ingresos por dia';badge='Semana';
+  } else if(r==='mes'){
+    const byW={};
+    ps.forEach(s=>{const d=new Date(s.timestamp);const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);const key=toDateKey(mon);if(!byW[key])byW[key]=0;byW[key]+=s.total;});
+    const weeks=Object.entries(byW).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    labels=weeks.map((_,i)=>'Sem '+(i+1));data=weeks.map(([,v])=>v);title='Ingresos por semana';badge='Mes';
+  } else {
+    const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const byM={};
+    ps.forEach(s=>{const d=new Date(s.timestamp);const key=d.getFullYear()+'-'+(String(d.getMonth()+1).padStart(2,'0'));if(!byM[key])byM[key]={label:monthNames[d.getMonth()]+' '+String(d.getFullYear()).slice(2),val:0};byM[key].val+=s.total;});
+    const months=Object.entries(byM).sort((a,b)=>a[0].localeCompare(b[0]));
+    labels=months.map(([,m])=>m.label);data=months.map(([,m])=>m.val);title='Ingresos por mes';badge='Historico';
+  }
+  const titleEl=document.getElementById('adm-chart-title');
+  const badgeEl=document.getElementById('adm-chart-badge');
+  if(titleEl)titleEl.textContent=title;
+  if(badgeEl)badgeEl.textContent=badge;
+  if(!data.some(v=>v>0)){wrap.innerHTML='<div class="chart-empty">Sin ventas en este periodo</div>';return;}
+  wrap.innerHTML='<canvas id="adm-sales-chart"></canvas>';
+  const maxVal=Math.max(...data);
+  admChartInstance=new Chart(document.getElementById('adm-sales-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:data.map(v=>v===maxVal&&v>0?'rgba(245,200,0,.88)':'rgba(245,200,0,.22)'),borderColor:data.map(v=>v===maxVal&&v>0?'rgba(245,200,0,1)':'rgba(245,200,0,.4)'),borderWidth:1,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:700,easing:'easeOutQuart'},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1c1c',titleColor:'#F5C800',borderColor:'rgba(245,200,0,.25)',borderWidth:1,bodyColor:'#f0f0f0',padding:10,cornerRadius:8,callbacks:{label:ctx=>' $'+ctx.parsed.y.toFixed(2)}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#555',font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:12}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:10},callback:v=>'$'+v},beginAtZero:true}}}
+  });
+}
+
+function renderAdminVTop(ps){
+  const el=document.getElementById('adm-v-top');if(!el)return;
+  const counts={},totals={};
+  ps.forEach(s=>s.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!sorted.length){el.innerHTML='<div class="admin-empty" style="padding:8px 0">Sin datos</div>';return;}
+  const mx=sorted[0][1];
+  el.innerHTML=sorted.map(([name,cnt])=>`<div class="top-item"><div class="top-name">${name}</div><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count" style="min-width:90px;text-align:right">${cnt}x <span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div></div>`).join('');
+}
+
+function renderAdminVentas(ps){
+  const list=document.getElementById('adm-ventas-list');if(!list)return;
+  if(!ps||!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
+  list.innerHTML=ps.map((s,i)=>{
+    const its=s.items.map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
+    return `<div class="sale-card" style="animation-delay:${Math.min(i,.2)*0.04}s"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}</div></div><div class="sale-total-amt">$${s.total.toFixed(2)}</div></div><div class="sale-items-txt">${its}</div>${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}</div>`;
+  }).join('');
 }
 
 /* ─── Excel export — grouped by period ─── */
