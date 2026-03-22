@@ -2712,12 +2712,10 @@ let adminRange='hoy';
 
 function bootAdmin(){
   load();
-  const screen=document.getElementById('admin-screen');
-  screen.classList.add('active');
+  document.getElementById('admin-screen').classList.add('active');
   if(!fbDb)initFirebase(FB_CONFIG);
-  // Show whatever we have locally right away
   renderAdmin();
-  // Then start all listeners — sales listener will call renderAdmin() again when Firebase data arrives
+  fbListening=false; // reset so listeners attach fresh
   setTimeout(()=>{
     startFbListeners();
     startMembersListener();
@@ -2991,7 +2989,12 @@ function setAdminTab(tab){
   });
   document.querySelectorAll('.admin-tab-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('adm-tab-'+tab).classList.add('active');
-  if(tab==='ventas')setAdminRange(adminRange);
+  if(tab==='ventas'){
+    setAdminRange(adminRange);
+    // Ensure date picker visibility matches current range
+    const dateRow=document.querySelector('.date-picker-row');
+    if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
+  }
   if(tab==='usuarios')renderAdminUsers();
   if(tab==='actividad')renderActivityLog();
 }
@@ -3016,6 +3019,9 @@ function setAdminRange(r){
   };
   const hint=document.getElementById('adm-export-hint');
   if(hint)hint.innerHTML=hints[r]||'';
+  // Show date picker only for 'hoy'
+  const dateRow=document.querySelector('.date-picker-row');
+  if(dateRow)dateRow.style.display=r==='hoy'?'':'none';
   const ps=getAdminSales();
   const total=ps.reduce((s,v)=>s+v.total,0);
   const avg=ps.length?total/ps.length:0;
@@ -3438,14 +3444,20 @@ function confirmResolve(yes){
 const savedSession=safeStorage.getItem(SK_SESSION);
 const savedRole=safeStorage.getItem(SK_ROLE);
 if(savedSession==='1' && savedRole==='admin'){
-  // Admin — sesion guardada, entra directo
   document.getElementById('login-screen').classList.add('hidden');
   load();
   initFirebase(FB_CONFIG);
+  // Wait for Firebase to connect, then start everything
   setTimeout(()=>{
+    fbListening=false; // reset flag so listeners start fresh
+    startFbListeners();
+    startMembersListener();
+    startActivityListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
-    bootAdmin();
-  },800);
+    // Show admin screen — sales listener will auto-refresh when data arrives
+    document.getElementById('admin-screen').classList.add('active');
+    renderAdmin();
+  },1000);
 } else if(savedSession==='1' && savedRole==='user'){
   // Oscar o Denisse — sesion individual guardada, entra directo
   document.getElementById('login-screen').classList.add('hidden');
