@@ -1734,28 +1734,6 @@ body{
     <input class="form-input" id="ing-m-alert" type="number" inputmode="decimal" placeholder="5" style="margin-bottom:10px"/>
 
     <!-- Cost correction — only shown when editing -->
-    <div id="ing-cost-section" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px">
-      <div style="font-size:11px;color:var(--gold);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Corregir precio promedio</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Si el precio fue registrado mal, corrígelo aquí.</div>
-
-      <label class="form-lbl">Nuevo precio por <span id="ing-cost-unit-lbl">unidad</span></label>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-        <span style="color:var(--text3);font-size:14px">$</span>
-        <input class="form-input" id="ing-m-cost" type="number" inputmode="decimal" placeholder="0.00" style="flex:1"/>
-        <span id="ing-cost-unit-lbl2" style="font-size:12px;color:var(--text3);flex-shrink:0"></span>
-        <button onclick="applyNewIngCost()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(42,184,184,.4);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:12px;font-weight:700;cursor:pointer">✓ Aplicar</button>
-      </div>
-      <div id="ing-cost-preview" style="font-size:11px;color:var(--text4);min-height:14px;margin-bottom:10px"></div>
-
-      <div style="height:1px;background:var(--border);margin:0 0 10px"></div>
-      <div style="font-size:11px;color:var(--text4);margin-bottom:8px;line-height:1.5">O resetea todo el historial de compras y empieza de cero con un precio nuevo.</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-        <input class="form-input" id="ing-m-reset-cost" type="number" inputmode="decimal" placeholder="Precio nuevo $" style="flex:1"/>
-        <button onclick="confirmResetIngCost()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(224,32,32,.4);background:rgba(224,32,32,.08);color:#f57474;font-size:12px;font-weight:700;cursor:pointer">🔄 Resetear</button>
-      </div>
-      <div id="ing-reset-note" style="font-size:10px;color:var(--text4);line-height:1.5">Borra el historial de compras y fija el precio indicado. No afecta el stock.</div>
-    </div>
-
     <div style="display:flex;gap:10px">
       <button class="btn-secondary" onclick="closeIngModal()" style="flex:1">Cancelar</button>
       <button class="btn-primary" onclick="saveIngredient()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
@@ -1763,7 +1741,33 @@ body{
   </div>
 </div>
 
-<!-- ===== RECIPE MODAL — outside all containers ===== -->
+<!-- ===== INGREDIENT RESET MODAL ===== -->
+<div class="inv-modal hidden" id="ing-reset-modal">
+  <div class="inv-modal-box" style="max-width:340px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text)" id="ing-reset-title">Resetear ingrediente</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px" id="ing-reset-sub">Elige qué quieres limpiar</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <button onclick="doIngReset('stock')" style="text-align:left;padding:12px 14px;border-radius:10px;border:1px solid rgba(42,184,184,.3);background:rgba(42,184,184,.06);color:var(--text);cursor:pointer">
+        <div style="font-size:13px;font-weight:700;color:#2ab8b8">📦 Resetear stock → 0</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">Pone el stock en cero. No toca precios.</div>
+      </button>
+      <button onclick="doIngReset('precio')" style="text-align:left;padding:12px 14px;border-radius:10px;border:1px solid rgba(245,200,0,.3);background:rgba(245,200,0,.06);color:var(--text);cursor:pointer">
+        <div style="font-size:13px;font-weight:700;color:#F5C800">💰 Resetear precio → 0</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">Borra el costo promedio y el historial de compras de este ingrediente.</div>
+      </button>
+      <button onclick="doIngReset('gasto')" style="text-align:left;padding:12px 14px;border-radius:10px;border:1px solid rgba(245,200,0,.3);background:rgba(245,200,0,.06);color:var(--text);cursor:pointer">
+        <div style="font-size:13px;font-weight:700;color:#F5C800">📊 Quitar de gastos</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">Pone totalCostPaid en 0 sin tocar el stock ni el precio por unidad.</div>
+      </button>
+      <button onclick="doIngReset('todo')" style="text-align:left;padding:12px 14px;border-radius:10px;border:1px solid rgba(224,32,32,.3);background:rgba(224,32,32,.06);color:var(--text);cursor:pointer">
+        <div style="font-size:13px;font-weight:700;color:#f57474">🔄 Reset completo</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">Stock → 0, precio → 0, sale de gastos. Queda como nuevo.</div>
+      </button>
+    </div>
+    <button class="btn-secondary" onclick="document.getElementById('ing-reset-modal').classList.add('hidden')" style="width:100%">Cancelar</button>
+  </div>
+</div>
 <div class="inv-modal hidden" id="recipe-modal">
   <div class="inv-modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
     <div style="font-size:16px;font-weight:800;margin-bottom:2px;color:var(--text)" id="recipe-modal-title">Receta</div>
@@ -4081,6 +4085,7 @@ function renderInvStock(){
       <div class="ing-stock ${cls}">${ing.stock}<div style="font-size:10px;font-weight:600;opacity:.7">${ing.unit}</div></div>
       <div class="ing-actions">
         <button class="btn-ing teal" onclick="openEditIngredient('${ing.id}')">✏️</button>
+        <button class="btn-ing" onclick="openIngResetModal('${ing.id}')" style="border-color:rgba(245,200,0,.3);color:#F5C800" title="Resetear">🔄</button>
         <button class="btn-ing danger" onclick="deleteIngredient('${ing.id}')">✕</button>
       </div>
     </div>`;
@@ -4153,75 +4158,34 @@ function openEditIngredient(id){
   document.getElementById('ing-m-conversion').value=ing.conversion||'';
   document.getElementById('ing-m-stock').value=ing.stock;
   document.getElementById('ing-m-alert').value=ing.alertAt;
-  // Show cost correction section
-  const costSection=document.getElementById('ing-cost-section');
-  if(costSection)costSection.style.display='block';
-  const costInput=document.getElementById('ing-m-cost');
-  if(costInput)costInput.value=ing.costPerUnit>0?ing.costPerUnit.toFixed(4):'';
-  const unitLbl=document.getElementById('ing-cost-unit-lbl');
-  const unitLbl2=document.getElementById('ing-cost-unit-lbl2');
-  const preview=document.getElementById('ing-cost-preview');
-  if(unitLbl)unitLbl.textContent=ing.unit;
-  if(unitLbl2)unitLbl2.textContent='/'+ing.unit;
-  if(preview){
-    if(ing.costPerUnit>0&&ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1){
-      preview.textContent=`Equivale a $${(ing.costPerUnit*(ing.conversion||1)).toFixed(2)} por ${ing.buyUnit}`;
-    } else if(ing.costPerUnit>0){
-      preview.textContent=`Costo actual registrado: $${ing.costPerUnit.toFixed(4)}/${ing.unit}`;
-    } else {
-      preview.textContent='Sin costo registrado aún';
-    }
-  }
-  if(costInput)costInput.oninput=()=>{
-    const v=parseFloat(costInput.value)||0;
-    if(preview&&ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1)
-      preview.textContent=v>0?`= $${(v*(ing.conversion||1)).toFixed(2)} por ${ing.buyUnit}`:'';
-    else if(preview) preview.textContent='';
-  };
   toggleConversionField();
   document.getElementById('ing-modal').classList.remove('hidden');
 }
 function closeIngModal(){document.getElementById('ing-modal').classList.add('hidden');}
-function applyNewIngCost(){
-  const newCost=parseFloat(document.getElementById('ing-m-cost')?.value)||0;
-  const ing=ingredients.find(i=>i.id===editIngId);
-  if(!ing){showToast('Abre un ingrediente con ✏️ primero','red');return;}
-  if(!newCost){showToast('Escribe el nuevo precio','red');return;}
-  const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
-  const old=ingredients[idx];
-  const newTotalCost=newCost*(old.totalQtyBought||old.stock||0);
-  ingredients[idx]={...old,
-    costPerUnit:newCost,
-    totalCostPaid:parseFloat(newTotalCost.toFixed(2)),
-    totalQtyBought:old.totalQtyBought||old.stock||0
-  };
-  logInvHistory('ajuste',`${old.name} — precio corregido a $${newCost.toFixed(4)}/${old.unit}`,{ingId:old.id,newCost});
-  fbSaveIngredients();
-  const preview=document.getElementById('ing-cost-preview');
-  if(preview){preview.textContent=`✅ Precio actualizado a $${newCost.toFixed(4)}/${old.unit}`;preview.style.color='#2ab8b8';}
-  showToast(`${old.name} → $${newCost.toFixed(4)}/${old.unit}`,'green');
+/* ── INDIVIDUAL INGREDIENT RESET ── */
+let resetIngId=null;
+function openIngResetModal(id){
+  const ing=ingredients.find(i=>i.id===id);if(!ing)return;
+  resetIngId=id;
+  document.getElementById('ing-reset-title').textContent=`🔄 ${ing.name}`;
+  document.getElementById('ing-reset-sub').textContent=
+    `Stock: ${ing.stock} ${ing.unit}  ·  Costo: ${ing.costPerUnit>0?'$'+ing.costPerUnit.toFixed(2)+'/'+ing.unit:'sin costo'}  ·  Gasto acumulado: $${(ing.totalCostPaid||0).toFixed(2)}`;
+  document.getElementById('ing-reset-modal').classList.remove('hidden');
 }
-
-function confirmResetIngCost(){
-  const newPrice=parseFloat(document.getElementById('ing-m-reset-cost')?.value)||0;
-  const ing=ingredients.find(i=>i.id===editIngId);
-  if(!ing){showToast('Abre un ingrediente con ✏️ primero','red');return;}
-  if(!newPrice){showToast('Escribe el nuevo precio','red');return;}
-  // No confirm dialog — just apply directly
-  const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
-  const old=ingredients[idx];
-  const qtyBase=old.totalQtyBought||old.stock||0;
-  ingredients[idx]={...old,
-    costPerUnit:newPrice,
-    totalCostPaid:parseFloat((newPrice*qtyBase).toFixed(2)),
-    totalQtyBought:qtyBase
-  };
-  logInvHistory('ajuste',`${old.name} — precio reseteado a $${newPrice.toFixed(2)}/${old.unit}`,{ingId:old.id,newPrice});
+function doIngReset(type){
+  const idx=ingredients.findIndex(i=>i.id===resetIngId);if(idx<0)return;
+  const ing={...ingredients[idx]};
+  document.getElementById('ing-reset-modal').classList.add('hidden');
+  if(type==='stock')  ingredients[idx]={...ing,stock:0};
+  if(type==='precio') ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+  if(type==='gasto')  ingredients[idx]={...ing,totalCostPaid:0};
+  if(type==='todo')   ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+  logInvHistory('ajuste',`Reset (${type}) — ${ing.name}`);
   fbSaveIngredients();
-  document.getElementById('ing-m-reset-cost').value='';
-  const preview=document.getElementById('ing-cost-preview');
-  if(preview){preview.textContent=`✅ Reseteado a $${newPrice.toFixed(2)}/${old.unit}`;preview.style.color='#2ab8b8';}
-  showToast(`${old.name} → $${newPrice.toFixed(2)}/${old.unit}`,'green');
+  renderInvStock();
+  renderInvCostos();
+  const labels={stock:'Stock → 0',precio:'Precio reseteado',gasto:'Quitado de gastos',todo:'Reset completo'};
+  showToast(`${ing.name} — ${labels[type]||type}`,'green');
 }
 
 function saveIngredient(){
@@ -4236,19 +4200,7 @@ function saveIngredient(){
     const idx=ingredients.findIndex(i=>i.id===editIngId);
     if(idx>=0){
       const old=ingredients[idx];
-      // Apply cost correction if provided
-      const newCost=parseFloat(document.getElementById('ing-m-cost')?.value)||0;
-      let costPerUnit=old.costPerUnit;
-      let totalCostPaid=old.totalCostPaid||0;
-      let totalQtyBought=old.totalQtyBought||0;
-      if(newCost>0&&newCost!==old.costPerUnit){
-        costPerUnit=newCost;
-        // Recalculate totalCostPaid to be consistent with new price × existing qty
-        totalCostPaid=newCost*(old.totalQtyBought||old.stock||1);
-        totalQtyBought=old.totalQtyBought||old.stock||1;
-        logInvHistory('ajuste',`${name} — precio corregido a $${newCost.toFixed(4)}/${unit}`);
-      }
-      ingredients[idx]={...old,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit,totalCostPaid,totalQtyBought};
+      ingredients[idx]={...old,name,unit,buyUnit,conversion,stock,alertAt};
     }
     logInvHistory('ajuste',`${name} editado`);
   } else {
@@ -4268,43 +4220,33 @@ function deleteIngredient(id){
   });
 }
 
-let entryMode='pkg'; // 'pkg' or 'unit'
-
+let entryMode='pkg';
 function setEntryMode(mode){
   entryMode=mode;
   document.getElementById('btn-entry-pkg').className='btn-ing'+(mode==='pkg'?' teal':'');
   document.getElementById('btn-entry-unit').className='btn-ing'+(mode==='unit'?' teal':'');
-  onEntryIngChange(); // re-apply unit suggestion
+  onEntryIngChange();
 }
 
+/* ── RESET GENERAL (safer — requires typing RESET) ── */
 function resetInventarioCompleto(){
-  customConfirm(
-    '⚠️ Reset completo de inventario. Esto borra: historial de movimientos, costos acumulados y stock de todos los ingredientes. Los ingredientes en sí se conservan. ¿Continuar?',
-    '🔄 Reset',
-    ()=>{
-      // 1. Zero out all cost/stock data on every ingredient
-      ingredients=ingredients.map(ing=>({
-        ...ing,
-        stock:0,
-        totalCostPaid:0,
-        totalQtyBought:0,
-        costPerUnit:0,
-      }));
-      // 2. Save to Firebase
-      if(fbDb){
-        const obj={};ingredients.forEach(i=>obj[i.id]=i);
-        fbDb.ref('ingredients').set(obj).catch(()=>{});
-        // 3. Clear inv_history
-        fbDb.ref('inv_history').remove().catch(()=>{});
-      }
-      safeStorage.setItem(SK_ING,JSON.stringify(ingredients));
-      safeStorage.removeItem(SK_INV_HIST);
-      invHistory=[];
-      renderInvStock();
-      renderInvCostos();
-      showToast('✅ Inventario reseteado — stock y costos en cero','green');
-    }
-  );
+  // Show a safer confirmation modal with typed word
+  const code='RESET';
+  const typed=prompt(`Para confirmar el reset completo, escribe la palabra: ${code}\n\nEsto borra stock, costos y historial de TODOS los ingredientes.`);
+  if(typed===null)return; // cancelled
+  if(typed.trim().toUpperCase()!==code){showToast('Palabra incorrecta — cancelado','red');return;}
+  ingredients=ingredients.map(ing=>({...ing,stock:0,totalCostPaid:0,totalQtyBought:0,costPerUnit:0}));
+  if(fbDb){
+    const obj={};ingredients.forEach(i=>obj[i.id]=i);
+    fbDb.ref('ingredients').set(obj).catch(()=>{});
+    fbDb.ref('inv_history').remove().catch(()=>{});
+  }
+  safeStorage.setItem(SK_ING,JSON.stringify(ingredients));
+  safeStorage.removeItem(SK_INV_HIST);
+  invHistory=[];
+  renderInvStock();
+  renderInvCostos();
+  showToast('✅ Inventario reseteado completamente','green');
 }
 function renderInvEntrySelects(){
   const selects=['inv-entry-ing','inv-adj-ing'];
