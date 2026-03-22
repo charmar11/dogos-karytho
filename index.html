@@ -1129,7 +1129,34 @@ body{
 .avatar-upload-progress.ok{color:#6fcf6f}
 .avatar-upload-progress.err{color:#f57474}
 
-/* ── USER MANAGER (ADMIN) ── */
+/* ── ADMIN TABS ── */
+.admin-tabs{
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  background:linear-gradient(180deg,#1a1a1a,#181818);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:62px;z-index:18;
+}
+.admin-tabs::-webkit-scrollbar{display:none}
+.admin-tab{
+  flex-shrink:0;padding:12px 14px;
+  font-size:11px;font-weight:800;color:var(--text3);
+  background:transparent;border:none;border-bottom:2.5px solid transparent;
+  cursor:pointer;transition:color .2s,border-color .2s;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;
+}
+.admin-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.admin-tab-view{
+  display:none;padding:16px 16px 80px;
+  animation:fadeIn .25s ease;
+}
+.admin-tab-view.active{display:block}
+.adm-export-hint{
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:var(--radius-sm);padding:10px 14px;
+  font-size:12px;color:var(--text3);line-height:1.6;
+  margin-top:4px;
+}
+.adm-export-hint strong{color:var(--text2)}
 .user-mgr-card{
   background:var(--bg2);border:1px solid var(--border);
   border-radius:var(--radius-md);padding:14px 15px;
@@ -1464,87 +1491,112 @@ body{
   <div class="admin-header">
     <div>
       <div class="admin-title">🔐 Panel Admin</div>
-      <div class="admin-sub">DOGOS KARYTHO — EXPORTACION DE DATOS</div>
+      <div class="admin-sub">DOGOS KARYTHO</div>
     </div>
-    <button class="btn-admin-logout" onclick="adminLogout()">Cerrar sesion</button>
+    <button class="btn-admin-logout" onclick="adminLogout()">Salir</button>
   </div>
-  <div class="admin-body">
 
-    <div class="sec-label">📊 Resumen general</div>
+  <!-- Admin tabs -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="setAdminTab('resumen')">📊 Resumen</button>
+    <button class="admin-tab" onclick="setAdminTab('exportar')">📁 Exportar</button>
+    <button class="admin-tab" onclick="setAdminTab('usuarios')">👥 Usuarios</button>
+    <button class="admin-tab" onclick="setAdminTab('ventas')">💰 Ventas</button>
+    <button class="admin-tab" onclick="setAdminTab('actividad')">📋 Actividad</button>
+  </div>
+
+  <!-- ── TAB: RESUMEN ── -->
+  <div class="admin-tab-view active" id="adm-tab-resumen">
     <div class="admin-stat-grid">
       <div class="admin-stat"><div class="admin-stat-lbl">Total ventas</div><div class="admin-stat-val" id="adm-total-count">0</div><div class="admin-stat-sub">registradas</div></div>
       <div class="admin-stat"><div class="admin-stat-lbl">Ingresos totales</div><div class="admin-stat-val" id="adm-total-money">$0</div><div class="admin-stat-sub">historico</div></div>
-      <div class="admin-stat"><div class="admin-stat-lbl">Primer venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-first-date">—</div><div class="admin-stat-sub">fecha</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Primera venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-first-date">—</div><div class="admin-stat-sub">fecha</div></div>
       <div class="admin-stat"><div class="admin-stat-lbl">Ultima venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-last-date">—</div><div class="admin-stat-sub">fecha</div></div>
     </div>
+    <div class="sec-label">🏆 Productos mas vendidos</div>
+    <div class="form-card" style="padding:12px 15px">
+      <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
+    </div>
+  </div>
 
-    <div class="sec-label">📁 Exportar datos</div>
+  <!-- ── TAB: EXPORTAR ── -->
+  <div class="admin-tab-view" id="adm-tab-exportar">
     <div class="export-card">
       <div class="export-card-title">Selecciona el periodo</div>
-      <div class="export-card-sub">Elige que ventas quieres exportar. Los archivos se descargan directo a tu celular o PC.</div>
+      <div class="export-card-sub">El Excel se organiza automaticamente segun el periodo elegido.</div>
       <div class="admin-range-row">
         <button class="admin-range-btn active" onclick="setAdminRange('hoy')">Hoy</button>
         <button class="admin-range-btn" onclick="setAdminRange('semana')">Semana</button>
         <button class="admin-range-btn" onclick="setAdminRange('mes')">Mes</button>
         <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
       </div>
-
-      <div class="sec-label" style="margin-top:0">Vista previa (<span id="adm-preview-count">0</span> ventas)</div>
-      <div class="admin-preview" id="adm-preview">
-        <div class="admin-empty">Sin ventas en este periodo</div>
+      <div class="adm-export-hint" id="adm-export-hint">
+        📋 <strong>Hoy:</strong> detalle por hora del dia
       </div>
-
+      <div class="sec-label" style="margin-top:14px">Vista previa — <span id="adm-preview-count">0</span> ventas</div>
+      <div class="admin-preview" id="adm-preview"><div class="admin-empty">Sin ventas en este periodo</div></div>
       <div class="export-btns">
         <button class="btn-export btn-export-excel" onclick="exportExcel()">
           <span style="font-size:20px">📊</span>
-          <div style="text-align:left"><div>Descargar Excel (.xlsx)</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Compatible con Excel, Google Sheets</div></div>
-        </button>
-        <button class="btn-export btn-export-csv" onclick="exportCSV()">
-          <span style="font-size:20px">📄</span>
-          <div style="text-align:left"><div>Descargar CSV (.csv)</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Para cualquier programa de hojas de calculo</div></div>
+          <div style="text-align:left">
+            <div>Descargar Excel (.xlsx)</div>
+            <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Compatible con Excel y Google Sheets</div>
+          </div>
         </button>
         <button class="btn-export btn-export-wa" onclick="exportWhatsApp()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          <div style="text-align:left"><div>Resumen por WhatsApp</div><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto con totales para guardar o compartir</div></div>
+          <div style="text-align:left">
+            <div>Resumen por WhatsApp</div>
+            <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto listo para compartir</div>
+          </div>
         </button>
       </div>
     </div>
+  </div>
 
-    <div class="sec-label">👥 Usuarios CIDOP</div>
+  <!-- ── TAB: USUARIOS ── -->
+  <div class="admin-tab-view" id="adm-tab-usuarios">
     <div id="adm-users-list"></div>
     <div class="add-user-form">
       <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600">Agregar nuevo usuario al picker</div>
       <input class="add-user-input" id="new-user-name" placeholder="Nombre (ej: Maria)" maxlength="20"/>
       <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar usuario</button>
     </div>
-
-    <!-- hidden file input for admin avatar upload -->
     <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
+  </div>
 
-    <div class="sec-label">🏆 Productos mas vendidos (historico)</div>
-    <div class="form-card" style="padding:12px 15px">
-      <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
+  <!-- ── TAB: VENTAS ── -->
+  <div class="admin-tab-view" id="adm-tab-ventas">
+    <div class="period-tabs" style="margin-bottom:14px">
+      <button class="period-tab active" onclick="setAdminVentasPeriod('dia')">Hoy</button>
+      <button class="period-tab" onclick="setAdminVentasPeriod('semana')">Semana</button>
+      <button class="period-tab" onclick="setAdminVentasPeriod('mes')">Mes</button>
     </div>
+    <div class="admin-stat-grid" style="margin-bottom:14px">
+      <div class="admin-stat"><div class="admin-stat-lbl">Ventas</div><div class="admin-stat-val" id="adm-v-count">0</div></div>
+      <div class="admin-stat"><div class="admin-stat-lbl">Ingresos</div><div class="admin-stat-val" id="adm-v-total">$0</div></div>
+    </div>
+    <div id="adm-ventas-list"><div class="admin-empty">Sin ventas</div></div>
+  </div>
 
-    <div class="sec-label">📋 Registro de actividad</div>
-    <div style="margin-bottom:12px">
-      <div class="log-filters">
-        <button class="log-filter-btn active" onclick="setLogFilter('todo')">Todo</button>
-        <button class="log-filter-btn f-conectar" onclick="setLogFilter('sesion')">Sesiones</button>
-        <button class="log-filter-btn f-venta" onclick="setLogFilter('venta')">Ventas</button>
-        <button class="log-filter-btn f-producto" onclick="setLogFilter('producto')">Productos</button>
-        <button class="log-filter-btn f-eliminar" onclick="setLogFilter('eliminar')">Eliminados</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-        <span class="log-live-dot"></span>
-        <span style="font-size:11px;color:var(--text3)">En tiempo real — <span id="log-count">0</span> eventos</span>
-      </div>
+  <!-- ── TAB: ACTIVIDAD ── -->
+  <div class="admin-tab-view" id="adm-tab-actividad">
+    <div class="log-filters">
+      <button class="log-filter-btn active" onclick="setLogFilter('todo')">Todo</button>
+      <button class="log-filter-btn f-conectar" onclick="setLogFilter('sesion')">Sesiones</button>
+      <button class="log-filter-btn f-venta" onclick="setLogFilter('venta')">Ventas</button>
+      <button class="log-filter-btn f-producto" onclick="setLogFilter('producto')">Productos</button>
+      <button class="log-filter-btn f-eliminar" onclick="setLogFilter('eliminar')">Eliminados</button>
     </div>
-    <div class="form-card" style="padding:10px 14px;max-height:500px;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:6px;margin:10px 0 12px">
+      <span class="log-live-dot"></span>
+      <span style="font-size:11px;color:var(--text3)">En tiempo real — <span id="log-count">0</span> eventos</span>
+    </div>
+    <div class="form-card" style="padding:10px 14px;max-height:calc(100vh - 280px);overflow-y:auto">
       <div id="adm-activity-log"><div class="admin-empty">Sin actividad registrada aun</div></div>
     </div>
-
   </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -2716,11 +2768,64 @@ function getAdminSales(){
   return [...sales];
 }
 
+/* ─── Admin tab navigation ─── */
+function setAdminTab(tab){
+  document.querySelectorAll('.admin-tab').forEach((b,i)=>{
+    b.classList.toggle('active',['resumen','exportar','usuarios','ventas','actividad'][i]===tab);
+  });
+  document.querySelectorAll('.admin-tab-view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('adm-tab-'+tab).classList.add('active');
+  if(tab==='usuarios')renderAdminUsers();
+  if(tab==='ventas')renderAdminVentas();
+  if(tab==='actividad')renderActivityLog();
+}
+
+/* ─── Ventas tab ─── */
+let adminVentasPeriod='dia';
+function setAdminVentasPeriod(p){
+  adminVentasPeriod=p;
+  document.querySelectorAll('#adm-tab-ventas .period-tab').forEach((b,i)=>{
+    b.classList.toggle('active',['dia','semana','mes'][i]===p);
+  });
+  renderAdminVentas();
+}
+function renderAdminVentas(){
+  const today=toDateKey(new Date());
+  let ps;
+  if(adminVentasPeriod==='dia') ps=sales.filter(s=>s.date===today);
+  else if(adminVentasPeriod==='semana') ps=sales.filter(s=>isSameWeek(s.timestamp));
+  else ps=sales.filter(s=>isSameMonth(s.timestamp));
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  document.getElementById('adm-v-count').textContent=ps.length;
+  document.getElementById('adm-v-total').textContent='$'+total.toFixed(2);
+  const list=document.getElementById('adm-ventas-list');
+  if(!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
+  list.innerHTML=ps.map((s,i)=>{
+    const its=s.items.map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
+    return `<div class="sale-card" style="animation-delay:${i*.03}s">
+      <div class="sale-header">
+        <div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}</div></div>
+        <div class="sale-total-amt">$${s.total.toFixed(2)}</div>
+      </div>
+      <div class="sale-items-txt">${its}</div>
+      ${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}
+    </div>`;
+  }).join('');
+}
+
 function setAdminRange(r){
   adminRange=r;
   document.querySelectorAll('.admin-range-btn').forEach((b,i)=>{
     b.classList.toggle('active',['hoy','semana','mes','todo'][i]===r);
   });
+  const hints={
+    hoy:  '📋 <strong>Hoy:</strong> detalle por hora — cada venta del dia con su hora exacta',
+    semana:'📋 <strong>Semana:</strong> dias acumulados — totales por cada dia de la semana',
+    mes:  '📋 <strong>Mes:</strong> semanas acumuladas — totales por semana del mes',
+    todo: '📋 <strong>Todo:</strong> meses acumulados — totales por cada mes del historial'
+  };
+  const hint=document.getElementById('adm-export-hint');
+  if(hint)hint.innerHTML=hints[r]||'';
   const ps=getAdminSales();
   document.getElementById('adm-preview-count').textContent=ps.length;
   const prev=document.getElementById('adm-preview');
@@ -2735,74 +2840,73 @@ function setAdminRange(r){
   }).join('')+(ps.length>50?`<div style="color:var(--text4);font-size:11px;text-align:center;padding:8px">... y ${ps.length-50} ventas mas</div>`:'');
 }
 
-function buildExcelRows(){
-  const ps=getAdminSales();
-  const rows=[['Fecha','Hora','Producto','Variacion','Extras','Cantidad','Precio unitario','Subtotal','Total venta','Cambio dado']];
-  ps.forEach(s=>{
-    s.items.forEach((it,i)=>{
-      rows.push([
-        s.date, s.time,
-        it.name, it.var||'', it.extras||'',
-        it.qty, it.price,
-        (it.price*it.qty).toFixed(2),
-        i===0?s.total.toFixed(2):'',
-        i===0&&s.cambio!=null?s.cambio.toFixed(2):''
-      ]);
-    });
-  });
-  return rows;
-}
-
+/* ─── Excel export — grouped by period ─── */
 function exportExcel(){
   const ps=getAdminSales();
   if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
-  const rows=buildExcelRows();
   const wb=XLSX.utils.book_new();
-
-  // Sales sheet
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:12},{wch:8},{wch:22},{wch:14},{wch:16},{wch:10},{wch:14},{wch:12},{wch:13},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws,'Ventas');
-
-  // Summary sheet
   const total=ps.reduce((s,v)=>s+v.total,0);
   const avg=ps.length?total/ps.length:0;
+
+  // ── Sheet 1: Detail (all periods) ──
+  const detailRows=[['Fecha','Hora','Cajero','Producto','Variacion','Extras','Cant','Precio','Subtotal','Total venta','Cambio']];
+  ps.forEach(s=>{
+    s.items.forEach((it,i)=>{
+      detailRows.push([s.date,s.time,s.user||'',it.name,it.var||'',it.extras||'',it.qty,it.price,(it.price*it.qty).toFixed(2),i===0?s.total.toFixed(2):'',i===0&&s.cambio!=null?s.cambio.toFixed(2):'']);
+    });
+  });
+  const wsDetail=XLSX.utils.aoa_to_sheet(detailRows);
+  wsDetail['!cols']=[{wch:12},{wch:8},{wch:12},{wch:22},{wch:14},{wch:16},{wch:6},{wch:10},{wch:10},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,wsDetail,'Detalle');
+
+  // ── Sheet 2: Grouped ──
+  let groupedRows=[];
+  if(adminRange==='hoy'){
+    // Group by hour
+    groupedRows=[['Hora','Ventas','Ingresos']];
+    const byHour={};
+    ps.forEach(s=>{const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();if(!byHour[h])byHour[h]={count:0,total:0};byHour[h].count++;byHour[h].total+=s.total;});
+    for(let h=0;h<24;h++){const d=byHour[h];if(d)groupedRows.push([(h<10?'0':'')+h+':00',d.count,'$'+d.total.toFixed(2)]);}
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(groupedRows),'Por Hora');
+  } else if(adminRange==='semana'){
+    // Group by day
+    groupedRows=[['Dia','Fecha','Ventas','Ingresos']];
+    const byDay={};const dayNames=['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+    ps.forEach(s=>{const d=new Date(s.timestamp);const key=s.date;if(!byDay[key])byDay[key]={day:dayNames[d.getDay()],count:0,total:0};byDay[key].count++;byDay[key].total+=s.total;});
+    Object.entries(byDay).sort((a,b)=>new Date(a[0])-new Date(b[0])).forEach(([date,d])=>groupedRows.push([d.day,date,d.count,'$'+d.total.toFixed(2)]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(groupedRows),'Por Dia');
+  } else if(adminRange==='mes'){
+    // Group by week
+    groupedRows=[['Semana','Desde','Hasta','Ventas','Ingresos']];
+    const byWeek={};
+    ps.forEach(s=>{const d=new Date(s.timestamp);const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));const key=toDateKey(mon);if(!byWeek[key])byWeek[key]={from:toDateKey(mon),count:0,total:0,dates:[]};byWeek[key].count++;byWeek[key].total+=s.total;byWeek[key].dates.push(d);});
+    let wNum=1;Object.entries(byWeek).sort((a,b)=>new Date(a[0])-new Date(b[0])).forEach(([,w])=>{const maxD=new Date(Math.max(...w.dates));groupedRows.push(['Semana '+wNum++,w.from,toDateKey(maxD),w.count,'$'+w.total.toFixed(2)]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(groupedRows),'Por Semana');
+  } else {
+    // Group by month
+    groupedRows=[['Mes','Ventas','Ingresos']];
+    const byMonth={};const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    ps.forEach(s=>{const d=new Date(s.timestamp);const key=d.getFullYear()+'-'+(d.getMonth()+1);if(!byMonth[key])byMonth[key]={label:monthNames[d.getMonth()]+' '+d.getFullYear(),count:0,total:0};byMonth[key].count++;byMonth[key].total+=s.total;});
+    Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([,m])=>groupedRows.push([m.label,m.count,'$'+m.total.toFixed(2)]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(groupedRows),'Por Mes');
+  }
+
+  // ── Sheet 3: Products summary ──
   const counts={},totals={};
-  ps.forEach(s=>s.items.forEach(it=>{
-    const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
-    counts[k]=(counts[k]||0)+it.qty;
-    totals[k]=(totals[k]||0)+(it.price*it.qty);
-  }));
-  const sumRows=[
-    ['RESUMEN — DOGOS KARYTHO'],[''],
+  ps.forEach(s=>s.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
+  const prodRows=[['RESUMEN — DOGOS KARYTHO'],[''],
     ['Periodo',{hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico completo'}[adminRange]],
-    ['Total de ventas',ps.length],
-    ['Ingresos totales','$'+total.toFixed(2)],
-    ['Ticket promedio','$'+avg.toFixed(2)],[''],
-    ['Producto','Cantidad vendida','Ingresos'],
-    ...Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([name,qty])=>[name,qty,'$'+(totals[name]||0).toFixed(2)])
+    ['Total ventas',ps.length],['Ingresos totales','$'+total.toFixed(2)],['Ticket promedio','$'+avg.toFixed(2)],[''],
+    ['Producto','Vendidos','Ingresos'],
+    ...Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([n,q])=>[n,q,'$'+(totals[n]||0).toFixed(2)])
   ];
-  const ws2=XLSX.utils.aoa_to_sheet(sumRows);
-  ws2['!cols']=[{wch:28},{wch:18},{wch:14}];
-  XLSX.utils.book_append_sheet(wb,ws2,'Resumen');
+  const wsProd=XLSX.utils.aoa_to_sheet(prodRows);
+  wsProd['!cols']=[{wch:30},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,wsProd,'Productos');
 
   const fname=`dogos-karytho-${adminRange}-${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`;
   XLSX.writeFile(wb,fname);
   showToast('Excel descargado','green');
-}
-
-function exportCSV(){
-  const ps=getAdminSales();
-  if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
-  const rows=buildExcelRows();
-  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`dogos-karytho-${adminRange}-${new Date().toLocaleDateString('es-MX').replace(/\//g,'-')}.csv`;
-  a.click();URL.revokeObjectURL(url);
-  showToast('CSV descargado','green');
 }
 
 function exportWhatsApp(){
