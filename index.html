@@ -4186,31 +4186,32 @@ function doIngReset(type){
 
   if(type==='stock'){
     ingredients[idx]={...ing,stock:0};
-  } else if(type==='precio'){
-    // Cancel accumulated cost in history
-    if((ing.totalCostPaid||0)>0){
-      logInvHistory('entrada',`Corrección — reset de precio de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de precio',entryType:'correction'});
+    logInvHistory('ajuste',`Reset stock → 0 — ${ing.name}`);
+    fbSaveIngredients();
+  } else {
+    // For precio/gasto/todo: reset fields AND purge old history entries for this ingredient
+    if(type==='precio') ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+    if(type==='gasto')  ingredients[idx]={...ing,totalCostPaid:0};
+    if(type==='todo')   ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+    fbSaveIngredients();
+    // Remove all real purchase history entries for this ingredient so they don't double-count
+    if(fbDb){
+      fbDb.ref('inv_history').once('value',snap=>{
+        const d=snap.val();if(!d)return;
+        Object.entries(d).forEach(([key,h])=>{
+          if(h.type==='entrada'&&h.data?.ingId===ing.id&&(h.data?.entryType==='real'||!h.data?.entryType)){
+            fbDb.ref('inv_history/'+key).remove().catch(()=>{});
+          }
+        });
+        // Update local cache after purge
+        invHistory=invHistory.filter(h=>!(h.type==='entrada'&&h.data?.ingId===ing.id&&(h.data?.entryType==='real'||!h.data?.entryType)));
+        safeStorage.setItem(SK_INV_HIST,JSON.stringify(invHistory));
+        if(document.getElementById('inv-tab-historial')?.classList.contains('active'))renderInvHistory();
+      });
     }
-    ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
-  } else if(type==='gasto'){
-    // Cancel accumulated cost in history
-    if((ing.totalCostPaid||0)>0){
-      logInvHistory('entrada',`Corrección — reset de gasto de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de gasto',entryType:'correction'});
-    }
-    ingredients[idx]={...ing,totalCostPaid:0};
-  } else if(type==='todo'){
-    // Cancel accumulated cost in history
-    if((ing.totalCostPaid||0)>0){
-      logInvHistory('entrada',`Corrección — reset completo de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset completo',entryType:'correction'});
-    }
-    ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+    logInvHistory('ajuste',`Reset (${type}) — ${ing.name}`);
   }
 
-  logInvHistory('ajuste',`Reset (${type}) — ${ing.name}`);
-  fbSaveIngredients();
   renderInvStock();
   renderInvCostos();
   const labels={stock:'Stock → 0',precio:'Precio reseteado',gasto:'Quitado de gastos',todo:'Reset completo'};
