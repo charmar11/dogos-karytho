@@ -1731,7 +1731,30 @@ body{
     <label class="form-lbl">Stock inicial <span style="color:var(--text4)">(en unidad de uso)</span></label>
     <input class="form-input" id="ing-m-stock" type="number" inputmode="decimal" placeholder="0" style="margin-bottom:10px"/>
     <label class="form-lbl">Alerta cuando quede menos de</label>
-    <input class="form-input" id="ing-m-alert" type="number" inputmode="decimal" placeholder="5" style="margin-bottom:16px"/>
+    <input class="form-input" id="ing-m-alert" type="number" inputmode="decimal" placeholder="5" style="margin-bottom:10px"/>
+
+    <!-- Cost correction — only shown when editing -->
+    <div id="ing-cost-section" style="display:none;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--gold);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Corregir precio promedio</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.6">Si el precio fue registrado mal, corrígelo aquí.</div>
+
+      <label class="form-lbl">Nuevo precio por <span id="ing-cost-unit-lbl">unidad</span></label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <span style="color:var(--text3);font-size:14px">$</span>
+        <input class="form-input" id="ing-m-cost" type="number" inputmode="decimal" placeholder="0.00" style="flex:1"/>
+        <span id="ing-cost-unit-lbl2" style="font-size:12px;color:var(--text3);flex-shrink:0"></span>
+      </div>
+      <div id="ing-cost-preview" style="font-size:11px;color:var(--text4);min-height:14px;margin-bottom:10px"></div>
+
+      <div style="height:1px;background:var(--border);margin:0 0 10px"></div>
+      <div style="font-size:11px;color:var(--text4);margin-bottom:8px;line-height:1.5">O resetea todo el historial de compras y empieza de cero con un precio nuevo.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input class="form-input" id="ing-m-reset-cost" type="number" inputmode="decimal" placeholder="Precio nuevo $" style="flex:1"/>
+        <button onclick="confirmResetIngCost()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(224,32,32,.4);background:rgba(224,32,32,.08);color:#f57474;font-size:12px;font-weight:700;cursor:pointer">🔄 Resetear</button>
+      </div>
+      <div id="ing-reset-note" style="font-size:10px;color:var(--text4);line-height:1.5">Borra el historial de compras y fija el precio indicado. No afecta el stock.</div>
+    </div>
+
     <div style="display:flex;gap:10px">
       <button class="btn-secondary" onclick="closeIngModal()" style="flex:1">Cancelar</button>
       <button class="btn-primary" onclick="saveIngredient()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
@@ -4105,7 +4128,11 @@ function openAddIngredient(){
   document.getElementById('ing-m-stock').value='';
   document.getElementById('ing-m-alert').value='5';
   document.getElementById('conversion-field').style.display='none';
+  // Hide cost correction for new ingredients
+  const costSection=document.getElementById('ing-cost-section');
+  if(costSection)costSection.style.display='none';
   document.getElementById('ing-modal').classList.remove('hidden');
+  if(document.getElementById('ing-m-reset-cost'))document.getElementById('ing-m-reset-cost').value='';
   setTimeout(()=>document.getElementById('ing-m-name').focus(),100);
 }
 function openEditIngredient(id){
@@ -4118,10 +4145,61 @@ function openEditIngredient(id){
   document.getElementById('ing-m-conversion').value=ing.conversion||'';
   document.getElementById('ing-m-stock').value=ing.stock;
   document.getElementById('ing-m-alert').value=ing.alertAt;
+  // Show cost correction section
+  const costSection=document.getElementById('ing-cost-section');
+  if(costSection)costSection.style.display='block';
+  const costInput=document.getElementById('ing-m-cost');
+  if(costInput)costInput.value=ing.costPerUnit>0?ing.costPerUnit.toFixed(4):'';
+  const unitLbl=document.getElementById('ing-cost-unit-lbl');
+  const unitLbl2=document.getElementById('ing-cost-unit-lbl2');
+  const preview=document.getElementById('ing-cost-preview');
+  if(unitLbl)unitLbl.textContent=ing.unit;
+  if(unitLbl2)unitLbl2.textContent='/'+ing.unit;
+  if(preview){
+    if(ing.costPerUnit>0&&ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1){
+      preview.textContent=`Equivale a $${(ing.costPerUnit*(ing.conversion||1)).toFixed(2)} por ${ing.buyUnit}`;
+    } else if(ing.costPerUnit>0){
+      preview.textContent=`Costo actual registrado: $${ing.costPerUnit.toFixed(4)}/${ing.unit}`;
+    } else {
+      preview.textContent='Sin costo registrado aún';
+    }
+  }
+  if(costInput)costInput.oninput=()=>{
+    const v=parseFloat(costInput.value)||0;
+    if(preview&&ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1)
+      preview.textContent=v>0?`= $${(v*(ing.conversion||1)).toFixed(2)} por ${ing.buyUnit}`:'';
+    else if(preview) preview.textContent='';
+  };
   toggleConversionField();
   document.getElementById('ing-modal').classList.remove('hidden');
 }
 function closeIngModal(){document.getElementById('ing-modal').classList.add('hidden');}
+function confirmResetIngCost(){
+  const newPrice=parseFloat(document.getElementById('ing-m-reset-cost')?.value)||0;
+  const ing=ingredients.find(i=>i.id===editIngId);
+  if(!ing)return;
+  if(!newPrice){showToast('Escribe el nuevo precio primero','red');return;}
+  customConfirm(
+    `Resetear historial de precios de "${ing.name}"?\n\nNuevo precio: $${newPrice.toFixed(2)}/${ing.unit}\n\nEsto borra las compras registradas y fija este precio.`,
+    'Resetear',
+    ()=>{
+      const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
+      const old=ingredients[idx];
+      ingredients[idx]={...old,
+        costPerUnit:newPrice,
+        totalCostPaid:newPrice*(old.totalQtyBought||old.stock||0),
+        totalQtyBought:old.totalQtyBought||old.stock||0
+      };
+      logInvHistory('ajuste',`${old.name} — precio reseteado a $${newPrice.toFixed(2)}/${old.unit}`,{ingId:old.id,newPrice});
+      fbSaveIngredients();
+      document.getElementById('ing-m-reset-cost').value='';
+      const preview=document.getElementById('ing-cost-preview');
+      if(preview)preview.textContent=`✅ Precio actualizado a $${newPrice.toFixed(2)}/${old.unit}`;
+      showToast(`Precio de ${old.name} reseteado a $${newPrice.toFixed(2)}`,'green');
+    }
+  );
+}
+
 function saveIngredient(){
   const name=document.getElementById('ing-m-name').value.trim();
   const unit=document.getElementById('ing-m-unit').value;
@@ -4132,7 +4210,22 @@ function saveIngredient(){
   if(!name){showToast('Escribe el nombre','red');return;}
   if(editIngId){
     const idx=ingredients.findIndex(i=>i.id===editIngId);
-    if(idx>=0)ingredients[idx]={...ingredients[idx],name,unit,buyUnit,conversion,stock,alertAt};
+    if(idx>=0){
+      const old=ingredients[idx];
+      // Apply cost correction if provided
+      const newCost=parseFloat(document.getElementById('ing-m-cost')?.value)||0;
+      let costPerUnit=old.costPerUnit;
+      let totalCostPaid=old.totalCostPaid||0;
+      let totalQtyBought=old.totalQtyBought||0;
+      if(newCost>0&&newCost!==old.costPerUnit){
+        costPerUnit=newCost;
+        // Recalculate totalCostPaid to be consistent with new price × existing qty
+        totalCostPaid=newCost*(old.totalQtyBought||old.stock||1);
+        totalQtyBought=old.totalQtyBought||old.stock||1;
+        logInvHistory('ajuste',`${name} — precio corregido a $${newCost.toFixed(4)}/${unit}`);
+      }
+      ingredients[idx]={...old,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit,totalCostPaid,totalQtyBought};
+    }
     logInvHistory('ajuste',`${name} editado`);
   } else {
     ingredients.push({id:'ing_'+Date.now(),name,unit,buyUnit,conversion,stock,alertAt,costPerUnit:0,totalCostPaid:0,totalQtyBought:0});
@@ -4273,16 +4366,31 @@ function registerOutput(){
   const ing=ingredients[idx];
   const cfg=outTypeCfg[type]||outTypeCfg.otro;
 
+  const prevStock=ing.stock;
   ing.stock=parseFloat(Math.max(0,ing.stock-qty).toFixed(3));
+
+  // Error/Prueba: revert cost proportionally so finances stay clean
+  let reversedCost=0;
+  if((type==='error'||type==='prueba')&&ing.costPerUnit>0&&(ing.totalQtyBought||0)>0){
+    reversedCost=parseFloat((ing.costPerUnit*qty).toFixed(2));
+    ing.totalQtyBought=parseFloat(Math.max(0,(ing.totalQtyBought||0)-qty).toFixed(3));
+    ing.totalCostPaid=parseFloat(Math.max(0,(ing.totalCostPaid||0)-reversedCost).toFixed(2));
+    // Recalculate costPerUnit — if no qty left, keep last price
+    if(ing.totalQtyBought>0){
+      ing.costPerUnit=ing.totalCostPaid/ing.totalQtyBought;
+    }
+  }
+
   fbSaveIngredients();
 
+  const reversedNote=reversedCost>0?` — $${reversedCost.toFixed(2)} revertido del gasto`:'';
   const desc=`${cfg.label} — ${qty} ${ing.unit} de ${ing.name}${note?' ('+note+')':''}`;
-  // Merma counts as real loss; others don't affect finances
-  logInvHistory('salida',desc,{ingId,qty,unit:ing.unit,outType:type,countAsLoss:type==='merma'});
+  logInvHistory('salida',desc,{ingId,qty,unit:ing.unit,outType:type,countAsLoss:type==='merma',reversedCost});
+  if(reversedCost>0) logInvHistory('ajuste',`Costo revertido${reversedNote} por ${cfg.label} de ${ing.name}`,{ingId,reversedCost});
   document.getElementById('inv-out-qty').value='';
   document.getElementById('inv-out-note').value='';
-  onOutIngChange(); // refresh stock display
-  showToast(desc,'green');
+  onOutIngChange();
+  showToast(desc+(reversedCost>0?` · -$${reversedCost.toFixed(2)} revertido`:''),'green');
 }
 
 function registerEntry(){
@@ -4906,22 +5014,42 @@ function renderGeneralRecipeList(){
   if(!generalRecipe.length){el.innerHTML='<div class="admin-empty" style="padding:8px 0">Sin consumo configurado</div>';return;}
   el.innerHTML=generalRecipe.map(r=>{
     const ing=ingredients.find(i=>i.id===r.ingId);if(!ing)return '';
-    const costStr=ing.costPerUnit>0?` ≈$${(ing.costPerUnit*r.qty).toFixed(3)}/venta`:'';
-    const aplicaStr=r.productIds&&r.productIds.length
-      ? r.productIds.map(pid=>{const p=products.find(x=>x.id==pid);return p?p.name:''}).filter(Boolean).join(', ')
-      : 'Todos los productos';
-    return `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:8px">
+    const mults=r.productMultipliers||{};
+    const hasProducts=Object.keys(mults).length>0;
+    const costStr=ing.costPerUnit>0?` ≈$${(ing.costPerUnit*r.qty).toFixed(3)}/base`:'';
+
+    let aplicaStr;
+    if(!hasProducts){
+      aplicaStr='<span style="color:var(--text3)">Todos los productos × 1</span>';
+    } else {
+      aplicaStr=Object.entries(mults).map(([pid,mult])=>{
+        const p=products.find(x=>String(x.id)===String(pid));
+        if(!p)return '';
+        const total=(r.qty*mult).toFixed(r.qty*mult%1?2:0);
+        return `<span style="font-size:11px;background:rgba(42,184,184,.08);border:1px solid rgba(42,184,184,.2);border-radius:6px;padding:2px 7px;color:#2ab8b8">${p.name} ×${mult} = ${total}${ing.unit}</span>`;
+      }).filter(Boolean).join(' ');
+    }
+
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
         <span style="font-size:16px">${ingEmoji(ing.name)}</span>
-        <span style="font-size:13px;color:var(--text2);flex:1">${ing.name} — <strong style="color:#2ab8b8">${r.qty} ${ing.unit}</strong>${costStr}</span>
+        <span style="font-size:13px;color:var(--text2);flex:1">${ing.name} — <strong style="color:#2ab8b8">${r.qty} ${ing.unit} base</strong>${costStr}</span>
       </div>
-      <div style="font-size:11px;color:var(--text4);margin-top:2px;padding-left:26px">Aplica a: ${aplicaStr}</div>
+      <div style="padding-left:26px;display:flex;flex-wrap:wrap;gap:4px">${aplicaStr}</div>
     </div>`;
   }).filter(Boolean).join('');
 }
 
 function openGeneralRecipeModal(){
-  generalRecipeRows=[...generalRecipe.map(r=>({...r,productIds:[...(r.productIds||[])]}) )];
+  // Migrate legacy productIds to productMultipliers if needed
+  generalRecipeRows=generalRecipe.map(r=>{
+    const mults={...(r.productMultipliers||{})};
+    // Migrate old productIds array → multipliers (default ×1)
+    if(r.productIds&&r.productIds.length&&!Object.keys(mults).length){
+      r.productIds.forEach(pid=>{ mults[String(pid)]=1; });
+    }
+    return {...r, productMultipliers:mults};
+  });
   renderGeneralRecipeModalRows();
   document.getElementById('general-recipe-modal').classList.remove('hidden');
 }
@@ -4934,24 +5062,25 @@ function renderGeneralRecipeModalRows(){
   el.innerHTML='';
   generalRecipeRows.forEach((r,i)=>{
     const ing=ingredients.find(x=>x.id===r.ingId);
+    const mults=r.productMultipliers||{};
     const wrap=document.createElement('div');
-    wrap.style.cssText='background:var(--bg3);border-radius:10px;padding:10px;margin-bottom:10px';
+    wrap.style.cssText='background:var(--bg3);border-radius:10px;padding:10px;margin-bottom:12px';
 
-    // Row 1: ingredient + qty
+    // Row 1: ingredient + base qty
     const row1=document.createElement('div');
-    row1.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px';
+    row1.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px';
     row1.innerHTML=`
       <span style="font-size:18px;flex-shrink:0" id="gr-emoji-${i}">${ing?ingEmoji(ing.name):'📦'}</span>
       <select style="flex:2;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
         <option value="">Ingrediente</option>
         ${ingredients.map(x=>`<option value="${x.id}" ${r.ingId===x.id?'selected':''}>${x.name} (${x.unit})</option>`).join('')}
       </select>
-      <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="Cant." style="width:66px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
+      <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="Cant. base" style="width:80px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
       <span style="font-size:11px;color:var(--text3);min-width:24px;flex-shrink:0" id="gr-unit-${i}">${ing?ing.unit:''}</span>
       <button style="background:transparent;border:none;color:var(--red);font-size:17px;cursor:pointer;flex-shrink:0">✕</button>
     `;
     const sel=row1.querySelector('select');
-    const qty=row1.querySelector('input');
+    const qty=row1.querySelector('input[type=number]');
     const rm=row1.querySelector('button');
     sel.onchange=()=>{
       generalRecipeRows[i].ingId=sel.value;
@@ -4959,34 +5088,93 @@ function renderGeneralRecipeModalRows(){
       document.getElementById(`gr-unit-${i}`).textContent=ng?ng.unit:'';
       document.getElementById(`gr-emoji-${i}`).textContent=ng?ingEmoji(ng.name):'📦';
     };
-    qty.oninput=()=>{generalRecipeRows[i].qty=parseFloat(qty.value)||0;};
+    qty.oninput=()=>{generalRecipeRows[i].qty=parseFloat(qty.value)||0; refreshMultiplierPreviews(wrap,i);};
     rm.onclick=()=>{generalRecipeRows.splice(i,1);renderGeneralRecipeModalRows();};
     wrap.appendChild(row1);
 
-    // Row 2: product selector
-    const row2=document.createElement('div');
-    row2.innerHTML=`<div style="font-size:11px;color:var(--text4);margin-bottom:6px">Aplica a (deja vacío = todos):</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">
-      ${products.map(p=>{
-        const checked=(r.productIds||[]).includes(String(p.id))||(r.productIds||[]).includes(p.id);
-        return `<label style="display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:12px;color:var(--text2)">
-          <input type="checkbox" value="${p.id}" ${checked?'checked':''} style="accent-color:#2ab8b8"/> ${p.name}
-        </label>`;
-      }).join('')}
-    </div>`;
-    row2.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    // Row 2: header for product multipliers
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-size:11px;color:var(--text4);margin-bottom:8px;line-height:1.5';
+    hdr.innerHTML=`Aplica a · <span style="color:#2ab8b8">✓ = activo</span> · <strong style="color:var(--text2)">Multiplicador</strong> = cuántas veces la cantidad base se descuenta por venta`;
+    wrap.appendChild(hdr);
+
+    // Row 3: product list with checkbox + multiplier
+    const grid=document.createElement('div');
+    grid.style.cssText='display:flex;flex-direction:column;gap:6px';
+    products.forEach(p=>{
+      const pid=String(p.id);
+      const isActive=Object.prototype.hasOwnProperty.call(mults,pid);
+      const mult=mults[pid]||1;
+      const baseQty=r.qty||0;
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:8px;padding:7px 10px';
+      row.innerHTML=`
+        <input type="checkbox" ${isActive?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0" data-pid="${pid}"/>
+        <span style="font-size:12px;color:var(--text2);flex:1">${p.name}</span>
+        <span style="font-size:10px;color:var(--text4);flex-shrink:0">×</span>
+        <input type="number" inputmode="decimal" value="${mult}" min="0.1" step="0.5"
+          style="width:54px;flex-shrink:0;background:var(--bg3);color:${isActive?'#2ab8b8':'var(--text4)'};border:1.5px solid ${isActive?'rgba(42,184,184,.4)':'var(--border2)'};border-radius:7px;padding:5px 6px;font-size:12px;outline:none;text-align:center;opacity:${isActive?'1':'0.4'}"
+          ${isActive?'':'disabled'} data-mult="${pid}"/>
+        <span style="font-size:10px;color:${isActive?'#2ab8b8':'var(--text4)'};min-width:60px;flex-shrink:0" data-preview="${pid}">
+          ${isActive?`= ${(baseQty*mult).toFixed(baseQty*mult%1?2:0)} ${ing?ing.unit:''}`:'-'}
+        </span>
+      `;
+      const cb=row.querySelector('input[type=checkbox]');
+      const multInput=row.querySelector(`input[data-mult="${pid}"]`);
+      const preview=row.querySelector(`[data-preview="${pid}"]`);
+
       cb.onchange=()=>{
-        const boxes=wrap.querySelectorAll('input[type=checkbox]:checked');
-        generalRecipeRows[i].productIds=Array.from(boxes).map(b=>String(b.value));
+        if(cb.checked){
+          generalRecipeRows[i].productMultipliers[pid]=parseFloat(multInput.value)||1;
+          multInput.disabled=false;
+          multInput.style.opacity='1';
+          multInput.style.color='#2ab8b8';
+          multInput.style.borderColor='rgba(42,184,184,.4)';
+          preview.style.color='#2ab8b8';
+          preview.textContent=`= ${((generalRecipeRows[i].qty||0)*parseFloat(multInput.value||1)).toFixed(2)} ${ing?ing.unit:''}`;
+        } else {
+          delete generalRecipeRows[i].productMultipliers[pid];
+          multInput.disabled=true;
+          multInput.style.opacity='0.4';
+          multInput.style.color='var(--text4)';
+          multInput.style.borderColor='var(--border2)';
+          preview.style.color='var(--text4)';
+          preview.textContent='-';
+        }
       };
+      multInput.oninput=()=>{
+        const v=parseFloat(multInput.value)||1;
+        generalRecipeRows[i].productMultipliers[pid]=v;
+        preview.textContent=`= ${((generalRecipeRows[i].qty||0)*v).toFixed(2)} ${ing?ing.unit:''}`;
+      };
+      grid.appendChild(row);
     });
-    wrap.appendChild(row2);
+    wrap.appendChild(grid);
     el.appendChild(wrap);
   });
 }
-function addGeneralRecipeRow(){generalRecipeRows.push({ingId:'',qty:0,productIds:[]});renderGeneralRecipeModalRows();}
+
+function refreshMultiplierPreviews(wrap,i){
+  const r=generalRecipeRows[i];
+  const ing=ingredients.find(x=>x.id===r.ingId);
+  wrap.querySelectorAll('[data-preview]').forEach(el=>{
+    const pid=el.getAttribute('data-preview');
+    const mult=r.productMultipliers?.[pid];
+    if(mult!=null) el.textContent=`= ${((r.qty||0)*mult).toFixed(2)} ${ing?ing.unit:''}`;
+  });
+}
+function addGeneralRecipeRow(){generalRecipeRows.push({ingId:'',qty:0,productMultipliers:{}});renderGeneralRecipeModalRows();}
 function saveGeneralRecipe(){
-  generalRecipe=generalRecipeRows.filter(r=>r.ingId&&r.qty>0);
+  // Clean up: keep only rows with a valid ingredient
+  generalRecipe=generalRecipeRows
+    .filter(r=>r.ingId&&r.qty>0)
+    .map(r=>({
+      ingId:r.ingId,
+      qty:r.qty,
+      productMultipliers:r.productMultipliers||{},
+      // Keep productIds for backwards compat (derived from multipliers keys)
+      productIds:Object.keys(r.productMultipliers||{})
+    }));
   fbSaveGeneralRecipe();
   closeGeneralRecipeModal();
   renderGeneralRecipeList();
@@ -5025,13 +5213,24 @@ function descontarInventario(items){
       changed=true;
     });
 
-    // Conditional general recipe — compare pid as both string and number
+    // Conditional general recipe with multipliers
     generalRecipe.forEach(r=>{
-      const pids=r.productIds||[];
-      const applies=pids.length===0||pids.includes(String(pid))||pids.includes(pid)||pids.includes(Number(pid));
-      if(!applies)return;
+      const mults=r.productMultipliers||{};
+      const hasAnyProduct=Object.keys(mults).length>0;
+      // If no products defined → applies to all with ×1
+      // If products defined → only apply to matching ones with their multiplier
+      let multiplier=null;
+      if(!hasAnyProduct){
+        multiplier=1;
+      } else {
+        if(mults[String(pid)]!=null) multiplier=mults[String(pid)];
+        else if(mults[pid]!=null) multiplier=mults[pid];
+        else if(mults[Number(pid)]!=null) multiplier=mults[Number(pid)];
+      }
+      if(multiplier==null)return;
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-r.qty*it.qty).toFixed(3));
+      const consumo=r.qty*multiplier*it.qty;
+      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-consumo).toFixed(3));
       changed=true;
     });
   });
