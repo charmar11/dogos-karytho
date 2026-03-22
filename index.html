@@ -1942,13 +1942,40 @@ body{
   <!-- ── STOCK ── -->
   <div class="inv-tab-view active" id="inv-tab-stock">
     <div id="inv-alerts"></div>
-    <div class="admin-stat-grid" style="margin-bottom:16px">
+    <div class="admin-stat-grid" style="margin-bottom:12px">
       <div class="inv-stat"><div class="inv-stat-lbl">Ingredientes</div><div class="inv-stat-val" id="inv-stat-ing">0</div><div class="inv-stat-sub">registrados</div></div>
       <div class="inv-stat"><div class="inv-stat-lbl">Stock bajo</div><div class="inv-stat-val" id="inv-stat-low" style="color:var(--gold)">0</div><div class="inv-stat-sub">necesitan restock</div></div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <button class="btn-ing teal" onclick="openAddIngredient()" style="font-size:13px;padding:10px 16px">+ Agregar ingrediente</button>
+
+    <!-- Sort + Filter bar -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <select id="inv-stock-sort" onchange="renderInvStock()" style="width:100%;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:9px 10px;font-size:12px;outline:none">
+          <option value="name-az">Nombre A→Z</option>
+          <option value="name-za">Nombre Z→A</option>
+          <option value="stock-desc">Mayor cantidad</option>
+          <option value="stock-asc">Menor cantidad</option>
+          <option value="alert">⚠️ Stock bajo primero</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:120px">
+        <select id="inv-stock-unit-filter" onchange="renderInvStock()" style="width:100%;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:9px 10px;font-size:12px;outline:none">
+          <option value="">Todas las unidades</option>
+          <option value="pza">pza</option>
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="l">l</option>
+          <option value="ml">ml</option>
+          <option value="bolsa">bolsa</option>
+          <option value="paquete">paquete</option>
+          <option value="caja">caja</option>
+          <option value="lata">lata</option>
+          <option value="sobre">sobre</option>
+        </select>
+      </div>
+      <button class="btn-ing teal" onclick="openAddIngredient()" style="font-size:13px;padding:9px 14px;white-space:nowrap">+ Agregar</button>
     </div>
+
     <div id="inv-ingredients-list"><div class="admin-empty">Sin ingredientes. Agrega uno arriba.</div></div>
   </div>
 
@@ -2023,20 +2050,6 @@ body{
       <input class="form-input" id="inv-out-note" placeholder="Ej: Se cayó, se venció, etc"/>
       <button class="btn-primary" style="background:linear-gradient(135deg,#3a1515,#2a1010);margin-top:8px;border:1px solid rgba(224,32,32,.3)" onclick="registerOutput()">📤 Registrar salida</button>
     </div>
-
-    <div class="sec-label">Ajuste manual de stock</div>
-    <div class="form-card" style="margin-bottom:16px">
-      <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Corrige el stock a una cantidad exacta después de un conteo físico.</div>
-      <label class="form-lbl">Ingrediente</label>
-      <select class="form-input" id="inv-adj-ing" style="background:var(--bg3);color:var(--text)">
-        <option value="">Selecciona un ingrediente</option>
-      </select>
-      <label class="form-lbl">Nueva cantidad actual</label>
-      <input class="form-input" id="inv-adj-qty" type="number" inputmode="decimal" placeholder="0"/>
-      <label class="form-lbl">Razón</label>
-      <input class="form-input" id="inv-adj-note" placeholder="Ej: Conteo físico, corrección"/>
-      <button class="btn-secondary" style="margin-top:8px" onclick="registerAdjust()">⚖️ Aplicar ajuste</button>
-    </div>
   </div>
 
   <!-- ── RECETAS ── -->
@@ -2071,8 +2084,8 @@ body{
 
     <!-- Bloque 0: Gasto REAL vs Ingresos REALES -->
     <div class="sec-label" style="margin-top:0">💰 Gasto real vs Ingresos reales</div>
-    <div style="font-size:11px;color:var(--text4);margin-bottom:10px">Solo números reales — lo que pagaste comprando vs lo que entraste vendiendo</div>
-    <div class="admin-stat-grid" style="margin-bottom:6px">
+    <div style="font-size:11px;color:var(--text4);margin-bottom:10px">Lo que pagaste comprando vs lo que entraste vendiendo. El desglose lo ves en Historial → Compras.</div>
+    <div class="admin-stat-grid" style="margin-bottom:16px">
       <div class="inv-stat"><div class="inv-stat-lbl">Vendiste</div><div class="inv-stat-val" id="inv-r-ingresos">$0</div><div class="inv-stat-sub" id="inv-r-periodo">Hoy</div></div>
       <div class="inv-stat"><div class="inv-stat-lbl">Compraste</div><div class="inv-stat-val" id="inv-r-gasto" style="color:#f57474">$0</div><div class="inv-stat-sub">en ingredientes</div></div>
       <div class="inv-stat" style="grid-column:1/-1">
@@ -2080,9 +2093,6 @@ body{
         <div class="inv-stat-val" id="inv-r-dif" style="font-size:28px">$0</div>
         <div class="inv-stat-sub" id="inv-r-nota" style="line-height:1.6"></div>
       </div>
-    </div>
-    <div class="form-card" style="padding:10px 14px;margin-bottom:16px">
-      <div id="inv-r-compras-detalle"><div class="admin-empty" style="padding:6px 0">Sin compras en este periodo</div></div>
     </div>
 
     <!-- Bloque 2: Costos estimados por recetas -->
@@ -2106,6 +2116,21 @@ body{
 
     <!-- Bloque 4: Costo unitario de ingredientes -->
     <div class="sec-label">🏷️ Precio promedio por ingrediente</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <select id="inv-cost-ing-sort" onchange="renderInvCostos()" style="flex:1;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;outline:none">
+        <option value="name">Nombre A→Z</option>
+        <option value="price-desc">Precio mayor</option>
+        <option value="price-asc">Precio menor</option>
+        <option value="stock-desc">Mayor stock</option>
+        <option value="stock-asc">Menor stock</option>
+      </select>
+      <select id="inv-cost-ing-unit" onchange="renderInvCostos()" style="flex:1;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;outline:none">
+        <option value="">Todas las unidades</option>
+        <option value="pza">pza</option><option value="kg">kg</option><option value="g">g</option>
+        <option value="l">l</option><option value="ml">ml</option><option value="bolsa">bolsa</option>
+        <option value="paquete">paquete</option><option value="lata">lata</option>
+      </select>
+    </div>
     <div class="form-card" style="padding:10px 14px">
       <div id="inv-cost-per-ing"><div class="admin-empty">Sin compras registradas aun</div></div>
     </div>
@@ -2113,13 +2138,23 @@ body{
 
   <!-- ── HISTORIAL ── -->
   <div class="inv-tab-view" id="inv-tab-historial">
-    <div class="log-filters" style="margin-bottom:12px">
-      <button class="log-filter-btn active" onclick="setInvHistFilter('todo')">Todo</button>
-      <button class="log-filter-btn f-venta" onclick="setInvHistFilter('entrada')">📥 Compras</button>
-      <button class="log-filter-btn f-eliminar" onclick="setInvHistFilter('salida')">📤 Salidas</button>
-      <button class="log-filter-btn f-eliminar" onclick="setInvHistFilter('consumo')">🍽️ Ventas</button>
-      <button class="log-filter-btn f-producto" onclick="setInvHistFilter('ajuste')">⚖️ Ajustes</button>
+    <!-- Period selector -->
+    <div class="admin-range-row" style="margin-bottom:10px">
+      <button class="admin-range-btn active" onclick="setInvHistPeriod('hoy')">Hoy</button>
+      <button class="admin-range-btn" onclick="setInvHistPeriod('semana')">Semana</button>
+      <button class="admin-range-btn" onclick="setInvHistPeriod('mes')">Mes</button>
+      <button class="admin-range-btn" onclick="setInvHistPeriod('todo')">Todo</button>
     </div>
+    <!-- Type filter — scrollable row -->
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:10px;-webkit-overflow-scrolling:touch">
+      <button class="log-filter-btn active" onclick="setInvHistFilter('todo')" style="flex-shrink:0">Todo</button>
+      <button class="log-filter-btn" onclick="setInvHistFilter('entrada')" style="flex-shrink:0;border-color:rgba(224,32,32,.3);color:#f57474">📥 Compras</button>
+      <button class="log-filter-btn" onclick="setInvHistFilter('salida')" style="flex-shrink:0;border-color:rgba(245,200,0,.3);color:#F5C800">📤 Salidas</button>
+      <button class="log-filter-btn" onclick="setInvHistFilter('consumo')" style="flex-shrink:0;border-color:rgba(224,32,32,.3);color:#f57474">🍽️ Ventas</button>
+      <button class="log-filter-btn" onclick="setInvHistFilter('ajuste')" style="flex-shrink:0;border-color:rgba(100,100,100,.3);color:var(--text3)">⚖️ Ajustes</button>
+    </div>
+    <!-- Summary bar -->
+    <div id="inv-hist-summary" style="font-size:11px;color:var(--text3);margin-bottom:10px;padding:8px 12px;background:var(--bg2);border-radius:8px;min-height:32px"></div>
     <div id="inv-history-list"><div class="admin-empty">Sin movimientos registrados</div></div>
   </div>
 </div>
@@ -3849,6 +3884,7 @@ let recipes={};       // {productId: [{ingId, qty}]}
 let generalRecipe=[]; // [{ingId, qty}] — consumed on every item sold
 let invHistory=[];    // movimientos
 let invHistFilter='todo';
+let invHistPeriod='todo';
 let invCostoPeriod='hoy';
 let editIngId=null;
 let recipeProductId=null;
@@ -3971,21 +4007,41 @@ function renderInvStock(){
   const statIng=document.getElementById('inv-stat-ing');
   const statLow=document.getElementById('inv-stat-low');
   if(!list)return;
+
+  const sortVal=document.getElementById('inv-stock-sort')?.value||'name-az';
+  const unitFilter=document.getElementById('inv-stock-unit-filter')?.value||'';
+
   const low=ingredients.filter(i=>i.stock<=i.alertAt);
   if(statIng)statIng.textContent=ingredients.length;
   if(statLow)statLow.textContent=low.length;
-  // Alerts banner
-  if(alerts){
-    alerts.innerHTML=low.map(i=>`<div class="low-alert">⚠️ ${i.name} — quedan ${i.stock} ${i.unit}</div>`).join('');
-  }
+  if(alerts) alerts.innerHTML=low.map(i=>`<div class="low-alert">⚠️ ${i.name} — quedan ${i.stock} ${i.unit}</div>`).join('');
+
   if(!ingredients.length){list.innerHTML='<div class="admin-empty">Sin ingredientes registrados aun</div>';return;}
-  list.innerHTML=ingredients.map((ing,idx)=>{
-    const pct=ing.alertAt>0?ing.stock/ing.alertAt:1;
+
+  // Filter by unit
+  let filtered=unitFilter?ingredients.filter(i=>i.unit===unitFilter):[...ingredients];
+
+  // Sort
+  filtered.sort((a,b)=>{
+    if(sortVal==='name-az') return a.name.localeCompare(b.name,'es');
+    if(sortVal==='name-za') return b.name.localeCompare(a.name,'es');
+    if(sortVal==='stock-desc') return b.stock-a.stock;
+    if(sortVal==='stock-asc') return a.stock-b.stock;
+    if(sortVal==='alert'){
+      const aLow=a.stock<=a.alertAt;const bLow=b.stock<=b.alertAt;
+      if(aLow&&!bLow)return -1;if(!aLow&&bLow)return 1;
+      return a.stock-b.stock;
+    }
+    return 0;
+  });
+
+  if(!filtered.length){list.innerHTML=`<div class="admin-empty">Sin ingredientes con unidad "${unitFilter}"</div>`;return;}
+
+  list.innerHTML=filtered.map((ing,idx)=>{
     const cls=ing.stock<=0?'out':ing.stock<=ing.alertAt?'low':'ok';
-    const convStr=ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1
-      ? ` &nbsp;·&nbsp; 1 ${ing.buyUnit} = ${ing.conversion} ${ing.unit}` : '';
+    const convStr=ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1?` &nbsp;·&nbsp; 1 ${ing.buyUnit} = ${ing.conversion} ${ing.unit}`:'';
     const costStr=ing.costPerUnit>0?`$${ing.costPerUnit.toFixed(2)}/${ing.unit}`:'Sin costo aun';
-    return `<div class="ing-card" style="animation-delay:${idx*.04}s">
+    return `<div class="ing-card" style="animation-delay:${idx*.03}s">
       <div class="ing-icon">${ingEmoji(ing.name)}</div>
       <div class="ing-info">
         <div class="ing-name">${ing.name}</div>
@@ -4080,7 +4136,7 @@ function saveIngredient(){
     logInvHistory('ajuste',`${name} editado`);
   } else {
     ingredients.push({id:'ing_'+Date.now(),name,unit,buyUnit,conversion,stock,alertAt,costPerUnit:0,totalCostPaid:0,totalQtyBought:0});
-    logInvHistory('entrada',`${name} agregado — stock inicial: ${stock} ${unit}`);
+    logInvHistory('ajuste',`Ingrediente "${name}" creado — stock inicial: ${stock} ${unit}`);
   }
   fbSaveIngredients();
   closeIngModal();
@@ -4189,12 +4245,6 @@ function renderInvOutputSelects(){
   sel.innerHTML='<option value="">Selecciona un ingrediente</option>'+
     ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.stock} ${i.unit})</option>`).join('');
   if(cur)sel.value=cur;
-  // Also refresh adj select
-  const adj=document.getElementById('inv-adj-ing');if(!adj)return;
-  const curAdj=adj.value;
-  adj.innerHTML='<option value="">Selecciona un ingrediente</option>'+
-    ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.stock} ${i.unit})</option>`).join('');
-  if(curAdj)adj.value=curAdj;
 }
 
 function onOutIngChange(){
@@ -4508,17 +4558,13 @@ function renderInvCostos(){
   // ── Bloque 0: Gasto REAL vs Ingresos REALES ──
   const lbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico'}[invCostoPeriod];
   let gastoReal=0;
-  const comprasPeriodo=[];
-  invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType!=='prueba'&&h.data?.entryType!=='error').forEach(h=>{
+  invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real').forEach(h=>{
     const inPeriod=
       invCostoPeriod==='hoy'?h.date===today:
       invCostoPeriod==='semana'?isSameWeek(h.ts):
       invCostoPeriod==='mes'?isSameMonth(h.ts):true;
     if(!inPeriod)return;
-    const cost=h.data?.cost||0;
-    if(!cost)return;
-    gastoReal+=cost;
-    comprasPeriodo.push({desc:h.desc,cost});
+    gastoReal+=h.data?.cost||0;
   });
   const ingresosR=ps.reduce((s,v)=>s+v.total,0);
   const difReal=ingresosR-gastoReal;
@@ -4527,21 +4573,15 @@ function renderInvCostos(){
   const rGasto=document.getElementById('inv-r-gasto');
   const rDif=document.getElementById('inv-r-dif');
   const rNota=document.getElementById('inv-r-nota');
-  const rDet=document.getElementById('inv-r-compras-detalle');
   const rPer=document.getElementById('inv-r-periodo');
   if(rIng)rIng.textContent='$'+ingresosR.toFixed(2);
   if(rGasto)rGasto.textContent='$'+gastoReal.toFixed(2);
   if(rDif){rDif.textContent='$'+difReal.toFixed(2);rDif.style.color=difReal>=0?'#2ab8b8':'#E02020';}
   if(rPer)rPer.textContent=lbl;
   if(rNota)rNota.innerHTML=gastoReal===0
-    ?'Sin compras registradas en este periodo. Registra entradas para ver el gasto real.'
-    :`Vendiste $${ingresosR.toFixed(2)} y gastaste $${gastoReal.toFixed(2)} comprando. ${difReal>=0?'Vas positivo ✅':'Gastaste más de lo que vendiste ⚠️'}`;
-  if(rDet){
-    rDet.innerHTML=comprasPeriodo.length
-      ?comprasPeriodo.map(c=>`<div class="inv-recipe-row"><div class="inv-recipe-name" style="font-size:12px">${c.desc}</div><div style="color:#f57474;font-weight:700;font-size:13px">-$${c.cost.toFixed(2)}</div></div>`).join('')
-      :'<div class="admin-empty" style="padding:6px 0">Sin compras en este periodo</div>';
-  }
-  const ingresos=ps.reduce((s,v)=>s+v.total,0);
+    ?'Sin compras en este periodo. Ve a Historial → Compras para el desglose.'
+    :`${difReal>=0?'✅ Vas positivo':'⚠️ Más gasto que venta'} · Ver desglose en Historial → Compras`;
+  const ingresos=ingresosR;
   let costoTotal=0;
   const costByProd={};
   ps.forEach(s=>s.items.forEach(it=>{
@@ -4603,16 +4643,32 @@ function renderInvCostos(){
     }).join('');
   }
 
-  // ── Bloque 4: Costo por ingrediente ──
+  // ── Bloque 4: Costo por ingrediente con sort/filter ──
   const elIng=document.getElementById('inv-cost-per-ing');
-  const withCost=ingredients.filter(i=>i.costPerUnit>0);
+  const ingSort=document.getElementById('inv-cost-ing-sort')?.value||'name';
+  const ingUnit=document.getElementById('inv-cost-ing-unit')?.value||'';
+  let withCost=ingredients.filter(i=>i.costPerUnit>0);
+  if(ingUnit) withCost=withCost.filter(i=>i.unit===ingUnit);
+  withCost.sort((a,b)=>{
+    if(ingSort==='name') return a.name.localeCompare(b.name,'es');
+    if(ingSort==='price-desc') return b.costPerUnit-a.costPerUnit;
+    if(ingSort==='price-asc') return a.costPerUnit-b.costPerUnit;
+    if(ingSort==='stock-desc') return b.stock-a.stock;
+    if(ingSort==='stock-asc') return a.stock-b.stock;
+    return 0;
+  });
   if(!withCost.length){
     elIng.innerHTML='<div class="admin-empty">Sin compras registradas aun</div>';
   } else {
     elIng.innerHTML=withCost.map(ing=>`
       <div class="inv-recipe-row">
-        <div class="inv-recipe-name">${ing.name}</div>
-        <div style="font-size:11px;color:var(--text3);flex:1">${ing.stock} ${ing.unit} en stock</div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span style="font-size:16px">${ingEmoji(ing.name)}</span>
+          <div style="min-width:0">
+            <div class="inv-recipe-name">${ing.name}</div>
+            <div style="font-size:10px;color:var(--text4)">${ing.stock} ${ing.unit} en stock</div>
+          </div>
+        </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:13px;font-weight:800;color:#2ab8b8">$${ing.costPerUnit.toFixed(2)}/${ing.unit}</div>
           ${ing.buyUnit&&ing.buyUnit!==ing.unit?`<div style="font-size:10px;color:var(--text3)">$${((ing.costPerUnit||0)*(ing.conversion||1)).toFixed(2)}/${ing.buyUnit}</div>`:''}
@@ -4624,10 +4680,84 @@ function renderInvCostos(){
 /* ── HISTORIAL ── */
 function setInvHistFilter(f){
   invHistFilter=f;
-  document.querySelectorAll('#inv-tab-historial .log-filter-btn').forEach((b,i)=>{
-    b.classList.toggle('active',['todo','entrada','consumo','ajuste'][i]===f);
-  });
+  document.querySelectorAll('#inv-tab-historial .log-filter-btn').forEach(b=>b.classList.remove('active'));
+  const idx=['todo','entrada','salida','consumo','ajuste'].indexOf(f);
+  const btns=document.querySelectorAll('#inv-tab-historial .log-filter-btn');
+  if(btns[idx])btns[idx].classList.add('active');
   renderInvHistory();
+}
+
+function setInvHistPeriod(p){
+  invHistPeriod=p;
+  document.querySelectorAll('#inv-tab-historial .admin-range-btn').forEach((b,i)=>
+    b.classList.toggle('active',['hoy','semana','mes','todo'][i]===p));
+  renderInvHistory();
+}
+
+function filterHistByPeriod(data){
+  const today=toDateKey(new Date());
+  if(invHistPeriod==='hoy') return data.filter(h=>h.date===today);
+  if(invHistPeriod==='semana') return data.filter(h=>isSameWeek(h.ts));
+  if(invHistPeriod==='mes') return data.filter(h=>isSameMonth(h.ts));
+  return data;
+}
+
+function renderInvHistory(){
+  const el=document.getElementById('inv-history-list');if(!el)return;
+  const summaryEl=document.getElementById('inv-hist-summary');
+
+  // Filter by type
+  let data=invHistory;
+  if(invHistFilter==='entrada'){
+    // Only real purchases — exclude ingredient-created logs and non-real entries
+    data=invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&h.data?.cost>0);
+  } else if(invHistFilter!=='todo'){
+    data=invHistory.filter(h=>h.type===invHistFilter);
+  }
+  // Filter by period
+  data=filterHistByPeriod(data);
+
+  // Summary bar
+  if(summaryEl){
+    const total=data.length;
+    if(invHistFilter==='entrada'){
+      const totalGasto=data.reduce((s,h)=>s+(h.data?.cost||0),0);
+      summaryEl.innerHTML=`${total} compra${total!==1?'s':''} · <span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span> gastados`;
+    } else if(invHistFilter==='salida'){
+      summaryEl.innerHTML=`${total} salida${total!==1?'s':''} registrada${total!==1?'s':''}`;
+    } else if(invHistFilter==='consumo'){
+      summaryEl.innerHTML=`${total} consumo${total!==1?'s':''} por venta`;
+    } else {
+      summaryEl.innerHTML=`${total} movimiento${total!==1?'s':''} en este periodo`;
+    }
+  }
+
+  if(!data.length){el.innerHTML='<div class="admin-empty">Sin movimientos en este filtro y periodo</div>';return;}
+
+  const cfgMap={
+    entrada:{icon:'📥',color:'#f57474',bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.4)'},
+    salida: {icon:'📤',color:'#F5C800',bg:'rgba(245,200,0,.06)',border:'rgba(245,200,0,.3)'},
+    consumo:{icon:'🍽️',color:'#f57474',bg:'rgba(224,32,32,.06)',border:'rgba(224,32,32,.3)'},
+    ajuste: {icon:'⚖️',color:'var(--text3)',bg:'var(--bg2)',border:'var(--border2)'},
+  };
+
+  el.innerHTML=data.slice(0,150).map((h,i)=>{
+    let c=cfgMap[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'};
+    // Salidas that don't count: show gold; merma shows red
+    if(h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'){
+      c={...c,bg:'rgba(245,200,0,.06)',border:'rgba(245,200,0,.3)',color:'#F5C800'};
+    } else if(h.type==='salida'){
+      c={...c,bg:'rgba(224,32,32,.07)',border:'rgba(224,32,32,.35)',color:'#f57474'};
+    }
+    const costTag=h.data?.cost&&h.data.cost>0
+      ?`<span style="margin-left:8px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(224,32,32,.15);color:#f57474">-$${h.data.cost.toFixed(2)}</span>`:'' ;
+    const noCountBadge=h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'
+      ?`<span style="margin-left:6px;padding:2px 5px;border-radius:5px;font-size:10px;background:rgba(245,200,0,.15);color:#F5C800">no afecta finanzas</span>`:'';
+    return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:7px;animation:fadeSlide .12s ease both;animation-delay:${Math.min(i,.1)*0.025}s">
+      <div style="font-size:10px;color:var(--text4);margin-bottom:2px">${h.date} · ${h.time} · ${h.user}</div>
+      <div style="font-size:13px;font-weight:600;color:${c.color}">${c.icon} ${h.desc}${costTag}${noCountBadge}</div>
+    </div>`;
+  }).join('');
 }
 /* ── GENERAL RECIPE (condimentos) ── */
 function renderGeneralRecipeList(){
