@@ -2945,8 +2945,9 @@ function getAdminSales(){
 
 function setAdminSpecificDate(val){
   if(!val){clearAdminDate();return;}
-  const [y,m,d]=val.split('-');
-  adminSpecificDate=`${d}/${m}/${y}`;
+  // Convert YYYY-MM-DD to same format as toDateKey (es-MX locale, e.g. 21/3/2026)
+  const dateObj=new Date(val+'T12:00:00'); // add noon to avoid timezone issues
+  adminSpecificDate=toDateKey(dateObj);
   document.querySelectorAll('.admin-range-btn').forEach(b=>b.classList.remove('active'));
   const badge=document.getElementById('adm-date-badge');
   const lbl=document.getElementById('adm-date-badge-lbl');
@@ -3111,33 +3112,25 @@ function exportExcel(){
   }
 
   // Add a TOTAL row with SUM formulas for numeric columns
-  // colDefs: [{col: colIndex, label: 'Total' (only on first)}]
   function addTotalRow(ws,rows,sumCols){
-    const dataStart=2; // row 2 (1-indexed), row 1 is header
+    const dataStart=2; // row 2 (1-indexed)
     const dataEnd=rows.length; // last data row (1-indexed)
-    const totalRow=rows[0].map(()=>''); // empty cells same width as header
+    const totalRowIdx=rows.length; // 0-indexed row in sheet
+
     sumCols.forEach(({col,label})=>{
-      if(label)totalRow[col-1]=label; // text label
-      else{
-        const colLetter=XLSX.utils.encode_col(col-1);
-        const addr=XLSX.utils.encode_cell({r:rows.length,c:col-1});
-        ws[addr]={t:'n',f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`,z:PESO};
-      }
-    });
-    // Update sheet range
-    const ref=ws['!ref'];
-    if(ref){
-      const range=XLSX.utils.decode_range(ref);
-      range.e.r=rows.length;
-      ws['!ref']=XLSX.utils.encode_range(range);
-    }
-    // Bold the label if any
-    sumCols.forEach(({col,label})=>{
+      const addr=XLSX.utils.encode_cell({r:totalRowIdx, c:col-1});
       if(label){
-        const addr=XLSX.utils.encode_cell({r:rows.length,c:col-1});
-        ws[addr]={t:'s',v:label,s:{font:{bold:true}}};
+        ws[addr]={t:'s', v:label};
+      } else {
+        const colLetter=XLSX.utils.encode_col(col-1);
+        ws[addr]={t:'n', f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`, z:PESO};
       }
     });
+
+    // Extend sheet range to include the new total row
+    const range=XLSX.utils.decode_range(ws['!ref']);
+    range.e.r=totalRowIdx;
+    ws['!ref']=XLSX.utils.encode_range(range);
   }
 
   // Sort oldest first
