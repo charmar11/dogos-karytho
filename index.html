@@ -3008,26 +3008,43 @@ function exportExcel(){
   const wb=XLSX.utils.book_new();
   const now=new Date();
   const fname=`dogos-karytho-${adminRange}-${now.toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`;
+  const PESO='$#,##0.00'; // Excel peso format — allows formulas
+
+  // Helper: apply currency format to specific columns (0-indexed) in a worksheet
+  function fmtCols(ws,rows,colIdxs){
+    rows.forEach((row,r)=>{
+      if(r===0)return; // skip header
+      colIdxs.forEach(c=>{
+        const addr=XLSX.utils.encode_cell({r,c});
+        if(ws[addr]&&typeof ws[addr].v==='number'){
+          ws[addr].z=PESO;
+          ws[addr].t='n';
+        }
+      });
+    });
+  }
 
   if(adminRange==='hoy'){
-    // ── HOY: por hora, productos individuales ──
-    // Hoja 1: Cada venta con sus productos detallados
+    // Hoja 1: Ventas del dia — cada producto individual
     const detRows=[['Hora','Producto','Variacion','Extras','Cantidad','Precio unit.','Subtotal','Total venta','Cambio']];
     ps.forEach(s=>{
       s.items.forEach((it,i)=>{
         detRows.push([
           s.time, it.name, it.var||'', it.extras||'',
-          it.qty, it.price, (it.price*it.qty).toFixed(2),
-          i===0?s.total.toFixed(2):'',
-          i===0&&s.cambio!=null?s.cambio.toFixed(2):''
+          it.qty,
+          it.price,
+          parseFloat((it.price*it.qty).toFixed(2)),
+          i===0?parseFloat(s.total.toFixed(2)):'',
+          i===0&&s.cambio!=null?parseFloat(s.cambio.toFixed(2)):''
         ]);
       });
     });
     const ws1=XLSX.utils.aoa_to_sheet(detRows);
-    ws1['!cols']=[{wch:8},{wch:22},{wch:14},{wch:16},{wch:8},{wch:12},{wch:10},{wch:12},{wch:10}];
+    ws1['!cols']=[{wch:8},{wch:22},{wch:14},{wch:16},{wch:8},{wch:12},{wch:12},{wch:13},{wch:11}];
+    fmtCols(ws1,detRows,[5,6,7,8]);
     XLSX.utils.book_append_sheet(wb,ws1,'Ventas del dia');
 
-    // Hoja 2: Resumen por hora
+    // Hoja 2: Por hora
     const byHour={};
     ps.forEach(s=>{
       const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();
@@ -3035,104 +3052,98 @@ function exportExcel(){
       byHour[h].ventas++;byHour[h].total+=s.total;
     });
     const hrRows=[['Hora','Ventas','Ingresos']];
-    for(let h=0;h<24;h++){
-      const d=byHour[h];
-      if(d)hrRows.push([(h<10?'0':'')+h+':00', d.ventas, '$'+d.total.toFixed(2)]);
-    }
+    for(let h=0;h<24;h++){const d=byHour[h];if(d)hrRows.push([(h<10?'0':'')+h+':00',d.ventas,parseFloat(d.total.toFixed(2))]);}
     const ws2=XLSX.utils.aoa_to_sheet(hrRows);
     ws2['!cols']=[{wch:10},{wch:10},{wch:14}];
+    fmtCols(ws2,hrRows,[2]);
     XLSX.utils.book_append_sheet(wb,ws2,'Por hora');
 
     // Hoja 3: Productos del dia
     const counts={},totals={};
     ps.forEach(s=>s.items.forEach(it=>{
       const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
-      counts[k]=(counts[k]||0)+it.qty;
-      totals[k]=(totals[k]||0)+(it.price*it.qty);
+      counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);
     }));
     const prodRows=[['Producto','Cantidad','Ingresos']];
-    Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>prodRows.push([n,q,'$'+(totals[n]||0).toFixed(2)]));
+    Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([n,q])=>prodRows.push([n,q,parseFloat((totals[n]||0).toFixed(2))]));
     const ws3=XLSX.utils.aoa_to_sheet(prodRows);
     ws3['!cols']=[{wch:28},{wch:10},{wch:14}];
+    fmtCols(ws3,prodRows,[2]);
     XLSX.utils.book_append_sheet(wb,ws3,'Productos del dia');
 
   } else if(adminRange==='semana'){
-    // ── SEMANA: totales por dia, productos por dia ──
     const dayNames=['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
     const byDay={};
     ps.forEach(s=>{
-      const key=s.date;
-      const d=new Date(s.timestamp);
+      const key=s.date;const d=new Date(s.timestamp);
       if(!byDay[key])byDay[key]={dayName:dayNames[d.getDay()],ts:d.getTime(),ventas:0,total:0,items:{}};
       byDay[key].ventas++;byDay[key].total+=s.total;
       s.items.forEach(it=>{
         const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
         if(!byDay[key].items[k])byDay[key].items[k]={qty:0,total:0};
-        byDay[key].items[k].qty+=it.qty;
-        byDay[key].items[k].total+=it.price*it.qty;
+        byDay[key].items[k].qty+=it.qty;byDay[key].items[k].total+=it.price*it.qty;
       });
     });
     const days=Object.entries(byDay).sort((a,b)=>a[1].ts-b[1].ts);
 
-    // Hoja 1: Resumen por dia
+    // Hoja 1: Por dia
     const dayRows=[['Dia','Fecha','Ventas','Ingresos']];
-    days.forEach(([date,d])=>{
-      dayRows.push([d.dayName, date, d.ventas, '$'+d.total.toFixed(2)]);
-    });
+    days.forEach(([date,d])=>dayRows.push([d.dayName,date,d.ventas,parseFloat(d.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(dayRows);
     ws1['!cols']=[{wch:8},{wch:14},{wch:10},{wch:14}];
+    fmtCols(ws1,dayRows,[3]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por dia');
 
     // Hoja 2: Productos por dia
-    const dpRows=[['Fecha','Producto','Cantidad','Ingresos']];
+    const dpRows=[['Fecha','Dia','Producto','Cantidad','Ingresos']];
     days.forEach(([date,d])=>{
       Object.entries(d.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
-        dpRows.push([date,name,v.qty,'$'+v.total.toFixed(2)]);
+        dpRows.push([date,d.dayName,name,v.qty,parseFloat(v.total.toFixed(2))]);
       });
     });
     const ws2=XLSX.utils.aoa_to_sheet(dpRows);
-    ws2['!cols']=[{wch:14},{wch:28},{wch:10},{wch:14}];
+    ws2['!cols']=[{wch:14},{wch:8},{wch:28},{wch:10},{wch:14}];
+    fmtCols(ws2,dpRows,[4]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por dia');
 
   } else if(adminRange==='mes'){
-    // ── MES: totales por semana, productos por semana ──
     const byWeek={};
     ps.forEach(s=>{
       const d=new Date(s.timestamp);
       const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);
-      const key=mon.getTime(); // use numeric timestamp as key for reliable sorting
+      const key=mon.getTime();
       if(!byWeek[key])byWeek[key]={from:toDateKey(mon),to:'',ventas:0,total:0,items:{},dates:[]};
       byWeek[key].ventas++;byWeek[key].total+=s.total;byWeek[key].dates.push(d);
       s.items.forEach(it=>{
         const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
         if(!byWeek[key].items[k])byWeek[key].items[k]={qty:0,total:0};
-        byWeek[key].items[k].qty+=it.qty;
-        byWeek[key].items[k].total+=it.price*it.qty;
+        byWeek[key].items[k].qty+=it.qty;byWeek[key].items[k].total+=it.price*it.qty;
       });
     });
     const weeks=Object.entries(byWeek).sort((a,b)=>Number(a[0])-Number(b[0]));
     weeks.forEach(([,w])=>{w.to=toDateKey(new Date(Math.max(...w.dates)));});
 
-    // Hoja 1: Resumen por semana
+    // Hoja 1: Por semana
     const wkRows=[['Semana','Desde','Hasta','Ventas','Ingresos']];
-    weeks.forEach(([,w],i)=>wkRows.push(['Semana '+(i+1),w.from,w.to,w.ventas,'$'+w.total.toFixed(2)]));
+    weeks.forEach(([,w],i)=>wkRows.push(['Semana '+(i+1),w.from,w.to,w.ventas,parseFloat(w.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(wkRows);
     ws1['!cols']=[{wch:12},{wch:14},{wch:14},{wch:10},{wch:14}];
+    fmtCols(ws1,wkRows,[4]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por semana');
 
     // Hoja 2: Productos por semana
     const wpRows=[['Semana','Producto','Cantidad','Ingresos']];
     weeks.forEach(([,w],i)=>{
       Object.entries(w.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
-        wpRows.push(['Semana '+(i+1),name,v.qty,'$'+v.total.toFixed(2)]);
+        wpRows.push(['Semana '+(i+1),name,v.qty,parseFloat(v.total.toFixed(2))]);
       });
     });
     const ws2=XLSX.utils.aoa_to_sheet(wpRows);
     ws2['!cols']=[{wch:12},{wch:28},{wch:10},{wch:14}];
+    fmtCols(ws2,wpRows,[3]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por semana');
 
   } else {
-    // ── TODO: totales por mes, productos por mes ──
     const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const byMonth={};
     ps.forEach(s=>{
@@ -3143,28 +3154,29 @@ function exportExcel(){
       s.items.forEach(it=>{
         const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
         if(!byMonth[key].items[k])byMonth[key].items[k]={qty:0,total:0};
-        byMonth[key].items[k].qty+=it.qty;
-        byMonth[key].items[k].total+=it.price*it.qty;
+        byMonth[key].items[k].qty+=it.qty;byMonth[key].items[k].total+=it.price*it.qty;
       });
     });
     const months=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
 
-    // Hoja 1: Resumen por mes
+    // Hoja 1: Por mes
     const moRows=[['Mes','Ventas','Ingresos']];
-    months.forEach(([,m])=>moRows.push([m.label,m.ventas,'$'+m.total.toFixed(2)]));
+    months.forEach(([,m])=>moRows.push([m.label,m.ventas,parseFloat(m.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(moRows);
     ws1['!cols']=[{wch:20},{wch:10},{wch:14}];
+    fmtCols(ws1,moRows,[2]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por mes');
 
     // Hoja 2: Productos por mes
     const mpRows=[['Mes','Producto','Cantidad','Ingresos']];
     months.forEach(([,m])=>{
       Object.entries(m.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
-        mpRows.push([m.label,name,v.qty,'$'+v.total.toFixed(2)]);
+        mpRows.push([m.label,name,v.qty,parseFloat(v.total.toFixed(2))]);
       });
     });
     const ws2=XLSX.utils.aoa_to_sheet(mpRows);
     ws2['!cols']=[{wch:20},{wch:28},{wch:10},{wch:14}];
+    fmtCols(ws2,mpRows,[3]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por mes');
   }
 
