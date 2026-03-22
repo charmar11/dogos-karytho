@@ -2861,9 +2861,11 @@ function confirmarCobro(){
   const cambio=cash>0?cash-total:null;
   const now=new Date();
   sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
-  saveSales();clearOrder();closeCash();
+  saveSales();
+  const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
+  clearOrder();closeCash();
   logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
-  descontarInventario(order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty})));  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
+  descontarInventario(orderSnapshot);  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
   showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
   setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
 }
@@ -4508,18 +4510,11 @@ function saveGeneralRecipe(){
 
 /* ── Auto-descuento al cobrar — variantes, extras y condimentos condicionales ── */
 function descontarInventario(items){
-  console.log('descontarInventario llamado:', items);
-  console.log('fbDb:', !!fbDb);
-  console.log('ingredients:', ingredients.length, ingredients.map(i=>i.name));
-  console.log('recipes keys:', Object.keys(recipes));
-  console.log('generalRecipe:', generalRecipe.length);
-  if(!fbDb){console.warn('descontarInventario: sin fbDb, abortando');return;}
+  if(!fbDb)return;
   let changed=false;
 
   items.forEach(it=>{
-    const p=products.find(x=>x.name===it.name);
-    console.log('[INV] item:',it.name,'→ producto:',p?p.id:'NO ENCONTRADO');
-    if(!p)return;
+    const p=products.find(x=>x.name===it.name);if(!p)return;
     const pid=p.id;
     const vn=it.varName&&it.varName!=='Normal'&&it.varName!==''?it.varName:null;
     const ex=it.extrasStr&&it.extrasStr!==''?it.extrasStr:null;
@@ -4535,8 +4530,6 @@ function descontarInventario(items){
     for(const key of keysToTry){
       if(recipes[key]&&recipes[key].length){rec=recipes[key];break;}
     }
-    console.log('[INV] keysToTry:',keysToTry,'→ rec encontrada:',rec.length,'items. Recipes disponibles:',Object.keys(recipes));
-    console.log('[INV] ingredients disponibles:',ingredients.length);
 
     rec.forEach(r=>{
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
