@@ -3063,7 +3063,7 @@ function exportExcel(){
     ps.forEach(s=>{
       const key=s.date;
       const d=new Date(s.timestamp);
-      if(!byDay[key])byDay[key]={label:dayNames[d.getDay()]+' '+s.date,ventas:0,total:0,items:{}};
+      if(!byDay[key])byDay[key]={dayName:dayNames[d.getDay()],ts:d.getTime(),ventas:0,total:0,items:{}};
       byDay[key].ventas++;byDay[key].total+=s.total;
       s.items.forEach(it=>{
         const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
@@ -3072,13 +3072,12 @@ function exportExcel(){
         byDay[key].items[k].total+=it.price*it.qty;
       });
     });
-    const days=Object.entries(byDay).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    const days=Object.entries(byDay).sort((a,b)=>a[1].ts-b[1].ts);
 
     // Hoja 1: Resumen por dia
     const dayRows=[['Dia','Fecha','Ventas','Ingresos']];
     days.forEach(([date,d])=>{
-      const dn=new Date(date+' 12:00');
-      dayRows.push([dayNames[dn.getDay()],date,d.ventas,'$'+d.total.toFixed(2)]);
+      dayRows.push([d.dayName, date, d.ventas, '$'+d.total.toFixed(2)]);
     });
     const ws1=XLSX.utils.aoa_to_sheet(dayRows);
     ws1['!cols']=[{wch:8},{wch:14},{wch:10},{wch:14}];
@@ -3101,8 +3100,8 @@ function exportExcel(){
     ps.forEach(s=>{
       const d=new Date(s.timestamp);
       const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);
-      const key=toDateKey(mon);
-      if(!byWeek[key])byWeek[key]={from:key,to:key,ventas:0,total:0,items:{},dates:[]};
+      const key=mon.getTime(); // use numeric timestamp as key for reliable sorting
+      if(!byWeek[key])byWeek[key]={from:toDateKey(mon),to:'',ventas:0,total:0,items:{},dates:[]};
       byWeek[key].ventas++;byWeek[key].total+=s.total;byWeek[key].dates.push(d);
       s.items.forEach(it=>{
         const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
@@ -3111,7 +3110,7 @@ function exportExcel(){
         byWeek[key].items[k].total+=it.price*it.qty;
       });
     });
-    const weeks=Object.entries(byWeek).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    const weeks=Object.entries(byWeek).sort((a,b)=>Number(a[0])-Number(b[0]));
     weeks.forEach(([,w])=>{w.to=toDateKey(new Date(Math.max(...w.dates)));});
 
     // Hoja 1: Resumen por semana
