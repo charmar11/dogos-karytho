@@ -1143,7 +1143,16 @@ body{
   font-size:20px;font-weight:800;color:#fff;overflow:hidden;
   cursor:pointer;position:relative;transition:opacity .2s;
 }
-.user-mgr-avatar:hover{opacity:.8}
+.user-mgr-avatar .avatar-edit-overlay{
+  position:absolute;inset:0;border-radius:50%;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .2s;font-size:16px;
+  pointer-events:none;
+}
+.user-mgr-avatar:hover .avatar-edit-overlay,
+.user-mgr-avatar:active .avatar-edit-overlay{opacity:1}
+.avatar-letter{font-size:20px;font-weight:800;color:#fff;pointer-events:none}
 .user-mgr-info{flex:1;min-width:0}
 .user-mgr-name{font-size:15px;font-weight:700;color:var(--text)}
 .user-mgr-sub{font-size:11px;color:var(--text3);margin-top:3px}
@@ -2509,62 +2518,79 @@ function renderAdmin(){
 }
 
 /* ─── Admin User Management ─── */
-let admAvatarTarget=null; // name of user being edited
+let admAvatarTarget=null;
+let cidopMembersLoaded=false;
+
+// Start real-time listener on cidop_members so picker is always in sync
+function startMembersListener(){
+  if(!fbDb)return;
+  fbDb.ref('cidop_members').on('value',snap=>{
+    const data=snap.val();
+    if(data){
+      const members=Object.values(data).filter(Boolean);
+      if(members.length){
+        CIDOP_MEMBERS.length=0;
+        members.forEach(m=>CIDOP_MEMBERS.push(m));
+      }
+    }
+    cidopMembersLoaded=true;
+    // Refresh admin panel if open
+    if(document.getElementById('adm-users-list'))renderAdminUsersHTML(CIDOP_MEMBERS);
+    // Refresh picker if open
+    if(document.getElementById('picker-screen').classList.contains('active'))
+      renderPickerGrid(currentActiveNames);
+  });
+}
 
 function renderAdminUsers(){
-  const list=document.getElementById('adm-users-list');
-  if(!list)return;
-  // Load members from Firebase (cidop_members key) or use local
-  if(fbDb){
-    fbDb.ref('cidop_members').once('value').then(snap=>{
-      const data=snap.val();
-      const members=data?Object.values(data):CIDOP_MEMBERS;
-      // Sync local array
-      CIDOP_MEMBERS.length=0;
-      members.forEach(m=>CIDOP_MEMBERS.push(m));
-      renderAdminUsersHTML(members);
-    }).catch(()=>renderAdminUsersHTML(CIDOP_MEMBERS));
-  } else {
-    renderAdminUsersHTML(CIDOP_MEMBERS);
-  }
+  renderAdminUsersHTML(CIDOP_MEMBERS);
 }
 
 function renderAdminUsersHTML(members){
   const list=document.getElementById('adm-users-list');
   if(!list)return;
   list.innerHTML='';
+  if(!members.length){
+    list.innerHTML='<div class="admin-empty">Sin usuarios. Agrega uno abajo.</div>';
+    return;
+  }
   members.forEach((name,i)=>{
+    const safeId='adm-uavatar-'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
     const card=document.createElement('div');
     card.className='user-mgr-card';
     card.style.animationDelay=(i*.04)+'s';
     card.innerHTML=`
-      <div class="user-mgr-avatar" id="adm-uavatar-${name.toLowerCase().replace(/\s/g,'')}" onclick="adminEditAvatar('${name}')" title="Cambiar foto">
-        ${name.charAt(0).toUpperCase()}
-        <div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:14px" class="avatar-edit-overlay">📷</div>
+      <div class="user-mgr-avatar" id="${safeId}" title="Cambiar foto de ${name}">
+        <span class="avatar-letter">${name.charAt(0).toUpperCase()}</span>
+        <div class="avatar-edit-overlay">📷</div>
       </div>
       <div class="user-mgr-info">
         <div class="user-mgr-name">${name}</div>
-        <div class="user-mgr-sub">Toca la foto para cambiarla</div>
+        <div class="user-mgr-sub" id="adm-uprog-${safeId}">Toca la foto para cambiarla</div>
       </div>
       <div class="user-mgr-actions">
-        <button class="btn-usr-del" onclick="adminDeleteUser('${name}')" title="Eliminar usuario">✕</button>
+        <button class="btn-usr-del" title="Eliminar ${name}">✕</button>
       </div>
     `;
-    // Add hover effect on avatar
-    const av=card.querySelector('.user-mgr-avatar');
-    const ov=card.querySelector('.avatar-edit-overlay');
-    av.onmouseenter=()=>ov.style.opacity='1';
-    av.onmouseleave=()=>ov.style.opacity='0';
+    // Avatar click — works on mobile and desktop
+    const avatarEl=card.querySelector('.user-mgr-avatar');
+    avatarEl.addEventListener('click',()=>adminEditAvatar(name));
+
+    // Delete button
+    const delBtn=card.querySelector('.btn-usr-del');
+    delBtn.addEventListener('click',()=>adminDeleteUser(name,i));
+
     list.appendChild(card);
+
     // Load avatar async
     loadAvatar(name,url=>{
-      const el=document.getElementById('adm-uavatar-'+name.toLowerCase().replace(/\s/g,''));
-      if(el&&url){
-        // Keep overlay
-        const overlay=el.querySelector('.avatar-edit-overlay');
-        el.style.padding='0';el.style.background='transparent';
-        el.innerHTML=`<img src="${url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block"/>`;
-        if(overlay)el.appendChild(overlay);
+      const el=document.getElementById(safeId);
+      if(!el)return;
+      if(url){
+        el.innerHTML=`<img src="${url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block"/><div class="avatar-edit-overlay">📷</div>`;
+        el.querySelector('.avatar-edit-overlay').style.cssText='position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:14px';
+        el.addEventListener('mouseenter',()=>el.querySelector('.avatar-edit-overlay').style.opacity='1');
+        el.addEventListener('mouseleave',()=>el.querySelector('.avatar-edit-overlay').style.opacity='0');
       }
     });
   });
@@ -2572,14 +2598,19 @@ function renderAdminUsersHTML(members){
 
 function adminEditAvatar(name){
   admAvatarTarget=name;
-  document.getElementById('adm-avatar-input').click();
+  const inp=document.getElementById('adm-avatar-input');
+  inp.value='';
+  inp.click();
 }
 
-let admAvatarInputBound=false;
 function adminHandleAvatarUpload(e){
   const file=e.target.files[0];
   if(!file||!admAvatarTarget)return;
   const name=admAvatarTarget;
+  const safeId='adm-uavatar-'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const progEl=document.getElementById('adm-uprog-'+safeId);
+  if(progEl){progEl.textContent='Subiendo...';progEl.style.color='var(--text3)';}
+
   const reader=new FileReader();
   reader.onload=ev=>{
     const img=new Image();
@@ -2594,7 +2625,8 @@ function adminHandleAvatarUpload(e){
       if(!fbDb){showToast('Sin conexion','red');return;}
       fbDb.ref(getAvatarKey(name)).set(compressed).then(()=>{
         avatarCache[name]=compressed;
-        renderAdminUsers();
+        renderAdminUsersHTML(CIDOP_MEMBERS);
+        renderPickerGrid(currentActiveNames);
         showToast('Foto de '+name+' actualizada','green');
         logActivity('prod_edit','Foto actualizada — '+name);
       }).catch(()=>showToast('Error al subir la foto','red'));
@@ -2602,7 +2634,8 @@ function adminHandleAvatarUpload(e){
     img.src=ev.target.result;
   };
   reader.readAsDataURL(file);
-  e.target.value='';admAvatarTarget=null;
+  e.target.value='';
+  admAvatarTarget=null;
 }
 
 function adminAddUser(){
@@ -2612,46 +2645,40 @@ function adminAddUser(){
   if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(name.toLowerCase())){
     showToast('Ese nombre ya existe','red');return;
   }
-  if(name.length>20){showToast('Nombre muy largo','red');return;}
+  if(name.length>20){showToast('Nombre muy largo (max 20)','red');return;}
   CIDOP_MEMBERS.push(name);
-  saveCidopMembers();
-  input.value='';
-  renderAdminUsers();
-  showToast('Usuario "'+name+'" agregado','green');
-  logActivity('prod_nuevo','Usuario agregado al picker — '+name);
-}
-
-function adminDeleteUser(name){
-  customConfirm('Eliminar a "'+name+'" del picker?\nSu foto guardada no se borrara.','Eliminar',()=>{
-    const idx=CIDOP_MEMBERS.indexOf(name);
-    if(idx>=0)CIDOP_MEMBERS.splice(idx,1);
-    saveCidopMembers();
-    renderAdminUsers();
-    showToast(name+' eliminado del picker');
-    logActivity('prod_del','Usuario eliminado del picker — '+name);
+  saveCidopMembers(()=>{
+    input.value='';
+    showToast('"'+name+'" agregado al picker','green');
+    logActivity('prod_nuevo','Usuario agregado al picker — '+name);
   });
 }
 
-function saveCidopMembers(){
-  if(!fbDb)return;
-  const obj={};
-  CIDOP_MEMBERS.forEach((m,i)=>obj[i]=m);
-  fbDb.ref('cidop_members').set(obj).catch(()=>{});
+function adminDeleteUser(name,idx){
+  customConfirm('Eliminar a "'+name+'" del picker?','Eliminar',()=>{
+    CIDOP_MEMBERS.splice(idx,1);
+    saveCidopMembers(()=>{
+      showToast('"'+name+'" eliminado del picker');
+      logActivity('prod_del','Usuario eliminado del picker — '+name);
+    });
+  });
 }
 
-// Load members from Firebase on boot
+function saveCidopMembers(cb){
+  if(!fbDb){
+    renderAdminUsersHTML(CIDOP_MEMBERS);
+    if(cb)cb();return;
+  }
+  const obj={};
+  CIDOP_MEMBERS.forEach((m,i)=>obj[i]=m);
+  fbDb.ref('cidop_members').set(obj)
+    .then(()=>{if(cb)cb();})
+    .catch(()=>showToast('Error al guardar','red'));
+}
+
+// Load members once on boot (listener handles updates after)
 function loadCidopMembers(){
-  if(!fbDb)return;
-  fbDb.ref('cidop_members').once('value').then(snap=>{
-    const data=snap.val();
-    if(data){
-      const members=Object.values(data).filter(Boolean);
-      if(members.length){
-        CIDOP_MEMBERS.length=0;
-        members.forEach(m=>CIDOP_MEMBERS.push(m));
-      }
-    }
-  }).catch(()=>{});
+  startMembersListener();
 }
 
 function getAdminSales(){
