@@ -4190,21 +4190,21 @@ function doIngReset(type){
     // Cancel accumulated cost in history
     if((ing.totalCostPaid||0)>0){
       logInvHistory('entrada',`Corrección — reset de precio de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de precio',entryType:'real'});
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de precio',entryType:'correction'});
     }
     ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
   } else if(type==='gasto'){
     // Cancel accumulated cost in history
     if((ing.totalCostPaid||0)>0){
       logInvHistory('entrada',`Corrección — reset de gasto de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de gasto',entryType:'real'});
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de gasto',entryType:'correction'});
     }
     ingredients[idx]={...ing,totalCostPaid:0};
   } else if(type==='todo'){
     // Cancel accumulated cost in history
     if((ing.totalCostPaid||0)>0){
       logInvHistory('entrada',`Corrección — reset completo de ${ing.name}`,
-        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset completo',entryType:'real'});
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset completo',entryType:'correction'});
     }
     ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
   }
@@ -4403,7 +4403,7 @@ function registerOutput(){
     }
     // Log a NEGATIVE entry so gastoReal calculation subtracts it automatically
     logInvHistory('entrada',`Reverso por ${cfg.label} — ${qty} ${ing.unit} de ${ing.name}`,
-      {ingId,qty,unit:ing.unit,addedUsage:qty,cost:-reversedCost,note:`revertido por ${type}`,entryType:'real'});
+      {ingId,qty,unit:ing.unit,addedUsage:qty,cost:-reversedCost,note:`revertido por ${type}`,entryType:'correction'});
   }
 
   fbSaveIngredients();
@@ -4690,7 +4690,7 @@ function renderInvCostos(){
 
   // ── Bloque 0: Gasto REAL vs Ingresos REALES ──
   const lbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico'}[invCostoPeriod];
-  // Read directly from ingredients.totalCostPaid — always accurate, updates on every salida por error/prueba
+  // gastoReal = what's actually accumulated in ingredients (always correct after resets)
   const gastoReal=parseFloat(ingredients.reduce((s,i)=>s+(i.totalCostPaid||0),0).toFixed(2));
   const ingresosR=ps.reduce((s,v)=>s+v.total,0);
   const difReal=parseFloat((ingresosR-gastoReal).toFixed(2));
@@ -4835,21 +4835,19 @@ function renderInvHistory(){
   // Filter by type
   let data=invHistory;
   if(invHistFilter==='entrada'){
-    // Include real purchases AND negative corrections (resets)
-    data=invHistory.filter(h=>h.type==='entrada'&&(h.data?.entryType==='real'||!h.data?.entryType)&&h.data?.cost!=null);
+    // Only show real purchases — exclude corrections (internal reset adjustments)
+    data=invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&(h.data?.cost||0)>0);
   } else if(invHistFilter!=='todo'){
     data=invHistory.filter(h=>h.type===invHistFilter);
   }
   // Filter by period
   data=filterHistByPeriod(data);
 
-  // Summary bar — net total (positives + negatives cancel correctly)
+  // Summary — real purchases only (no corrections)
   if(summaryEl){
-    const netGasto=data.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
-    const positiveCount=data.filter(h=>h.type==='entrada'&&(h.data?.cost||0)>0).length;
-    const gastoStr=netGasto!==0
-      ?` · <span style="color:${netGasto>0?'#f57474':'#2ab8b8'};font-weight:700">${netGasto>0?'-':''}$${Math.abs(netGasto).toFixed(2)}</span>`:' · $0';
-    summaryEl.innerHTML=`${positiveCount} compra${positiveCount!==1?'s':''}${gastoStr}`;
+    const totalGasto=data.reduce((s,h)=>s+(h.data?.cost||0),0);
+    const gastoStr=totalGasto>0?` · <span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span>`:'';
+    summaryEl.innerHTML=`${data.length} compra${data.length!==1?'s':''}${gastoStr}`;
   }
 
   if(!data.length){el.innerHTML='<div class="admin-empty">Sin movimientos en este filtro y periodo</div>';return;}
@@ -4888,7 +4886,7 @@ function renderInvHistory(){
     const html=[];
 
     // Compras → group by ingredient
-    const compras=items.filter(h=>h.type==='entrada'&&h.data?.cost>0);
+    const compras=items.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&(h.data?.cost||0)>0);
     if(compras.length){
       const byIng={};
       compras.forEach(h=>{
@@ -4961,7 +4959,7 @@ function renderInvHistory(){
   }
 
   function groupBlock(label, sublabel, items, defaultOpen=false){
-    const totalGasto=items.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
+    const totalGasto=items.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&(h.data?.cost||0)>0).reduce((s,h)=>s+(h.data?.cost||0),0);
     const badges=[];
     if(totalGasto>0)badges.push(`<span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span>`);
     const nVentas=items.filter(h=>h.type==='consumo').length;
