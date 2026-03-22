@@ -157,7 +157,31 @@ body{
 }
 .view-cobrar-layout .total-amt{font-size:26px}
 
-/* ── VIEWS ── */
+/* ── COBRAR DESKTOP OVERRIDES ── */
+@media(min-width:768px){
+  .view-cobrar-layout .order-box{
+    max-height:320px;
+  }
+  .view-cobrar-layout .products-grid{
+    grid-template-columns:repeat(4,1fr);
+    gap:11px;
+  }
+  .view-cobrar-layout .prod-btn{
+    padding:20px 12px;
+    min-height:90px;
+  }
+  .view-cobrar-layout .pname{font-size:15px}
+  .view-cobrar-layout .pprice{font-size:16px;margin-top:6px}
+  .view-cobrar-layout .phint{font-size:10px;margin-top:4px}
+  .view-cobrar-layout .fav-btn{padding:14px 20px;min-width:110px}
+  .view-cobrar-layout .fav-btn .pname{font-size:14px}
+  .view-cobrar-layout .fav-btn .pprice{font-size:14px;margin-top:4px}
+  .view-cobrar-layout .order-row-name{font-size:15px}
+  .view-cobrar-layout .total-amt{font-size:32px}
+  .view-cobrar-layout .total-bar{padding:16px 18px}
+  .cobrar-top{padding:14px 20px 8px}
+  .cobrar-bottom{padding:10px 20px 16px}
+}
 .view{display:none;padding:16px 16px 100px;animation:fadeIn .3s ease}
 .view.active{display:block}
 
