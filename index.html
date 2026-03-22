@@ -4173,52 +4173,91 @@ function registerAdjust(){
 }
 
 /* ── RECETAS ── */
+function mergeRecipe(baseRec, overrides){
+  // Start with base, apply overrides: same ingId = replace qty; qty=0 = remove
+  const merged=baseRec.map(r=>({...r}));
+  overrides.forEach(ov=>{
+    const idx=merged.findIndex(r=>r.ingId===ov.ingId);
+    if(idx>=0) merged[idx]={...merged[idx],qty:ov.qty};
+    else if(ov.qty>0) merged.push({...ov});
+  });
+  return merged.filter(r=>r.qty>0);
+}
+
+function recipeIngHTML(rec){
+  if(!rec.length) return '<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin ingredientes definidos</div>';
+  return rec.map(r=>{
+    const ing=ingredients.find(i=>i.id===r.ingId);if(!ing)return '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span>${ingEmoji(ing.name)}</span>
+      <span style="font-size:12px;color:var(--text2);flex:1">${ing.name}</span>
+      <span style="font-size:12px;font-weight:700;color:#2ab8b8">${r.qty} ${ing.unit}</span>
+      ${ing.costPerUnit>0?`<span style="font-size:10px;color:var(--text3)">≈$${(ing.costPerUnit*r.qty).toFixed(2)}</span>`:''}
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
 function renderInvRecipes(){
   const list=document.getElementById('inv-recipes-list');if(!list)return;
   if(!products.length){list.innerHTML='<div class="admin-empty">Sin productos en el menu.</div>';return;}
+
   list.innerHTML=products.map(p=>{
-    // Get all variants AND extras as separate recipe slots
-    const variants=['Normal',...(p.variations||[]).map(v=>v.name)];
-    const extras=(p.extras||[]).map(e=>e.name); // extras like "Doble Wini"
-    const varBlocks=[...variants,...extras].map(vName=>{
-      const isExtra=extras.includes(vName)&&!variants.includes(vName);
-      const key=vName==='Normal'?p.id:`${p.id}_${vName}`;
-      const rec=recipes[key]||[];
-      const hasRec=rec.length>0;
-      let costoPorUnidad=0;
-      rec.forEach(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)costoPorUnidad+=ing.costPerUnit*r.qty;});
-      // Add conditional general cost
-      generalRecipe.forEach(r=>{
-        const appliesToThis=!r.productIds||r.productIds.length===0||r.productIds.includes(String(p.id))||r.productIds.includes(p.id);
-        if(!appliesToThis)return;
-        const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)costoPorUnidad+=ing.costPerUnit*r.qty;
-      });
-      const recHTML=hasRec
-        ? rec.map(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(!ing)return '';
-            return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
-              <span>${ingEmoji(ing.name)}</span>
-              <span style="font-size:12px;color:var(--text2);flex:1">${ing.name}</span>
-              <span style="font-size:12px;font-weight:700;color:#2ab8b8">${r.qty} ${ing.unit}</span>
-              ${ing.costPerUnit>0?`<span style="font-size:10px;color:var(--text3)">≈$${(ing.costPerUnit*r.qty).toFixed(2)}</span>`:''}
-            </div>`;}).filter(Boolean).join('')
-        : '<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin receta — toca Editar</div>';
-      const varLabel=vName==='Normal'&&variants.length===1&&extras.length===0?'Receta base':vName+(isExtra?' ⭐ extra':'');
-      return `<div style="margin-bottom:8px">
+    const baseRec=recipes[p.id]||[];
+    // Collect unique variant/extra names (exclude 'Normal' duplicates)
+    const varNames=[...(p.variations||[]).map(v=>v.name)];
+    const extraNames=(p.extras||[]).map(e=>e.name);
+    const allOverrideNames=[...new Set([...varNames,...extraNames])];
+
+    // General condimento cost for this product
+    let condCosto=0;
+    generalRecipe.forEach(r=>{
+      const app=!r.productIds||r.productIds.length===0||r.productIds.includes(String(p.id))||r.productIds.includes(p.id);
+      if(!app)return;
+      const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)condCosto+=ing.costPerUnit*r.qty;
+    });
+
+    // Base cost
+    let baseCosto=condCosto;
+    baseRec.forEach(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)baseCosto+=ing.costPerUnit*r.qty;});
+
+    const baseSection=`
+      <div style="margin-bottom:${allOverrideNames.length?'0':'0'}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div>
-            <span style="font-size:12px;font-weight:700;color:var(--text2)">${varLabel}</span>
-            ${costoPorUnidad>0?`<span style="font-size:11px;color:var(--text3);margin-left:8px">≈$${costoPorUnidad.toFixed(2)}/u</span>`:''}
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:800;color:#2ab8b8;text-transform:uppercase;letter-spacing:.06em">Base</span>
+            ${baseCosto>0?`<span style="font-size:11px;color:var(--text3)">≈$${baseCosto.toFixed(2)}/u</span>`:''}
           </div>
-          <button class="btn-ing teal" onclick="openRecipeModal(${p.id},'${vName}')" style="padding:5px 10px;font-size:11px">✏️ Editar</button>
+          <button class="btn-ing teal" onclick="openRecipeModal(${p.id},'Normal')" style="padding:5px 10px;font-size:11px">✏️ Editar base</button>
         </div>
-        <div style="padding-left:4px">${recHTML}</div>
+        <div style="padding-left:4px">${baseRec.length?recipeIngHTML(baseRec):'<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin receta base — toca Editar base</div>'}</div>
       </div>`;
-    }).join('<hr style="border:none;border-top:1px solid var(--border);margin:8px 0"/>');
+
+    const varSections=allOverrideNames.map(vName=>{
+      const isExtra=extraNames.includes(vName)&&!varNames.includes(vName);
+      const overrides=recipes[`${p.id}_${vName}`]||[];
+      const merged=mergeRecipe(baseRec,overrides);
+      let vCosto=condCosto;
+      merged.forEach(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)vCosto+=ing.costPerUnit*r.qty;});
+      const badge=isExtra
+        ?`<span style="font-size:10px;background:rgba(245,200,0,.15);color:var(--gold);padding:2px 6px;border-radius:5px;margin-left:6px">extra</span>`
+        :`<span style="font-size:10px;background:rgba(42,184,184,.1);color:#2ab8b8;padding:2px 6px;border-radius:5px;margin-left:6px">variante</span>`;
+      const diffNote=overrides.length?`<span style="font-size:10px;color:var(--text4);margin-left:6px">${overrides.length} cambio${overrides.length>1?'s':''} vs base</span>`:'<span style="font-size:10px;color:var(--text4);margin-left:6px">igual al base</span>';
+      return `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">${vName}</span>${badge}${diffNote}
+            ${vCosto>0?`<span style="font-size:11px;color:var(--text3)">≈$${vCosto.toFixed(2)}/u</span>`:''}
+          </div>
+          <button class="btn-ing" onclick="openRecipeModal(${p.id},'${vName}')" style="padding:5px 10px;font-size:11px;border-color:rgba(245,200,0,.3);color:var(--gold)">✏️ Editar</button>
+        </div>
+        <div style="padding-left:4px">${recipeIngHTML(merged)}</div>
+      </div>`;
+    }).join('');
 
     return `<div class="form-card" style="margin-bottom:12px;padding:14px">
       <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:2px">${p.name}</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Precio: $${p.basePrice}</div>
-      ${varBlocks}
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Precio base: $${p.basePrice}</div>
+      ${baseSection}${varSections}
     </div>`;
   }).join('');
 }
