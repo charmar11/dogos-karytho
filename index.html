@@ -1691,7 +1691,7 @@ body{
 
 <!-- ===== INGREDIENT MODAL — outside all containers ===== -->
 <div class="inv-modal hidden" id="ing-modal">
-  <div class="inv-modal-box" style="max-width:360px">
+  <div class="inv-modal-box" style="max-width:360px;max-height:90vh;overflow-y:auto">
     <div style="font-size:16px;font-weight:800;margin-bottom:16px;color:var(--text)" id="ing-modal-title">Nuevo ingrediente</div>
     <label class="form-lbl">Nombre</label>
     <input class="form-input" id="ing-m-name" placeholder="Ej: Salchicha Rosarito" style="margin-bottom:10px"/>
@@ -4177,25 +4177,35 @@ function closeIngModal(){document.getElementById('ing-modal').classList.add('hid
 function confirmResetIngCost(){
   const newPrice=parseFloat(document.getElementById('ing-m-reset-cost')?.value)||0;
   const ing=ingredients.find(i=>i.id===editIngId);
-  if(!ing)return;
-  if(!newPrice){showToast('Escribe el nuevo precio primero','red');return;}
+  if(!ing){showToast('Guarda primero el ingrediente','red');return;}
+  if(!newPrice){showToast('Escribe el nuevo precio','red');return;}
   customConfirm(
-    `Resetear historial de precios de "${ing.name}"?\n\nNuevo precio: $${newPrice.toFixed(2)}/${ing.unit}\n\nEsto borra las compras registradas y fija este precio.`,
+    `Resetear historial de "${ing.name}" y fijar $${newPrice.toFixed(2)}/${ing.unit}? No afecta el stock.`,
     'Resetear',
     ()=>{
       const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
       const old=ingredients[idx];
+      const qtyBase=old.totalQtyBought||old.stock||0;
       ingredients[idx]={...old,
         costPerUnit:newPrice,
-        totalCostPaid:newPrice*(old.totalQtyBought||old.stock||0),
-        totalQtyBought:old.totalQtyBought||old.stock||0
+        totalCostPaid:parseFloat((newPrice*qtyBase).toFixed(2)),
+        totalQtyBought:qtyBase
       };
+      // Also log a reversal entry to cancel previous costs from gastoReal
+      const cancelCost=-(old.totalCostPaid||0);
+      if(cancelCost<0){
+        logInvHistory('entrada',`Reseteo de precio — ${old.name} a $${newPrice.toFixed(2)}/${old.unit}`,
+          {ingId:old.id,qty:0,unit:old.unit,addedUsage:0,cost:cancelCost,note:'reseteo de precio',entryType:'real'});
+        // Log new cost as real entry
+        logInvHistory('entrada',`Precio reseteado — ${old.name} $${newPrice.toFixed(2)}/${old.unit} (${qtyBase} ${old.unit} en stock)`,
+          {ingId:old.id,qty:qtyBase,unit:old.unit,addedUsage:qtyBase,cost:parseFloat((newPrice*qtyBase).toFixed(2)),note:'precio reseteado manualmente',entryType:'real'});
+      }
       logInvHistory('ajuste',`${old.name} — precio reseteado a $${newPrice.toFixed(2)}/${old.unit}`,{ingId:old.id,newPrice});
       fbSaveIngredients();
       document.getElementById('ing-m-reset-cost').value='';
       const preview=document.getElementById('ing-cost-preview');
-      if(preview)preview.textContent=`✅ Precio actualizado a $${newPrice.toFixed(2)}/${old.unit}`;
-      showToast(`Precio de ${old.name} reseteado a $${newPrice.toFixed(2)}`,'green');
+      if(preview){preview.textContent=`✅ Reseteado a $${newPrice.toFixed(2)}/${old.unit}`;preview.style.color='#2ab8b8';}
+      showToast(`${old.name} reseteado a $${newPrice.toFixed(2)}`,'green');
     }
   );
 }
@@ -4375,10 +4385,12 @@ function registerOutput(){
     reversedCost=parseFloat((ing.costPerUnit*qty).toFixed(2));
     ing.totalQtyBought=parseFloat(Math.max(0,(ing.totalQtyBought||0)-qty).toFixed(3));
     ing.totalCostPaid=parseFloat(Math.max(0,(ing.totalCostPaid||0)-reversedCost).toFixed(2));
-    // Recalculate costPerUnit — if no qty left, keep last price
     if(ing.totalQtyBought>0){
       ing.costPerUnit=ing.totalCostPaid/ing.totalQtyBought;
     }
+    // Log a NEGATIVE entry so gastoReal calculation subtracts it automatically
+    logInvHistory('entrada',`Reverso por ${cfg.label} — ${qty} ${ing.unit} de ${ing.name}`,
+      {ingId,qty,unit:ing.unit,addedUsage:qty,cost:-reversedCost,note:`revertido por ${type}`,entryType:'real'});
   }
 
   fbSaveIngredients();
