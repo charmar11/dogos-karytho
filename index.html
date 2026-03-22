@@ -1801,16 +1801,23 @@ body{
 
 <!-- ===== GENERAL RECIPE MODAL ===== -->
 <div class="inv-modal hidden" id="general-recipe-modal">
-  <div class="inv-modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
-    <div style="font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text)">🧂 Consumo por condimentos</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6">
-      Cada fila define un ingrediente, cuánto se usa, y <strong style="color:#2ab8b8">a qué productos aplica</strong>. Si no seleccionas ningún producto, aplica a todos.
+  <div class="inv-modal-box" style="max-width:440px;max-height:88vh;display:flex;flex-direction:column">
+    <!-- Fixed header -->
+    <div style="flex-shrink:0;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:12px">
+      <div style="font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text)">🧂 Consumo por condimentos</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.6">
+        Por producto o variante específica. Marca y pon el multiplicador (<strong style="color:#2ab8b8">×N</strong> veces la cantidad base).
+      </div>
     </div>
-    <div id="general-recipe-items"></div>
-    <button class="btn-add-var" onclick="addGeneralRecipeRow()" style="margin-bottom:16px">+ Agregar ingrediente</button>
-    <div style="display:flex;gap:10px">
-      <button class="btn-secondary" onclick="closeGeneralRecipeModal()" style="flex:1">Cancelar</button>
-      <button class="btn-primary" onclick="saveGeneralRecipe()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
+    <!-- Scrollable content -->
+    <div id="general-recipe-items" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0"></div>
+    <!-- Fixed footer -->
+    <div style="flex-shrink:0;padding-top:12px;border-top:1px solid var(--border);margin-top:8px">
+      <button class="btn-add-var" onclick="addGeneralRecipeRow()" style="margin-bottom:10px;width:100%">+ Agregar ingrediente</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary" onclick="closeGeneralRecipeModal()" style="flex:1">Cancelar</button>
+        <button class="btn-primary" onclick="saveGeneralRecipe()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -5011,11 +5018,14 @@ function renderGeneralRecipeList(){
     if(!hasProducts){
       aplicaStr='<span style="color:var(--text3)">Todos los productos × 1</span>';
     } else {
-      aplicaStr=Object.entries(mults).map(([pid,mult])=>{
-        const p=products.find(x=>String(x.id)===String(pid));
+      aplicaStr=Object.entries(mults).map(([key,mult])=>{
+        // key can be "pid" or "pid_varName"
+        const parts=key.split('_');
+        const p=products.find(x=>String(x.id)===parts[0]);
         if(!p)return '';
+        const label=parts.length>1?`${p.name} / ${parts.slice(1).join('_')}`:p.name;
         const total=(r.qty*mult).toFixed(r.qty*mult%1?2:0);
-        return `<span style="font-size:11px;background:rgba(42,184,184,.08);border:1px solid rgba(42,184,184,.2);border-radius:6px;padding:2px 7px;color:#2ab8b8">${p.name} ×${mult} = ${total}${ing.unit}</span>`;
+        return `<span style="font-size:11px;background:rgba(42,184,184,.08);border:1px solid rgba(42,184,184,.2);border-radius:6px;padding:2px 7px;color:#2ab8b8">${label} ×${mult} = ${total}${ing.unit}</span>`;
       }).filter(Boolean).join(' ');
     }
 
@@ -5049,13 +5059,15 @@ function renderGeneralRecipeModalRows(){
   if(!ingredients.length){el.innerHTML='<div style="color:var(--text4);font-size:13px;padding:12px 0;text-align:center">Primero agrega ingredientes en la pestaña Stock</div>';return;}
   if(!generalRecipeRows.length){el.innerHTML='<div style="color:var(--text4);font-size:13px;padding:8px 0">Sin ingredientes. Toca + Agregar.</div>';return;}
   el.innerHTML='';
+
   generalRecipeRows.forEach((r,i)=>{
     const ing=ingredients.find(x=>x.id===r.ingId);
     const mults=r.productMultipliers||{};
+
     const wrap=document.createElement('div');
     wrap.style.cssText='background:var(--bg3);border-radius:10px;padding:10px;margin-bottom:12px';
 
-    // Row 1: ingredient + base qty
+    // Row 1: ingredient selector + base qty
     const row1=document.createElement('div');
     row1.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px';
     row1.innerHTML=`
@@ -5064,80 +5076,107 @@ function renderGeneralRecipeModalRows(){
         <option value="">Ingrediente</option>
         ${ingredients.map(x=>`<option value="${x.id}" ${r.ingId===x.id?'selected':''}>${x.name} (${x.unit})</option>`).join('')}
       </select>
-      <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="Cant. base" style="width:80px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
-      <span style="font-size:11px;color:var(--text3);min-width:24px;flex-shrink:0" id="gr-unit-${i}">${ing?ing.unit:''}</span>
+      <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="Base"
+        style="width:70px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
+      <span style="font-size:10px;color:var(--text3);flex-shrink:0" id="gr-unit-${i}">${ing?ing.unit:''}</span>
       <button style="background:transparent;border:none;color:var(--red);font-size:17px;cursor:pointer;flex-shrink:0">✕</button>
     `;
     const sel=row1.querySelector('select');
-    const qty=row1.querySelector('input[type=number]');
+    const qty=row1.querySelector('input');
     const rm=row1.querySelector('button');
     sel.onchange=()=>{
       generalRecipeRows[i].ingId=sel.value;
       const ng=ingredients.find(x=>x.id===sel.value);
       document.getElementById(`gr-unit-${i}`).textContent=ng?ng.unit:'';
       document.getElementById(`gr-emoji-${i}`).textContent=ng?ingEmoji(ng.name):'📦';
+      // Re-render to update previews
+      renderGeneralRecipeModalRows();
     };
-    qty.oninput=()=>{generalRecipeRows[i].qty=parseFloat(qty.value)||0; refreshMultiplierPreviews(wrap,i);};
+    qty.oninput=()=>{
+      generalRecipeRows[i].qty=parseFloat(qty.value)||0;
+      // Update all previews in this wrap
+      wrap.querySelectorAll('[data-preview]').forEach(span=>{
+        const key=span.getAttribute('data-preview');
+        const m=generalRecipeRows[i].productMultipliers?.[key];
+        if(m!=null){
+          const total=(generalRecipeRows[i].qty||0)*m;
+          span.textContent=`= ${total.toFixed(total%1?2:0)} ${ing?ing.unit:''}`;
+        }
+      });
+    };
     rm.onclick=()=>{generalRecipeRows.splice(i,1);renderGeneralRecipeModalRows();};
     wrap.appendChild(row1);
 
-    // Row 2: header for product multipliers
+    // Header
     const hdr=document.createElement('div');
-    hdr.style.cssText='font-size:11px;color:var(--text4);margin-bottom:8px;line-height:1.5';
-    hdr.innerHTML=`Aplica a · <span style="color:#2ab8b8">✓ = activo</span> · <strong style="color:var(--text2)">Multiplicador</strong> = cuántas veces la cantidad base se descuenta por venta`;
+    hdr.style.cssText='font-size:10px;color:var(--text4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em';
+    hdr.textContent='Producto / Variante — Multiplicador';
     wrap.appendChild(hdr);
 
-    // Row 3: product list with checkbox + multiplier
+    // Build list: base product + each variant/extra as "Producto / Variante"
     const grid=document.createElement('div');
-    grid.style.cssText='display:flex;flex-direction:column;gap:6px';
+    grid.style.cssText='display:flex;flex-direction:column;gap:5px';
+
+    const rows=[];
     products.forEach(p=>{
-      const pid=String(p.id);
-      const isActive=Object.prototype.hasOwnProperty.call(mults,pid);
-      const mult=mults[pid]||1;
+      // Base product
+      rows.push({label:p.name, key:String(p.id), isVariant:false});
+      // Variants
+      (p.variations||[]).forEach(v=>{
+        rows.push({label:`${p.name} / ${v.name}`, key:`${p.id}_${v.name}`, isVariant:true});
+      });
+      // Extras
+      (p.extras||[]).forEach(e=>{
+        rows.push({label:`${p.name} / ${e.name}`, key:`${p.id}_${e.name}`, isVariant:true});
+      });
+    });
+
+    rows.forEach(({label,key,isVariant})=>{
+      const isActive=Object.prototype.hasOwnProperty.call(mults,key);
+      const mult=mults[key]||1;
       const baseQty=r.qty||0;
+
       const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:8px;padding:7px 10px';
+      row.style.cssText=`display:flex;align-items:center;gap:8px;background:var(--bg2);border-radius:8px;padding:6px 10px;${isVariant?'margin-left:12px;border-left:2px solid var(--border2)':''}`;
       row.innerHTML=`
-        <input type="checkbox" ${isActive?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0" data-pid="${pid}"/>
-        <span style="font-size:12px;color:var(--text2);flex:1">${p.name}</span>
+        <input type="checkbox" ${isActive?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0"/>
+        <span style="font-size:12px;color:${isVariant?'var(--text3)':'var(--text2)'};flex:1">${label}</span>
         <span style="font-size:10px;color:var(--text4);flex-shrink:0">×</span>
         <input type="number" inputmode="decimal" value="${mult}" min="0.1" step="0.5"
-          style="width:54px;flex-shrink:0;background:var(--bg3);color:${isActive?'#2ab8b8':'var(--text4)'};border:1.5px solid ${isActive?'rgba(42,184,184,.4)':'var(--border2)'};border-radius:7px;padding:5px 6px;font-size:12px;outline:none;text-align:center;opacity:${isActive?'1':'0.4'}"
-          ${isActive?'':'disabled'} data-mult="${pid}"/>
-        <span style="font-size:10px;color:${isActive?'#2ab8b8':'var(--text4)'};min-width:60px;flex-shrink:0" data-preview="${pid}">
+          style="width:50px;flex-shrink:0;background:var(--bg3);color:${isActive?'#2ab8b8':'var(--text4)'};border:1.5px solid ${isActive?'rgba(42,184,184,.4)':'var(--border2)'};border-radius:7px;padding:5px;font-size:12px;outline:none;text-align:center;opacity:${isActive?'1':'0.4'}"
+          ${isActive?'':'disabled'}/>
+        <span style="font-size:10px;min-width:52px;flex-shrink:0;color:${isActive?'#2ab8b8':'var(--text4)'}" data-preview="${key}">
           ${isActive?`= ${(baseQty*mult).toFixed(baseQty*mult%1?2:0)} ${ing?ing.unit:''}`:'-'}
         </span>
       `;
       const cb=row.querySelector('input[type=checkbox]');
-      const multInput=row.querySelector(`input[data-mult="${pid}"]`);
-      const preview=row.querySelector(`[data-preview="${pid}"]`);
+      const multInp=row.querySelector('input[type=number]');
+      const prev=row.querySelector('[data-preview]');
 
       cb.onchange=()=>{
         if(cb.checked){
-          generalRecipeRows[i].productMultipliers[pid]=parseFloat(multInput.value)||1;
-          multInput.disabled=false;
-          multInput.style.opacity='1';
-          multInput.style.color='#2ab8b8';
-          multInput.style.borderColor='rgba(42,184,184,.4)';
-          preview.style.color='#2ab8b8';
-          preview.textContent=`= ${((generalRecipeRows[i].qty||0)*parseFloat(multInput.value||1)).toFixed(2)} ${ing?ing.unit:''}`;
+          generalRecipeRows[i].productMultipliers[key]=parseFloat(multInp.value)||1;
+          multInp.disabled=false; multInp.style.opacity='1';
+          multInp.style.color='#2ab8b8'; multInp.style.borderColor='rgba(42,184,184,.4)';
+          prev.style.color='#2ab8b8';
+          const t=(generalRecipeRows[i].qty||0)*parseFloat(multInp.value||1);
+          prev.textContent=`= ${t.toFixed(t%1?2:0)} ${ing?ing.unit:''}`;
         } else {
-          delete generalRecipeRows[i].productMultipliers[pid];
-          multInput.disabled=true;
-          multInput.style.opacity='0.4';
-          multInput.style.color='var(--text4)';
-          multInput.style.borderColor='var(--border2)';
-          preview.style.color='var(--text4)';
-          preview.textContent='-';
+          delete generalRecipeRows[i].productMultipliers[key];
+          multInp.disabled=true; multInp.style.opacity='0.4';
+          multInp.style.color='var(--text4)'; multInp.style.borderColor='var(--border2)';
+          prev.style.color='var(--text4)'; prev.textContent='-';
         }
       };
-      multInput.oninput=()=>{
-        const v=parseFloat(multInput.value)||1;
-        generalRecipeRows[i].productMultipliers[pid]=v;
-        preview.textContent=`= ${((generalRecipeRows[i].qty||0)*v).toFixed(2)} ${ing?ing.unit:''}`;
+      multInp.oninput=()=>{
+        const v=parseFloat(multInp.value)||1;
+        generalRecipeRows[i].productMultipliers[key]=v;
+        const t=(generalRecipeRows[i].qty||0)*v;
+        prev.textContent=`= ${t.toFixed(t%1?2:0)} ${ing?ing.unit:''}`;
       };
       grid.appendChild(row);
     });
+
     wrap.appendChild(grid);
     el.appendChild(wrap);
   });
@@ -5202,24 +5241,30 @@ function descontarInventario(items){
       changed=true;
     });
 
-    // Conditional general recipe with multipliers
+    // Conditional general recipe — check variant-specific key first, then base product key
     generalRecipe.forEach(r=>{
       const mults=r.productMultipliers||{};
       const hasAnyProduct=Object.keys(mults).length>0;
-      // If no products defined → applies to all with ×1
-      // If products defined → only apply to matching ones with their multiplier
       let multiplier=null;
+
       if(!hasAnyProduct){
+        // No products defined → applies to all with ×1
         multiplier=1;
       } else {
-        if(mults[String(pid)]!=null) multiplier=mults[String(pid)];
-        else if(mults[pid]!=null) multiplier=mults[pid];
-        else if(mults[Number(pid)]!=null) multiplier=mults[Number(pid)];
+        // Check variant-specific key first (e.g. "100_Con Papas")
+        const variantKey=vn?`${pid}_${vn}`:ex?`${pid}_${ex}`:null;
+        if(variantKey&&mults[variantKey]!=null){
+          multiplier=mults[variantKey];
+        } else {
+          // Fall back to base product key
+          const spid=String(pid);
+          if(mults[spid]!=null) multiplier=mults[spid];
+          else if(mults[pid]!=null) multiplier=mults[pid];
+        }
       }
       if(multiplier==null)return;
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
-      const consumo=r.qty*multiplier*it.qty;
-      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-consumo).toFixed(3));
+      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-r.qty*multiplier*it.qty).toFixed(3));
       changed=true;
     });
   });
