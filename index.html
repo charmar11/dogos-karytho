@@ -1435,17 +1435,6 @@ body{
   </div>
 </div>
 
-<!-- ===== CUSTOM CONFIRM ===== -->
-<div class="confirm-overlay hidden" id="confirm-overlay">
-  <div class="confirm-box">
-    <div class="confirm-msg" id="confirm-msg"></div>
-    <div class="confirm-btns">
-      <button class="confirm-no" onclick="confirmResolve(false)">Cancelar</button>
-      <button class="confirm-yes" id="confirm-yes-btn" onclick="confirmResolve(true)">Eliminar</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== INSTALL BANNER ===== -->
 <div class="install-banner hidden" id="install-banner">
   <span class="install-icon">📲</span>
@@ -1458,6 +1447,17 @@ body{
 </div>
 
 </div><!-- end #main-app -->
+
+<!-- ===== CUSTOM CONFIRM — outside all containers ===== -->
+<div class="confirm-overlay hidden" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="confirmResolve(false)">Cancelar</button>
+      <button class="confirm-yes" id="confirm-yes-btn" onclick="confirmResolve(true)">Eliminar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== ADMIN PANEL ===== -->
 <div class="admin-screen" id="admin-screen">
