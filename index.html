@@ -911,14 +911,14 @@ body{
   position:fixed;inset:0;z-index:800;
   background:var(--bg);
   display:none;flex-direction:column;
-  overflow-y:auto;
+  overflow:hidden;
 }
 .admin-screen.active{display:flex}
 .admin-header{
   background:linear-gradient(180deg,#1e1e1e,#1a1a1a);
   border-bottom:2px solid var(--gold);
   padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:10;
+  flex-shrink:0;
   box-shadow:0 2px 20px rgba(245,200,0,.1);
 }
 .admin-title{font-size:18px;font-weight:800;color:var(--gold);letter-spacing:1px}
@@ -1134,7 +1134,7 @@ body{
   display:flex;overflow-x:auto;scrollbar-width:none;
   background:linear-gradient(180deg,#1a1a1a,#181818);
   border-bottom:1px solid var(--border);
-  position:sticky;top:62px;z-index:18;
+  flex-shrink:0;
 }
 .admin-tabs::-webkit-scrollbar{display:none}
 .admin-tab{
@@ -1146,7 +1146,11 @@ body{
 }
 .admin-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
 .admin-tab-view{
-  display:none;padding:16px 16px 80px;
+  display:none;
+  padding:16px 16px 80px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  flex:1;
   animation:fadeIn .25s ease;
 }
 .admin-tab-view.active{display:block}
