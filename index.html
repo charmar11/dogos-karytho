@@ -157,7 +157,37 @@ body{
 }
 .view-cobrar-layout .total-amt{font-size:26px}
 
-/* ── COBRAR DESKTOP OVERRIDES ── */
+/* ── DATE PICKER ROW ── */
+.date-picker-row{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;padding:12px 14px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-md);
+}
+.date-picker-lbl{font-size:11px;font-weight:800;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.date-picker-input{
+  flex:1;background:var(--bg3);border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm);padding:9px 12px;
+  color:var(--text);font-size:14px;font-weight:600;
+  outline:none;-webkit-appearance:none;
+  transition:border-color .2s;
+  color-scheme:dark;
+}
+.date-picker-input:focus{border-color:var(--gold)}
+.btn-date-clear{
+  padding:8px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border2);background:transparent;
+  color:var(--text3);font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+}
+.btn-date-clear:active{background:var(--bg3)}
+.date-active-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--gold-dim);border:1px solid rgba(245,200,0,.4);
+  border-radius:12px;padding:3px 10px;
+  font-size:11px;font-weight:800;color:var(--gold);
+  margin-bottom:10px;
+}
 @media(min-width:768px){
   .view-cobrar-layout .order-box{
     max-height:320px;
@@ -1631,6 +1661,16 @@ body{
       <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
     </div>
 
+    <!-- Date picker (specific day) -->
+    <div class="date-picker-row">
+      <span class="date-picker-lbl">📅 Dia especifico</span>
+      <input type="date" class="date-picker-input" id="adm-date-picker" onchange="setAdminSpecificDate(this.value)"/>
+      <button class="btn-date-clear" id="adm-date-clear" onclick="clearAdminDate()" style="display:none">✕ Quitar</button>
+    </div>
+    <div id="adm-date-badge" style="display:none">
+      <div class="date-active-badge">📅 <span id="adm-date-badge-lbl"></span></div>
+    </div>
+
     <!-- Stats -->
     <div class="admin-stat-grid" style="margin-bottom:14px">
       <div class="admin-stat"><div class="admin-stat-lbl">Ventas</div><div class="admin-stat-val" id="adm-v-count">0</div></div>
@@ -2892,12 +2932,53 @@ function loadCidopMembers(){
   startMembersListener();
 }
 
+let adminSpecificDate=null; // DD/MM/YYYY when a specific day is selected
+
 function getAdminSales(){
+  if(adminSpecificDate) return sales.filter(s=>s.date===adminSpecificDate);
   const today=toDateKey(new Date());
   if(adminRange==='hoy') return sales.filter(s=>s.date===today);
   if(adminRange==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
   if(adminRange==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
   return [...sales];
+}
+
+function setAdminSpecificDate(val){
+  if(!val){clearAdminDate();return;}
+  const [y,m,d]=val.split('-');
+  adminSpecificDate=`${d}/${m}/${y}`;
+  document.querySelectorAll('.admin-range-btn').forEach(b=>b.classList.remove('active'));
+  const badge=document.getElementById('adm-date-badge');
+  const lbl=document.getElementById('adm-date-badge-lbl');
+  const clearBtn=document.getElementById('adm-date-clear');
+  if(badge)badge.style.display='block';
+  if(lbl)lbl.textContent=adminSpecificDate;
+  if(clearBtn)clearBtn.style.display='';
+  const hint=document.getElementById('adm-export-hint');
+  if(hint)hint.innerHTML=`📋 <strong>Dia ${adminSpecificDate}:</strong> detalle por hora y productos`;
+  const ps=getAdminSales();
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  const avg=ps.length?total/ps.length:0;
+  const vc=document.getElementById('adm-v-count');
+  const vt=document.getElementById('adm-v-total');
+  const va=document.getElementById('adm-v-avg');
+  if(vc)vc.textContent=ps.length;
+  if(vt)vt.textContent='$'+total.toFixed(2);
+  if(va)va.textContent='Promedio: $'+avg.toFixed(2);
+  renderAdminChart(ps,'hoy');
+  renderAdminVTop(ps);
+  renderAdminVentas(ps);
+}
+
+function clearAdminDate(){
+  adminSpecificDate=null;
+  const picker=document.getElementById('adm-date-picker');
+  const badge=document.getElementById('adm-date-badge');
+  const clearBtn=document.getElementById('adm-date-clear');
+  if(picker)picker.value='';
+  if(badge)badge.style.display='none';
+  if(clearBtn)clearBtn.style.display='none';
+  setAdminRange(adminRange);
 }
 
 /* ─── Admin tab navigation ─── */
@@ -2916,6 +2997,13 @@ function setAdminTab(tab){
 
 function setAdminRange(r){
   adminRange=r;
+  adminSpecificDate=null;
+  const picker=document.getElementById('adm-date-picker');
+  const badge=document.getElementById('adm-date-badge');
+  const clearBtn=document.getElementById('adm-date-clear');
+  if(picker)picker.value='';
+  if(badge)badge.style.display='none';
+  if(clearBtn)clearBtn.style.display='none';
   document.querySelectorAll('.admin-range-btn').forEach((b,i)=>{
     b.classList.toggle('active',['hoy','semana','mes','todo'][i]===r);
   });
@@ -3007,30 +3095,60 @@ function exportExcel(){
   if(!ps.length){showToast('Sin ventas en este periodo','red');return;}
   const wb=XLSX.utils.book_new();
   const now=new Date();
-  const fname=`dogos-karytho-${adminRange}-${now.toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`;
-  const PESO='$#,##0.00'; // Excel peso format — allows formulas
+  const effectiveRange=adminSpecificDate?'hoy':adminRange;
+  const fname=`dogos-karytho-${adminSpecificDate?adminSpecificDate.replace(/\//g,'-'):adminRange}-${now.toLocaleDateString('es-MX').replace(/\//g,'-')}.xlsx`;
+  const PESO='$#,##0.00';
 
-  // Helper: apply currency format to specific columns (0-indexed) in a worksheet
+  // Apply currency format to specific columns
   function fmtCols(ws,rows,colIdxs){
     rows.forEach((row,r)=>{
-      if(r===0)return; // skip header
+      if(r===0)return;
       colIdxs.forEach(c=>{
         const addr=XLSX.utils.encode_cell({r,c});
-        if(ws[addr]&&typeof ws[addr].v==='number'){
-          ws[addr].z=PESO;
-          ws[addr].t='n';
-        }
+        if(ws[addr]&&typeof ws[addr].v==='number'){ws[addr].z=PESO;ws[addr].t='n';}
       });
     });
   }
 
-  if(adminRange==='hoy'){
-    // Hoja 1: Ventas del dia — cada producto individual
+  // Add a TOTAL row with SUM formulas for numeric columns
+  // colDefs: [{col: colIndex, label: 'Total' (only on first)}]
+  function addTotalRow(ws,rows,sumCols){
+    const dataStart=2; // row 2 (1-indexed), row 1 is header
+    const dataEnd=rows.length; // last data row (1-indexed)
+    const totalRow=rows[0].map(()=>''); // empty cells same width as header
+    sumCols.forEach(({col,label})=>{
+      if(label)totalRow[col-1]=label; // text label
+      else{
+        const colLetter=XLSX.utils.encode_col(col-1);
+        const addr=XLSX.utils.encode_cell({r:rows.length,c:col-1});
+        ws[addr]={t:'n',f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`,z:PESO};
+      }
+    });
+    // Update sheet range
+    const ref=ws['!ref'];
+    if(ref){
+      const range=XLSX.utils.decode_range(ref);
+      range.e.r=rows.length;
+      ws['!ref']=XLSX.utils.encode_range(range);
+    }
+    // Bold the label if any
+    sumCols.forEach(({col,label})=>{
+      if(label){
+        const addr=XLSX.utils.encode_cell({r:rows.length,c:col-1});
+        ws[addr]={t:'s',v:label,s:{font:{bold:true}}};
+      }
+    });
+  }
+
+  // Sort oldest first
+  const psSorted=[...ps].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+
+  if(effectiveRange==='hoy'){
     const detRows=[['Hora','Producto','Variacion','Extras','Cantidad','Precio unit.','Subtotal','Total venta','Cambio']];
-    ps.forEach(s=>{
+    psSorted.forEach(s=>{
       s.items.forEach((it,i)=>{
         detRows.push([
-          s.time, it.name, it.var||'', it.extras||'',
+          s.time,it.name,it.var||'',it.extras||'',
           it.qty,
           it.price,
           parseFloat((it.price*it.qty).toFixed(2)),
@@ -3042,11 +3160,11 @@ function exportExcel(){
     const ws1=XLSX.utils.aoa_to_sheet(detRows);
     ws1['!cols']=[{wch:8},{wch:22},{wch:14},{wch:16},{wch:8},{wch:12},{wch:12},{wch:13},{wch:11}];
     fmtCols(ws1,detRows,[5,6,7,8]);
+    addTotalRow(ws1,detRows,[{col:1,label:'TOTAL'},{col:7,label:''},{col:8,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws1,'Ventas del dia');
 
-    // Hoja 2: Por hora
     const byHour={};
-    ps.forEach(s=>{
+    psSorted.forEach(s=>{
       const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();
       if(!byHour[h])byHour[h]={ventas:0,total:0};
       byHour[h].ventas++;byHour[h].total+=s.total;
@@ -3056,11 +3174,11 @@ function exportExcel(){
     const ws2=XLSX.utils.aoa_to_sheet(hrRows);
     ws2['!cols']=[{wch:10},{wch:10},{wch:14}];
     fmtCols(ws2,hrRows,[2]);
+    addTotalRow(ws2,hrRows,[{col:1,label:'TOTAL'},{col:3,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws2,'Por hora');
 
-    // Hoja 3: Productos del dia
     const counts={},totals={};
-    ps.forEach(s=>s.items.forEach(it=>{
+    psSorted.forEach(s=>s.items.forEach(it=>{
       const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
       counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);
     }));
@@ -3069,12 +3187,13 @@ function exportExcel(){
     const ws3=XLSX.utils.aoa_to_sheet(prodRows);
     ws3['!cols']=[{wch:28},{wch:10},{wch:14}];
     fmtCols(ws3,prodRows,[2]);
+    addTotalRow(ws3,prodRows,[{col:1,label:'TOTAL'},{col:3,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws3,'Productos del dia');
 
-  } else if(adminRange==='semana'){
+  } else if(effectiveRange==='semana'){
     const dayNames=['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
     const byDay={};
-    ps.forEach(s=>{
+    psSorted.forEach(s=>{
       const key=s.date;const d=new Date(s.timestamp);
       if(!byDay[key])byDay[key]={dayName:dayNames[d.getDay()],ts:d.getTime(),ventas:0,total:0,items:{}};
       byDay[key].ventas++;byDay[key].total+=s.total;
@@ -3086,15 +3205,14 @@ function exportExcel(){
     });
     const days=Object.entries(byDay).sort((a,b)=>a[1].ts-b[1].ts);
 
-    // Hoja 1: Por dia
     const dayRows=[['Dia','Fecha','Ventas','Ingresos']];
     days.forEach(([date,d])=>dayRows.push([d.dayName,date,d.ventas,parseFloat(d.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(dayRows);
     ws1['!cols']=[{wch:8},{wch:14},{wch:10},{wch:14}];
     fmtCols(ws1,dayRows,[3]);
+    addTotalRow(ws1,dayRows,[{col:1,label:'TOTAL'},{col:4,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por dia');
 
-    // Hoja 2: Productos por dia
     const dpRows=[['Fecha','Dia','Producto','Cantidad','Ingresos']];
     days.forEach(([date,d])=>{
       Object.entries(d.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
@@ -3104,11 +3222,12 @@ function exportExcel(){
     const ws2=XLSX.utils.aoa_to_sheet(dpRows);
     ws2['!cols']=[{wch:14},{wch:8},{wch:28},{wch:10},{wch:14}];
     fmtCols(ws2,dpRows,[4]);
+    addTotalRow(ws2,dpRows,[{col:1,label:'TOTAL'},{col:5,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por dia');
 
-  } else if(adminRange==='mes'){
+  } else if(effectiveRange==='mes'){
     const byWeek={};
-    ps.forEach(s=>{
+    psSorted.forEach(s=>{
       const d=new Date(s.timestamp);
       const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);
       const key=mon.getTime();
@@ -3123,15 +3242,14 @@ function exportExcel(){
     const weeks=Object.entries(byWeek).sort((a,b)=>Number(a[0])-Number(b[0]));
     weeks.forEach(([,w])=>{w.to=toDateKey(new Date(Math.max(...w.dates)));});
 
-    // Hoja 1: Por semana
     const wkRows=[['Semana','Desde','Hasta','Ventas','Ingresos']];
     weeks.forEach(([,w],i)=>wkRows.push(['Semana '+(i+1),w.from,w.to,w.ventas,parseFloat(w.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(wkRows);
     ws1['!cols']=[{wch:12},{wch:14},{wch:14},{wch:10},{wch:14}];
     fmtCols(ws1,wkRows,[4]);
+    addTotalRow(ws1,wkRows,[{col:1,label:'TOTAL'},{col:5,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por semana');
 
-    // Hoja 2: Productos por semana
     const wpRows=[['Semana','Producto','Cantidad','Ingresos']];
     weeks.forEach(([,w],i)=>{
       Object.entries(w.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
@@ -3141,12 +3259,13 @@ function exportExcel(){
     const ws2=XLSX.utils.aoa_to_sheet(wpRows);
     ws2['!cols']=[{wch:12},{wch:28},{wch:10},{wch:14}];
     fmtCols(ws2,wpRows,[3]);
+    addTotalRow(ws2,wpRows,[{col:1,label:'TOTAL'},{col:4,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por semana');
 
   } else {
     const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const byMonth={};
-    ps.forEach(s=>{
+    psSorted.forEach(s=>{
       const d=new Date(s.timestamp);
       const key=d.getFullYear()+'-'+(String(d.getMonth()+1).padStart(2,'0'));
       if(!byMonth[key])byMonth[key]={label:monthNames[d.getMonth()]+' '+d.getFullYear(),ventas:0,total:0,items:{}};
@@ -3159,15 +3278,14 @@ function exportExcel(){
     });
     const months=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
 
-    // Hoja 1: Por mes
     const moRows=[['Mes','Ventas','Ingresos']];
     months.forEach(([,m])=>moRows.push([m.label,m.ventas,parseFloat(m.total.toFixed(2))]));
     const ws1=XLSX.utils.aoa_to_sheet(moRows);
     ws1['!cols']=[{wch:20},{wch:10},{wch:14}];
     fmtCols(ws1,moRows,[2]);
+    addTotalRow(ws1,moRows,[{col:1,label:'TOTAL'},{col:3,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws1,'Por mes');
 
-    // Hoja 2: Productos por mes
     const mpRows=[['Mes','Producto','Cantidad','Ingresos']];
     months.forEach(([,m])=>{
       Object.entries(m.items).sort((a,b)=>b[1].qty-a[1].qty).forEach(([name,v])=>{
@@ -3177,6 +3295,7 @@ function exportExcel(){
     const ws2=XLSX.utils.aoa_to_sheet(mpRows);
     ws2['!cols']=[{wch:20},{wch:28},{wch:10},{wch:14}];
     fmtCols(ws2,mpRows,[3]);
+    addTotalRow(ws2,mpRows,[{col:1,label:'TOTAL'},{col:4,label:''}]);
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por mes');
   }
 
