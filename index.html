@@ -4183,10 +4183,32 @@ function doIngReset(type){
   const idx=ingredients.findIndex(i=>i.id===resetIngId);if(idx<0)return;
   const ing={...ingredients[idx]};
   document.getElementById('ing-reset-modal').classList.add('hidden');
-  if(type==='stock')  ingredients[idx]={...ing,stock:0};
-  if(type==='precio') ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
-  if(type==='gasto')  ingredients[idx]={...ing,totalCostPaid:0};
-  if(type==='todo')   ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+
+  if(type==='stock'){
+    ingredients[idx]={...ing,stock:0};
+  } else if(type==='precio'){
+    // Cancel accumulated cost in history
+    if((ing.totalCostPaid||0)>0){
+      logInvHistory('entrada',`Corrección — reset de precio de ${ing.name}`,
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de precio',entryType:'real'});
+    }
+    ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+  } else if(type==='gasto'){
+    // Cancel accumulated cost in history
+    if((ing.totalCostPaid||0)>0){
+      logInvHistory('entrada',`Corrección — reset de gasto de ${ing.name}`,
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset de gasto',entryType:'real'});
+    }
+    ingredients[idx]={...ing,totalCostPaid:0};
+  } else if(type==='todo'){
+    // Cancel accumulated cost in history
+    if((ing.totalCostPaid||0)>0){
+      logInvHistory('entrada',`Corrección — reset completo de ${ing.name}`,
+        {ingId:ing.id,qty:0,unit:ing.unit,addedUsage:0,cost:-(ing.totalCostPaid||0),note:'reset completo',entryType:'real'});
+    }
+    ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
+  }
+
   logInvHistory('ajuste',`Reset (${type}) — ${ing.name}`);
   fbSaveIngredients();
   renderInvStock();
@@ -4813,18 +4835,21 @@ function renderInvHistory(){
   // Filter by type
   let data=invHistory;
   if(invHistFilter==='entrada'){
-    data=invHistory.filter(h=>h.type==='entrada'&&h.data?.entryType==='real'&&h.data?.cost>0);
+    // Include real purchases AND negative corrections (resets)
+    data=invHistory.filter(h=>h.type==='entrada'&&(h.data?.entryType==='real'||!h.data?.entryType)&&h.data?.cost!=null);
   } else if(invHistFilter!=='todo'){
     data=invHistory.filter(h=>h.type===invHistFilter);
   }
   // Filter by period
   data=filterHistByPeriod(data);
 
-  // Summary bar
+  // Summary bar — net total (positives + negatives cancel correctly)
   if(summaryEl){
-    const totalGasto=data.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
-    const gastoStr=totalGasto>0?` · <span style="color:#f57474;font-weight:700">-$${totalGasto.toFixed(2)}</span>`:'';
-    summaryEl.innerHTML=`${data.length} movimiento${data.length!==1?'s':''}${gastoStr}`;
+    const netGasto=data.filter(h=>h.type==='entrada').reduce((s,h)=>s+(h.data?.cost||0),0);
+    const positiveCount=data.filter(h=>h.type==='entrada'&&(h.data?.cost||0)>0).length;
+    const gastoStr=netGasto!==0
+      ?` · <span style="color:${netGasto>0?'#f57474':'#2ab8b8'};font-weight:700">${netGasto>0?'-':''}$${Math.abs(netGasto).toFixed(2)}</span>`:' · $0';
+    summaryEl.innerHTML=`${positiveCount} compra${positiveCount!==1?'s':''}${gastoStr}`;
   }
 
   if(!data.length){el.innerHTML='<div class="admin-empty">Sin movimientos en este filtro y periodo</div>';return;}
@@ -4839,7 +4864,12 @@ function renderInvHistory(){
     let c={...cfgMap[h.type]||{icon:'📌',color:'var(--text2)',bg:'var(--bg2)',border:'var(--border2)'}};
     if(h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'){c.bg='rgba(245,200,0,.06)';c.border='rgba(245,200,0,.3)';c.color='#F5C800';}
     else if(h.type==='salida'){c.bg='rgba(224,32,32,.07)';c.border='rgba(224,32,32,.35)';c.color='#f57474';}
-    const costTag=h.data?.cost>0?`<span style="margin-left:8px;font-size:11px;font-weight:800;color:#f57474">-$${h.data.cost.toFixed(2)}</span>`:'';
+    // Negative correction entries (resets)
+    const isCorrection=h.type==='entrada'&&(h.data?.cost||0)<0;
+    if(isCorrection){c={icon:'↩️',color:'#2ab8b8',bg:'rgba(42,184,184,.05)',border:'rgba(42,184,184,.25)'};}
+    const cost=h.data?.cost||0;
+    const costTag=cost!==0
+      ?`<span style="margin-left:8px;font-size:11px;font-weight:800;color:${cost<0?'#2ab8b8':'#f57474'}">${cost<0?'':'- '}$${Math.abs(cost).toFixed(2)}</span>`:'';
     const noCount=h.type==='salida'&&h.data?.outType&&h.data.outType!=='merma'?`<span style="margin-left:6px;font-size:10px;color:#F5C800;opacity:.8">no afecta finanzas</span>`:'';
     return `<div style="border-left:3px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:5px">
       <div style="font-size:10px;color:var(--text4);margin-bottom:2px">${h.time||''} · ${h.user||''}</div>
