@@ -3076,11 +3076,68 @@ function renderHistorial(){
 function deleteSale(id){
   customConfirm('Eliminar esta venta del historial?','Eliminar',()=>{
     const sale=sales.find(s=>String(s.id)===String(id));
-    const desc=sale?`Venta eliminada — $${sale.total.toFixed(2)} del ${sale.date}`:'Venta eliminada';
-    sales=sales.filter(s=>String(s.id)!==String(id));saveSales();renderHistorial();
+    if(!sale){showToast('Venta no encontrada','red');return;}
+    const desc=`Venta eliminada — $${sale.total.toFixed(2)} del ${sale.date}`;
+    // Restore inventory before removing sale
+    restaurarInventario(sale);
+    sales=sales.filter(s=>String(s.id)!==String(id));
+    saveSales();renderHistorial();
     logActivity('venta_del',desc);
-    showToast('Venta eliminada');
+    showToast('Venta eliminada e inventario restaurado');
   });
+}
+
+function restaurarInventario(sale){
+  if(!sale||!sale.items||!ingredients.length)return;
+  let changed=false;
+  const items=sale.items;
+
+  items.forEach(it=>{
+    const p=products.find(x=>x.name===it.name);if(!p)return;
+    const pid=p.id;
+    const vn=it.var&&it.var!=='Normal'&&it.var!==''?it.var:null;
+    const ex=it.extras&&it.extras!==''?it.extras:null;
+
+    // Same merge logic as descontarInventario
+    const baseRec=recipes[pid]||[];
+    const varKey=vn?`${pid}_${vn}`:ex?`${pid}_${ex}`:null;
+    const varOverrides=varKey?(recipes[varKey]||[]):[];
+    const merged=[...baseRec.map(r=>({...r}))];
+    varOverrides.forEach(ov=>{
+      const idx=merged.findIndex(r=>r.ingId===ov.ingId);
+      if(idx>=0) merged[idx]={...merged[idx],qty:ov.qty};
+      else if(ov.qty>0) merged.push({...ov});
+    });
+    merged.filter(r=>r.qty>0).forEach(r=>{
+      const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock+r.qty*it.qty).toFixed(3));
+      changed=true;
+    });
+
+    // Restore general recipe consumption
+    generalRecipe.forEach(r=>{
+      const mults=r.productMultipliers||{};
+      const hasAny=Object.keys(mults).length>0;
+      let multiplier=null;
+      if(!hasAny){
+        multiplier=1;
+      } else {
+        const variantKey=vn?`${pid}_${vn}`:ex?`${pid}_${ex}`:null;
+        if(variantKey&&mults[variantKey]!=null) multiplier=mults[variantKey];
+        else if(mults[String(pid)]!=null) multiplier=mults[String(pid)];
+        else if(mults[pid]!=null) multiplier=mults[pid];
+      }
+      if(multiplier==null)return;
+      const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock+r.qty*multiplier*it.qty).toFixed(3));
+      changed=true;
+    });
+  });
+
+  if(changed){
+    fbSaveIngredients();
+    logInvHistory('ajuste',`Inventario restaurado — venta eliminada $${sale.total.toFixed(2)}`);
+  }
 }
 function clearAllSales(){
   const ps=getPeriodSales();if(!ps.length)return;
@@ -4391,7 +4448,7 @@ function registerOutput(){
   const cfg=outTypeCfg[type]||outTypeCfg.otro;
 
   const prevStock=ing.stock;
-  ing.stock=parseFloat(Math.max(0,ing.stock-qty).toFixed(3));
+  ing.stock=parseFloat((ing.stock-qty).toFixed(3));
 
   // Error/Prueba: revert cost proportionally so finances stay clean
   let reversedCost=0;
@@ -5266,7 +5323,7 @@ function descontarInventario(items){
 
     rec.forEach(r=>{
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-r.qty*it.qty).toFixed(3));
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-r.qty*it.qty).toFixed(3));
       changed=true;
     });
 
@@ -5293,7 +5350,7 @@ function descontarInventario(items){
       }
       if(multiplier==null)return;
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat(Math.max(0,ingredients[idx].stock-r.qty*multiplier*it.qty).toFixed(3));
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-r.qty*multiplier*it.qty).toFixed(3));
       changed=true;
     });
   });
