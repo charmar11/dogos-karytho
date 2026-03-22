@@ -55,26 +55,26 @@ body{
 .header{
   background:linear-gradient(180deg,#1e1e1e 0%,#1a1a1a 100%);
   border-bottom:2px solid var(--red);
-  padding:13px 18px;
+  padding:10px 16px;
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:20;
   box-shadow:0 2px 20px rgba(224,32,32,.12);
 }
-.header-brand{display:flex;align-items:center;gap:10px}
-.header-icon{font-size:26px;animation:breathe 3s ease-in-out infinite}
-.header-title{font-size:20px;font-weight:800;color:var(--gold);letter-spacing:1.5px;text-shadow:0 0 20px rgba(245,200,0,.3)}
-.header-sub{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:.5px}
-.header-date{font-size:11px;color:var(--text3);text-align:right;line-height:1.7}
+.header-brand{display:flex;align-items:center;gap:8px}
+.header-icon{font-size:22px;animation:breathe 3s ease-in-out infinite}
+.header-title{font-size:17px;font-weight:800;color:var(--gold);letter-spacing:1.5px;text-shadow:0 0 20px rgba(245,200,0,.3)}
+.header-sub{font-size:9px;color:var(--text3);margin-top:1px;letter-spacing:.5px}
+.header-date{font-size:10px;color:var(--text3);text-align:right;line-height:1.7}
 
 /* ── TABS ── */
 .tabs{
   display:flex;
   background:linear-gradient(180deg,#1c1c1c,#181818);
   border-bottom:1px solid var(--border);
-  position:sticky;top:66px;z-index:19;
+  position:sticky;top:58px;z-index:19;
 }
 .tab{
-  flex:1;padding:14px 4px;text-align:center;font-size:11px;font-weight:800;
+  flex:1;padding:11px 4px;text-align:center;font-size:11px;font-weight:800;
   color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;
   transition:color .25s,border-color .25s,background .25s;
   letter-spacing:.8px;text-transform:uppercase;user-select:none;position:relative;
@@ -86,6 +86,77 @@ body{
 }
 .tab.active{color:var(--gold)}
 .tab.active::after{width:100%;left:0}
+
+/* ── COBRAR FIXED LAYOUT ── */
+.view-cobrar-layout{
+  /* Fill exactly the space between tabs and bottom of screen */
+  height:calc(100dvh - 58px - 40px);
+  display:flex !important;
+  flex-direction:column;
+  padding:0 !important;
+  overflow:hidden;
+  gap:0;
+}
+.cobrar-top{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:10px 14px 6px;
+  scrollbar-width:none;
+}
+.cobrar-top::-webkit-scrollbar{display:none}
+.cobrar-bottom{
+  flex-shrink:0;
+  padding:8px 14px 12px;
+  background:var(--bg);
+  border-top:1px solid var(--border);
+}
+/* Compact product buttons for cobrar */
+.view-cobrar-layout .products-grid{
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+@media(min-width:500px){.view-cobrar-layout .products-grid{grid-template-columns:repeat(3,1fr)}}
+.view-cobrar-layout .prod-btn{
+  padding:14px 8px;
+  min-height:72px;
+}
+.view-cobrar-layout .pname{font-size:13px}
+.view-cobrar-layout .pprice{font-size:14px;margin-top:4px}
+.view-cobrar-layout .phint{font-size:9px;margin-top:3px}
+/* Compact fav strip */
+.view-cobrar-layout .fav-strip{
+  padding:0 0 8px;
+  margin-bottom:0;
+}
+.view-cobrar-layout .fav-btn{
+  padding:10px 14px;
+  min-width:90px;
+}
+.view-cobrar-layout .fav-btn .pname{font-size:13px}
+.view-cobrar-layout .fav-btn .pprice{font-size:13px;margin-top:3px}
+/* Compact order rows */
+.view-cobrar-layout .order-box{
+  max-height:185px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  margin-bottom:8px;
+  min-height:52px;
+  padding:8px 10px;
+}
+.view-cobrar-layout .order-box::-webkit-scrollbar{display:none}
+.view-cobrar-layout .order-row{padding:8px 0}
+.view-cobrar-layout .order-row-name{font-size:14px}
+.view-cobrar-layout .empty-order{padding:10px 0;gap:6px}
+.view-cobrar-layout .empty-icon{font-size:22px}
+.view-cobrar-layout .empty-txt{font-size:13px}
+/* Compact total bar */
+.view-cobrar-layout .total-bar{
+  padding:12px 14px;
+  margin-top:0;
+}
+.view-cobrar-layout .total-amt{font-size:26px}
 
 /* ── VIEWS ── */
 .view{display:none;padding:16px 16px 100px;animation:fadeIn .3s ease}
@@ -1323,25 +1394,28 @@ body{
 </div>
 
 <!-- ===== COBRAR ===== -->
-<div id="view-cobrar" class="view active">
-  <div class="sec-label">⭐ Acceso rapido</div>
-  <div id="fav-strip" class="fav-strip"></div>
-  <div class="sec-label">🌭 Menu completo</div>
-  <div class="products-grid" id="products-grid"></div>
-  <div class="sec-label">🧾 Orden actual</div>
-  <div class="order-box" id="order-box">
-    <div class="empty-order" id="empty-order">
-      <div class="empty-icon">🛒</div>
-      <div class="empty-txt">Toca un producto para agregarlo</div>
-    </div>
+<div id="view-cobrar" class="view active view-cobrar-layout">
+  <!-- TOP: productos (scrollable internally) -->
+  <div class="cobrar-top">
+    <div id="fav-strip" class="fav-strip"></div>
+    <div class="products-grid" id="products-grid"></div>
   </div>
-  <div class="total-bar" id="total-bar">
-    <div style="flex:1">
-      <div class="total-lbl">Total a cobrar</div>
-      <div class="total-amt">$<span id="total-display">0.00</span></div>
+  <!-- BOTTOM: orden + cobrar (always visible) -->
+  <div class="cobrar-bottom">
+    <div class="order-box" id="order-box">
+      <div class="empty-order" id="empty-order">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-txt">Toca un producto para agregarlo</div>
+      </div>
     </div>
-    <button class="btn-cancel" onclick="clearOrder()">Cancelar</button>
-    <button class="btn-cobrar" id="btn-cobrar" onclick="openCash()">Cobrar</button>
+    <div class="total-bar" id="total-bar">
+      <div style="flex:1">
+        <div class="total-lbl">Total a cobrar</div>
+        <div class="total-amt">$<span id="total-display">0.00</span></div>
+      </div>
+      <button class="btn-cancel" onclick="clearOrder()">Cancelar</button>
+      <button class="btn-cobrar" id="btn-cobrar" onclick="openCash()">Cobrar</button>
+    </div>
   </div>
 </div>
 
