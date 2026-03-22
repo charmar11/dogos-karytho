@@ -1743,6 +1743,7 @@ body{
         <span style="color:var(--text3);font-size:14px">$</span>
         <input class="form-input" id="ing-m-cost" type="number" inputmode="decimal" placeholder="0.00" style="flex:1"/>
         <span id="ing-cost-unit-lbl2" style="font-size:12px;color:var(--text3);flex-shrink:0"></span>
+        <button onclick="applyNewIngCost()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(42,184,184,.4);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:12px;font-weight:700;cursor:pointer">✓ Aplicar</button>
       </div>
       <div id="ing-cost-preview" style="font-size:11px;color:var(--text4);min-height:14px;margin-bottom:10px"></div>
 
@@ -4174,40 +4175,46 @@ function openEditIngredient(id){
   document.getElementById('ing-modal').classList.remove('hidden');
 }
 function closeIngModal(){document.getElementById('ing-modal').classList.add('hidden');}
+function applyNewIngCost(){
+  const newCost=parseFloat(document.getElementById('ing-m-cost')?.value)||0;
+  const ing=ingredients.find(i=>i.id===editIngId);
+  if(!ing){showToast('Abre un ingrediente con ✏️ primero','red');return;}
+  if(!newCost){showToast('Escribe el nuevo precio','red');return;}
+  const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
+  const old=ingredients[idx];
+  const newTotalCost=newCost*(old.totalQtyBought||old.stock||0);
+  ingredients[idx]={...old,
+    costPerUnit:newCost,
+    totalCostPaid:parseFloat(newTotalCost.toFixed(2)),
+    totalQtyBought:old.totalQtyBought||old.stock||0
+  };
+  logInvHistory('ajuste',`${old.name} — precio corregido a $${newCost.toFixed(4)}/${old.unit}`,{ingId:old.id,newCost});
+  fbSaveIngredients();
+  const preview=document.getElementById('ing-cost-preview');
+  if(preview){preview.textContent=`✅ Precio actualizado a $${newCost.toFixed(4)}/${old.unit}`;preview.style.color='#2ab8b8';}
+  showToast(`${old.name} → $${newCost.toFixed(4)}/${old.unit}`,'green');
+}
+
 function confirmResetIngCost(){
   const newPrice=parseFloat(document.getElementById('ing-m-reset-cost')?.value)||0;
   const ing=ingredients.find(i=>i.id===editIngId);
-  if(!ing){showToast('Guarda primero el ingrediente','red');return;}
+  if(!ing){showToast('Abre un ingrediente con ✏️ primero','red');return;}
   if(!newPrice){showToast('Escribe el nuevo precio','red');return;}
-  customConfirm(
-    `Resetear historial de "${ing.name}" y fijar $${newPrice.toFixed(2)}/${ing.unit}? No afecta el stock.`,
-    'Resetear',
-    ()=>{
-      const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
-      const old=ingredients[idx];
-      const qtyBase=old.totalQtyBought||old.stock||0;
-      ingredients[idx]={...old,
-        costPerUnit:newPrice,
-        totalCostPaid:parseFloat((newPrice*qtyBase).toFixed(2)),
-        totalQtyBought:qtyBase
-      };
-      // Also log a reversal entry to cancel previous costs from gastoReal
-      const cancelCost=-(old.totalCostPaid||0);
-      if(cancelCost<0){
-        logInvHistory('entrada',`Reseteo de precio — ${old.name} a $${newPrice.toFixed(2)}/${old.unit}`,
-          {ingId:old.id,qty:0,unit:old.unit,addedUsage:0,cost:cancelCost,note:'reseteo de precio',entryType:'real'});
-        // Log new cost as real entry
-        logInvHistory('entrada',`Precio reseteado — ${old.name} $${newPrice.toFixed(2)}/${old.unit} (${qtyBase} ${old.unit} en stock)`,
-          {ingId:old.id,qty:qtyBase,unit:old.unit,addedUsage:qtyBase,cost:parseFloat((newPrice*qtyBase).toFixed(2)),note:'precio reseteado manualmente',entryType:'real'});
-      }
-      logInvHistory('ajuste',`${old.name} — precio reseteado a $${newPrice.toFixed(2)}/${old.unit}`,{ingId:old.id,newPrice});
-      fbSaveIngredients();
-      document.getElementById('ing-m-reset-cost').value='';
-      const preview=document.getElementById('ing-cost-preview');
-      if(preview){preview.textContent=`✅ Reseteado a $${newPrice.toFixed(2)}/${old.unit}`;preview.style.color='#2ab8b8';}
-      showToast(`${old.name} reseteado a $${newPrice.toFixed(2)}`,'green');
-    }
-  );
+  // No confirm dialog — just apply directly
+  const idx=ingredients.findIndex(i=>i.id===editIngId);if(idx<0)return;
+  const old=ingredients[idx];
+  const qtyBase=old.totalQtyBought||old.stock||0;
+  ingredients[idx]={...old,
+    costPerUnit:newPrice,
+    totalCostPaid:parseFloat((newPrice*qtyBase).toFixed(2)),
+    totalQtyBought:qtyBase
+  };
+  logInvHistory('ajuste',`${old.name} — precio reseteado a $${newPrice.toFixed(2)}/${old.unit}`,{ingId:old.id,newPrice});
+  fbSaveIngredients();
+  document.getElementById('ing-m-reset-cost').value='';
+  const preview=document.getElementById('ing-cost-preview');
+  if(preview){preview.textContent=`✅ Reseteado a $${newPrice.toFixed(2)}/${old.unit}`;preview.style.color='#2ab8b8';}
+  showToast(`${old.name} → $${newPrice.toFixed(2)}/${old.unit}`,'green');
 }
 
 function saveIngredient(){
@@ -4676,24 +4683,11 @@ function renderInvCostos(){
   else ps=[...sales];
 
   // ── Bloque 0: Gasto REAL vs Ingresos REALES ──
-  // gastoReal = sum of totalCostPaid on all ingredients (reflects salidas por error/prueba)
   const lbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Historico'}[invCostoPeriod];
-
-  // For period-specific gasto: sum from history entries (real purchases only, supports negatives for reversals)
-  let gastoReal=0;
-  invHistory.filter(h=>h.type==='entrada').forEach(h=>{
-    // Include entries with entryType:'real' OR entries without entryType (backward compat)
-    const isReal=!h.data?.entryType||h.data?.entryType==='real';
-    if(!isReal)return;
-    const inPeriod=
-      invCostoPeriod==='hoy'?h.date===today:
-      invCostoPeriod==='semana'?isSameWeek(h.ts):
-      invCostoPeriod==='mes'?isSameMonth(h.ts):true;
-    if(!inPeriod)return;
-    gastoReal+=(h.data?.cost||0); // supports negative reversals
-  });
+  // Read directly from ingredients.totalCostPaid — always accurate, updates on every salida por error/prueba
+  const gastoReal=parseFloat(ingredients.reduce((s,i)=>s+(i.totalCostPaid||0),0).toFixed(2));
   const ingresosR=ps.reduce((s,v)=>s+v.total,0);
-  const difReal=ingresosR-gastoReal;
+  const difReal=parseFloat((ingresosR-gastoReal).toFixed(2));
 
   const rIng=document.getElementById('inv-r-ingresos');
   const rGasto=document.getElementById('inv-r-gasto');
