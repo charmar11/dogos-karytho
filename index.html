@@ -3431,11 +3431,13 @@ function bootAdmin(){
   document.getElementById('admin-screen').classList.add('active');
   if(!fbDb)initFirebase(FB_CONFIG);
   renderAdmin();
-  fbListening=false; // reset so listeners attach fresh
+  fbListening=false;
   setTimeout(()=>{
     startFbListeners();
     startMembersListener();
     startActivityListener();
+    startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
+    loadGastos();
   },800);
 }
 
