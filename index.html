@@ -2088,9 +2088,16 @@ body{
       </div>
     </div>
 
-    <!-- ── Exportar ── -->
-    <div style="display:flex;justify-content:flex-end">
-      <button onclick="exportarGastos()" style="padding:9px 16px;border-radius:9px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer">⬇ Exportar CSV</button>
+    <!-- ── Historial + Exportar ── -->
+    <div class="form-card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="sec-label" style="margin:0">📋 Historial de gastos</div>
+        <button onclick="exportarGastosExcel()"
+          style="padding:7px 14px;border-radius:8px;border:1px solid rgba(42,184,184,.35);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:12px;font-weight:700;cursor:pointer">
+          📊 Exportar Excel
+        </button>
+      </div>
+      <div id="adm-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
     </div>
   </div>
 
@@ -4063,9 +4070,116 @@ function renderGastos(){
   if(gN){gN.textContent='$'+ganancia.toFixed(2);gN.style.color=ganancia>=0?'#2ab8b8':'#E02020';}
   if(gP) gP.textContent=perLbl;
 
-  // ── Gráfica 1: Ingresos vs Gastos (barras por días o total) ──
+  // ── Gráfica ──
   renderGastosCharts(gs, ingresos, totalGasto, salesFilt);
 
+  // ── Lista en Admin ──
+  const el=document.getElementById('adm-gastos-list');
+  if(!el)return;
+  if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
+  el.innerHTML='';
+  gs.forEach(g=>{
+    const catObj=getCatById(g.cat);
+    const card=document.createElement('div');
+    card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:7px';
+    card.innerHTML=`
+      <div style="width:32px;height:32px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${catObj.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${g.desc}</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">${g.fecha} · <span style="color:${catObj.color}">${catObj.name}</span> · ${g.user}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:14px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
+        <button class="adm-g-del" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
+      </div>`;
+    card.querySelector('.adm-g-del').onclick=()=>eliminarGasto(g.id);
+    el.appendChild(card);
+  });
+}
+
+/* ── Excel export de Gastos ── */
+function exportarGastosExcel(){
+  if(typeof XLSX==='undefined'){showToast('XLSX no disponible','red');return;}
+  const gs=getGastosFiltrados();
+  if(!gs.length){showToast('Sin gastos en este periodo','red');return;}
+
+  const wb=XLSX.utils.book_new();
+  const PESO='$#,##0.00';
+  const perLbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
+
+  // ── Hoja 1: Detalle de gastos ──
+  const rows=[['Fecha','Descripción','Categoría','Monto','Registrado por']];
+  gs.forEach(g=>{
+    const cat=getCatById(g.cat);
+    rows.push([g.fecha, g.desc, cat.icon+' '+cat.name, g.monto, g.user]);
+  });
+  // Totals row
+  rows.push(['','','TOTAL', gs.reduce((s,g)=>s+g.monto,0), '']);
+  const ws1=XLSX.utils.aoa_to_sheet(rows);
+  ws1['!cols']=[{wch:12},{wch:36},{wch:22},{wch:12},{wch:16}];
+  // Format monto column (D) as currency
+  rows.forEach((_,r)=>{
+    if(r===0)return;
+    const addr='D'+(r+1);
+    if(ws1[addr]&&typeof ws1[addr].v==='number') ws1[addr].z=PESO;
+  });
+  // Style header
+  ['A1','B1','C1','D1','E1'].forEach(a=>{
+    if(ws1[a]) ws1[a].s={font:{bold:true},fill:{fgColor:{rgb:'1A1A2A'}}};
+  });
+  XLSX.utils.book_append_sheet(wb,ws1,'Gastos');
+
+  // ── Hoja 2: Resumen por categoría ──
+  const catMap={};
+  gs.forEach(g=>{
+    const cat=getCatById(g.cat);
+    const k=cat.icon+' '+cat.name;
+    if(!catMap[k])catMap[k]=0;
+    catMap[k]+=g.monto;
+  });
+  const rows2=[['Categoría','Total gastos','% del total']];
+  const totalG=gs.reduce((s,g)=>s+g.monto,0);
+  Object.entries(catMap).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+    rows2.push([k, v, totalG>0?(v/totalG*100).toFixed(1)+'%':'0%']);
+  });
+  rows2.push(['TOTAL',totalG,'100%']);
+  const ws2=XLSX.utils.aoa_to_sheet(rows2);
+  ws2['!cols']=[{wch:26},{wch:14},{wch:12}];
+  rows2.forEach((_,r)=>{
+    if(r===0)return;
+    const addr='B'+(r+1);
+    if(ws2[addr]&&typeof ws2[addr].v==='number') ws2[addr].z=PESO;
+  });
+  XLSX.utils.book_append_sheet(wb,ws2,'Por categoría');
+
+  // ── Hoja 3: Balance (ingresos vs gastos) ──
+  const today=toDateKey(new Date());
+  let salesFilt=sales;
+  if(gastosPeriod==='hoy') salesFilt=sales.filter(s=>s.date===today);
+  else if(gastosPeriod==='semana') salesFilt=sales.filter(s=>isSameWeek(s.timestamp));
+  else if(gastosPeriod==='mes') salesFilt=sales.filter(s=>isSameMonth(s.timestamp));
+  const totalIngresos=salesFilt.reduce((s,v)=>s+v.total,0);
+  const ganancia=totalIngresos-totalG;
+  const margen=totalIngresos>0?(ganancia/totalIngresos*100).toFixed(1)+'%':'—';
+  const rows3=[
+    ['Concepto','Monto',perLbl],
+    ['Ingresos totales', totalIngresos,''],
+    ['Gastos totales', totalG,''],
+    ['Ganancia neta', ganancia,''],
+    ['Margen', margen,''],
+  ];
+  const ws3=XLSX.utils.aoa_to_sheet(rows3);
+  ws3['!cols']=[{wch:22},{wch:14},{wch:14}];
+  [2,3,4].forEach(r=>{
+    const addr='B'+r;
+    if(ws3[addr]&&typeof ws3[addr].v==='number') ws3[addr].z=PESO;
+  });
+  XLSX.utils.book_append_sheet(wb,ws3,'Balance');
+
+  const fname='gastos-karytho-'+perLbl.toLowerCase().replace(/ /g,'-')+'-'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  showToast('📊 Excel exportado','green');
 }
 
 /* ── Gastos charts ── */
@@ -4144,43 +4258,44 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     data:{
       labels:isEmpty?['Sin datos']:xLabels,
       datasets:[
+        // ── Base de Ingresos (min entre ing y gas) ──
         {
           label:'Ingresos',
-          data:isEmpty?[0]:ingData,
-          backgroundColor:'rgba(42,184,184,.7)',
-          hoverBackgroundColor:'rgba(42,184,184,.95)',
-          borderRadius:{topLeft:5,topRight:5},
-          borderSkipped:false,
-          borderWidth:0,
-          categoryPercentage:0.6,
-          barPercentage:0.75,
-          order:2,
+          data:isEmpty?[0]:keys.map((_,i)=>Math.min(ingData[i],gasData[i])),
+          backgroundColor:'rgba(42,184,184,.65)',
+          hoverBackgroundColor:'rgba(42,184,184,.65)',
+          borderRadius:0,borderSkipped:true,borderWidth:0,
+          stack:'ing',categoryPercentage:0.55,barPercentage:0.85,order:3,
         },
-        {
-          label:'Gastos',
-          data:isEmpty?[0]:gasData,
-          backgroundColor:'rgba(224,32,32,.65)',
-          hoverBackgroundColor:'rgba(224,32,32,.9)',
-          borderRadius:{topLeft:5,topRight:5},
-          borderSkipped:false,
-          borderWidth:0,
-          categoryPercentage:0.6,
-          barPercentage:0.75,
-          order:3,
-        },
+        // ── Ganancia encima de Ingresos (solo cuando ing > gas) ──
         {
           label:'Ganancia',
-          data:isEmpty?[[0,0]]:ganFloat,
-          backgroundColor:isEmpty?['rgba(100,220,100,.45)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.55)':'rgba(245,116,116,.55)'),
-          hoverBackgroundColor:isEmpty?['rgba(100,220,100,.8)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.85)':'rgba(245,116,116,.85)'),
-          borderColor:isEmpty?['rgba(100,220,100,.9)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.9)':'rgba(245,116,116,.9)'),
-          borderWidth:isEmpty?[0]:ganPositive.map(()=>1.5),
-          borderRadius:{topLeft:4,topRight:4},
-          borderSkipped:false,
-          categoryPercentage:0.6,
-          barPercentage:0.75,
-          order:1,
-        }
+          data:isEmpty?[0]:keys.map((_,i)=>ingData[i]>gasData[i]?+(ingData[i]-gasData[i]).toFixed(2):0),
+          backgroundColor:'rgba(100,220,100,.75)',
+          hoverBackgroundColor:'rgba(100,220,100,.95)',
+          borderColor:'rgba(100,220,100,.9)',borderWidth:0,
+          borderRadius:{topLeft:5,topRight:5},borderSkipped:true,
+          stack:'ing',categoryPercentage:0.55,barPercentage:0.85,order:2,
+        },
+        // ── Base de Gastos (min entre ing y gas) ──
+        {
+          label:'Gastos',
+          data:isEmpty?[0]:keys.map((_,i)=>Math.min(ingData[i],gasData[i])),
+          backgroundColor:'rgba(224,32,32,.6)',
+          hoverBackgroundColor:'rgba(224,32,32,.6)',
+          borderRadius:0,borderSkipped:true,borderWidth:0,
+          stack:'gas',categoryPercentage:0.55,barPercentage:0.85,order:3,
+        },
+        // ── Pérdida encima de Gastos (solo cuando gas > ing) ──
+        {
+          label:'Pérdida',
+          data:isEmpty?[0]:keys.map((_,i)=>gasData[i]>ingData[i]?+(gasData[i]-ingData[i]).toFixed(2):0),
+          backgroundColor:'rgba(245,116,116,.75)',
+          hoverBackgroundColor:'rgba(245,116,116,.95)',
+          borderColor:'rgba(245,116,116,.9)',borderWidth:0,
+          borderRadius:{topLeft:5,topRight:5},borderSkipped:true,
+          stack:'gas',categoryPercentage:0.55,barPercentage:0.85,order:2,
+        },
       ]
     },
     options:{
@@ -4197,33 +4312,37 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
           callbacks:{
             title:items=>items[0]?.label||'',
             label:c=>{
-              if(c.datasetIndex===2){
-                const raw=c.raw;
-                const val=parseFloat(((Array.isArray(raw)?raw[1]-raw[0]:raw)||0).toFixed(2));
-                const pos=val>=0;
-                return pos?`  ✅ Ganancia: $${val.toFixed(2)}`:`  ⚠️ Pérdida: $${Math.abs(val).toFixed(2)}`;
-              }
+              // Only show real values, skip base bars and zero-value ganancia/perdida
+              if(c.datasetIndex===0||c.datasetIndex===2) return null; // base bars hidden from tooltip
               if((c.parsed.y||0)===0) return null;
-              return `  ${c.dataset.label}: $${(c.parsed.y||0).toFixed(2)}`;
+              if(c.datasetIndex===1) return `  ✅ Ganancia: $${(c.parsed.y||0).toFixed(2)}`;
+              if(c.datasetIndex===3) return `  ⚠️ Pérdida: $${(c.parsed.y||0).toFixed(2)}`;
+              return null;
             },
             afterBody:items=>{
               if(!items.length)return [];
               const idx=items[0].dataIndex;
               const ing=ingData[idx]||0, gas=gasData[idx]||0;
               if(!ing&&!gas)return [];
+              const lines=[];
+              lines.push(`  Ingresos: $${ing.toFixed(2)}`);
+              lines.push(`  Gastos: $${gas.toFixed(2)}`);
               const pct=ing>0?Math.round((ing-gas)/ing*100):0;
-              return [`  Margen: ${pct}%`];
+              lines.push(`  Margen: ${pct}%`);
+              return lines;
             }
           }
         }
       },
       scales:{
         x:{
+          stacked:true,
           ticks:{color:'#555',font:{size:10},maxRotation:0},
           grid:{color:'rgba(255,255,255,.03)',drawTicks:false},
           border:{color:'transparent'}
         },
         y:{
+          stacked:true,
           min:0,
           ticks:{
             color:'#555',font:{size:10},maxTicksLimit:5,
@@ -4235,31 +4354,8 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       }
     }
   });
-  // Click on Ingresos or Gastos bar → solo esa; click de nuevo → reset
-  c1.onclick=evt=>{
-    if(!gChartBalance)return;
-    const pts=gChartBalance.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
-    if(!pts.length)return;
-    const di=pts[0].datasetIndex;
-    if(di===2)return; // ganancia always visible
-    const other=di===0?1:0;
-    const ds=gChartBalance.data.datasets;
-    if(ds[other]._barHidden){
-      ds[0]._barHidden=false;ds[1]._barHidden=false;
-      ds[0].data=ds[0]._orig||ds[0].data;
-      ds[1].data=ds[1]._orig||ds[1].data;
-      ds[0].backgroundColor='rgba(42,184,184,.7)';
-      ds[1].backgroundColor='rgba(224,32,32,.65)';
-    } else {
-      ds[0]._orig=[...ds[0].data];ds[1]._orig=[...ds[1].data];
-      const clrs=['rgba(42,184,184,.95)','rgba(224,32,32,.9)'];
-      ds[di].backgroundColor=clrs[di];
-      ds[other].data=ds[other].data.map(()=>0);
-      ds[other].backgroundColor='transparent';
-      ds[other]._barHidden=true;
-    }
-    gChartBalance.update();
-  };
+  // Click disabled - stacked groups handle visual naturally
+  c1.onclick=null;
 
   // ── Chart 2: Dona — gastos por categoría (dinámico) ──
   const c2=document.getElementById('g-chart-cat');
