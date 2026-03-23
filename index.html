@@ -4105,7 +4105,7 @@ function bootEventos(){
 
   document.getElementById('eventos-screen').classList.add('active');
   evLines=[];
-  setTimeout(()=>{addEvLine();renderEvLines();},600);
+  setTimeout(()=>{evLines=[];evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:100});renderEvLines();},600);
 }
 
 function eventosLogout(){
@@ -4122,15 +4122,24 @@ function setEventosTab(t){
 }
 
 /* ── LINE MANAGEMENT ── */
+function distribuirPct(){
+  const n=evLines.length;if(!n)return;
+  const base=Math.floor(100/n);
+  evLines.forEach((l,i)=>l.pct=(i<n-1?base:100-(base*(n-1))));
+}
 function addEvLine(){
-  evLines.push({productId:products[0]?.id||null,qty:1,ings:[]});
+  evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:0});
+  distribuirPct();
   renderEvLines();
 }
 function removeEvLine(i){
   evLines.splice(i,1);
-  if(!evLines.length) evLines.push({productId:products[0]?.id||null,qty:1,ings:[]});
+  if(!evLines.length) evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:100});
+  else distribuirPct();
   renderEvLines();
 }
+function totalPct(){return evLines.reduce((s,l)=>s+(parseFloat(l.pct)||0),0);}
+function pctColor(t){return t===100?'#2ab8b8':t>100?'#f57474':'#f5c800';}
 function buildLineIngs(productId,qty){
   const p=products.find(x=>x.id===productId);if(!p)return[];
   const rec=recipes[productId]||[];
@@ -4158,21 +4167,44 @@ function renderEvLines(){
     const wrap=document.createElement('div');
     wrap.style.cssText=`border:1px solid rgba(224,32,32,.2);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(224,32,32,.03)`;
 
-    // ── Fila: Producto + cantidad + botón eliminar línea ──
+    // ── Fila: Producto + cantidad + % + botón eliminar línea ──
     const top=document.createElement('div');
-    top.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:10px';
-    top.innerHTML=`
+    top.style.cssText='display:flex;flex-direction:column;gap:8px;margin-bottom:10px';
+
+    // Fila 1: selector + cantidad + quitar
+    const topRow=document.createElement('div');
+    topRow.style.cssText='display:flex;gap:8px;align-items:center';
+    topRow.innerHTML=`
       <select style="flex:2;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none">
         ${products.map(p=>`<option value="${p.id}" ${line.productId===p.id?'selected':''}>${p.name}</option>`).join('')}
       </select>
       <input type="number" inputmode="numeric" value="${line.qty||''}" placeholder="Cant."
-        style="width:70px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;text-align:center;outline:none"/>
+        style="width:66px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;text-align:center;outline:none"/>
       <span style="font-size:11px;color:var(--text4);flex-shrink:0">pzas</span>
       ${evLines.length>1?`<button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0" title="Eliminar línea">✕</button>`:''}
     `;
-    const sel=top.querySelector('select');
-    const qtyInput=top.querySelector('input');
-    const rmBtn=top.querySelector('button');
+
+    // Fila 2: % estimado + barra visual
+    const pctRow=document.createElement('div');
+    const tp=totalPct();
+    const pctVal=parseFloat(line.pct)||0;
+    const clr=pctColor(tp);
+    pctRow.style.cssText='display:flex;align-items:center;gap:8px';
+    pctRow.innerHTML=`
+      <span style="font-size:11px;color:var(--text4);white-space:nowrap;font-weight:700">% estimado</span>
+      <div style="flex:1;height:6px;background:var(--bg3);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pctVal,100)}%;background:${clr};border-radius:4px;transition:width .25s,background .25s"></div>
+      </div>
+      <input type="number" inputmode="decimal" min="0" max="100" value="${pctVal}"
+        style="width:58px;flex-shrink:0;background:var(--bg2);color:${clr};border:1.5px solid ${clr}40;border-radius:8px;padding:6px 6px;font-size:14px;font-weight:800;text-align:center;outline:none"/>
+      <span style="font-size:13px;font-weight:800;color:${clr};flex-shrink:0">%</span>
+    `;
+
+    const sel=topRow.querySelector('select');
+    const qtyInput=topRow.querySelector('input[type=number]');
+    const rmBtn=topRow.querySelector('button');
+    const pctInput=pctRow.querySelector('input[type=number]');
+
     sel.onchange=()=>{
       evLines[li].productId=parseInt(sel.value)||sel.value;
       evLines[li].ings=buildLineIngs(evLines[li].productId,evLines[li].qty);
@@ -4182,8 +4214,29 @@ function renderEvLines(){
       evLines[li].qty=parseInt(qtyInput.value)||0;
       renderEvLines();updateEvMargen();
     };
+    pctInput.oninput=()=>{
+      evLines[li].pct=parseFloat(pctInput.value)||0;
+      renderEvLines();updateEvMargen();
+    };
     if(rmBtn) rmBtn.onclick=()=>removeEvLine(li);
+
+    top.appendChild(topRow);
+    top.appendChild(pctRow);
     wrap.appendChild(top);
+
+    // ── Badge suma total de % ──
+    if(li===evLines.length-1){
+      const sumBadge=document.createElement('div');
+      const sumClr=pctColor(tp);
+      const sumOk=tp===100;
+      sumBadge.style.cssText=`display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:9px;margin-bottom:10px;background:${sumOk?'rgba(42,184,184,.08)':tp>100?'rgba(245,116,116,.08)':'rgba(245,200,0,.08)'};border:1px solid ${sumClr}40`;
+      sumBadge.innerHTML=`
+        <span style="font-size:12px;color:var(--text4);font-weight:700">Total porcentajes</span>
+        <span style="font-size:15px;font-weight:800;color:${sumClr}">${tp}% ${sumOk?'✓':tp>100?'⚠ excede 100%':'— falta '+(100-tp)+'%'}</span>
+      `;
+      // Insert before the wrap so it appears after all lines
+      el.appendChild(sumBadge);
+    }
 
     // ── Encabezado ingredientes ──
     const ingHeader=document.createElement('div');
@@ -4369,9 +4422,12 @@ function openAddIngModal(li){
 function calcEvCosto(){
   let total=0;
   evLines.forEach(line=>{
+    const pctFactor=(parseFloat(line.pct)||0)/100;
     line.ings.filter(x=>x.active).forEach(x=>{
       const ing=ingredients.find(i=>i.id===x.ingId);if(!ing||!ing.costPerUnit)return;
-      total+=ing.costPerUnit*(x.qtyPer||0)*(line.qty||0);
+      // Costo ponderado: qty real de esta línea = total_pzas × pct
+      const totalQtyEvento=evLines.reduce((s,l)=>s+(l.qty||0),0);
+      total+=ing.costPerUnit*(x.qtyPer||0)*(totalQtyEvento*pctFactor);
     });
   });
   return total;
@@ -4404,12 +4460,18 @@ function registrarEvento(){
   if(!price){showToast('Escribe el precio total','red');return;}
   if(!evLines.length||evLines.every(l=>!l.productId||!l.qty)){showToast('Agrega al menos un producto','red');return;}
 
+  // Validar que porcentajes sumen 100
+  const tp=totalPct();
+  if(Math.round(tp)!==100){showToast(`Los porcentajes suman ${tp}% — deben sumar 100%`,'red');return;}
+
   const totalQty=evLines.reduce((s,l)=>s+(l.qty||0),0);
   const costo=calcEvCosto();
   const now=new Date();
   const items=evLines.filter(l=>l.productId&&l.qty).map(l=>{
     const p=products.find(x=>x.id===l.productId);
-    return {name:p?p.name:'?',qty:l.qty,price:price/totalQty,var:'Normal',extras:''};
+    const pctFactor=(parseFloat(l.pct)||0)/100;
+    const qtyEfectiva=parseFloat((totalQty*pctFactor).toFixed(3));
+    return {name:p?p.name:'?',qty:l.qty,qtyEfectiva,pct:l.pct,price:price*(pctFactor),var:'Normal',extras:''};
   });
 
   const sale={
@@ -4419,19 +4481,21 @@ function registrarEvento(){
     items,costoEstimado:parseFloat(costo.toFixed(2)),
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos',
     evLinesSnapshot:evLines.filter(l=>l.productId&&l.qty).map(l=>({
-      productId:l.productId,qty:l.qty,
+      productId:l.productId,qty:l.qty,pct:l.pct,
       ings:l.ings.map(x=>({ingId:x.ingId,qtyPer:x.qtyPer||0,active:x.active}))
     }))
   };
   if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
 
-  // Descontar inventario por línea con multiplicadores
+  // Descontar inventario ponderado por % estimado
   let changed=false;
   evLines.forEach(line=>{
     if(!line.productId||!line.qty)return;
+    const pctFactor=(parseFloat(line.pct)||0)/100;
+    const qtyEfectiva=totalQty*pctFactor; // piezas reales estimadas para esta línea
     line.ings.filter(x=>x.active).forEach(x=>{
       const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat((ingredients[idx].stock-(x.qtyPer||0)*line.qty).toFixed(3));
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-(x.qtyPer||0)*qtyEfectiva).toFixed(3));
       changed=true;
     });
   });
@@ -4458,7 +4522,7 @@ function renderEventosHistorial(){
     .filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);
   if(!evSales.length){el.innerHTML='<div class="admin-empty">Sin eventos registrados</div>';return;}
   el.innerHTML=evSales.map(s=>{
-    const pList=s.items?s.items.map(it=>`${it.qty}× ${it.name}`).join(', '):'';
+    const pList=s.items?s.items.map(it=>`${it.qty}× ${it.name}${it.pct!=null?' ('+it.pct+'%)':''}`).join(', '):'';
     const margen=s.costoEstimado&&s.total?((s.total-s.costoEstimado)/s.total*100).toFixed(1):null;
     return `<div style="border-left:3px solid rgba(224,32,32,.5);background:rgba(224,32,32,.05);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
@@ -4492,12 +4556,15 @@ function deshacerEvento(saleId){
     ()=>{
       // 1. Restaurar inventario — sumar de vuelta lo que se descontó
       if(fbDb&&s.evLinesSnapshot){
-        // Si se guardó snapshot de líneas, úsalo para restaurar exacto
+        // Restaurar usando snapshot exacto con qtyEfectiva ponderada por %
         let changed=false;
+        const totalQtyEvento=s.evLinesSnapshot.reduce((sum,l)=>sum+(l.qty||0),0);
         s.evLinesSnapshot.forEach(line=>{
+          const pctFactor=(parseFloat(line.pct)||0)/100;
+          const qtyEfectiva=pctFactor>0?totalQtyEvento*pctFactor:(line.qty||0);
           (line.ings||[]).filter(x=>x.active).forEach(x=>{
             const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
-            ingredients[idx].stock=parseFloat((ingredients[idx].stock+(x.qtyPer||0)*line.qty).toFixed(3));
+            ingredients[idx].stock=parseFloat((ingredients[idx].stock+(x.qtyPer||0)*qtyEfectiva).toFixed(3));
             changed=true;
           });
         });
