@@ -3799,8 +3799,7 @@ function exportarGastos(){
   const gs=getGastosFiltrados();
   if(!gs.length){showToast('Sin gastos para exportar','red');return;}
   const rows=[['Fecha','Descripción','Categoría','Monto','Usuario'],...gs.map(g=>[g.fecha,g.desc,g.cat,g.monto,g.user])];
-  const csv=rows.map(r=>r.join(',')).join('
-');
+  const csv=rows.map(r=>r.map(c=>String(c).replace(/,/g,';')).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='gastos_'+new Date().toISOString().slice(0,10)+'.csv';
@@ -4754,10 +4753,8 @@ function registrarEvento(){
   });
   const _negativos=Object.values(_mapaChk).filter(r=>(r.stock-r.total)<0);
   if(_negativos.length){
-    const lista=_negativos.map(r=>`• ${r.name}: hay ${r.stock} ${r.unit}, se descontarán ${r.total} ${r.unit}`).join('
-');
-    customConfirm(`⚠️ Ingredientes insuficientes:
-
+    const lista=_negativos.map(r=>`• ${r.name}: hay ${r.stock} ${r.unit}, se descontarán ${r.total} ${r.unit}`).join('\n');
+    customConfirm(`⚠️ Ingredientes insuficientes:\n
 ${lista}
 
 ¿Registrar de todas formas?`,'Registrar igual',_doRegistrarEvento);
