@@ -2229,45 +2229,59 @@ body{
     <button class="btn-inv-logout" style="color:var(--red);border-color:rgba(224,32,32,.3)" onclick="eventosLogout()">Salir</button>
   </div>
 
-  <!-- Tabs -->
   <div class="inv-tabs" style="background:#0d0d1a">
-    <button class="inv-tab active" onclick="setEventosTab('nueva')" style="--tab-color:var(--red)">🎯 Nueva venta</button>
-    <button class="inv-tab" onclick="setEventosTab('historial')">📋 Historial</button>
+    <button class="inv-tab active" id="ev-btn-nueva" onclick="setEventosTab('nueva')">🎯 Nueva venta</button>
+    <button class="inv-tab" id="ev-btn-historial" onclick="setEventosTab('historial')">📋 Historial</button>
   </div>
 
   <!-- ── NUEVA VENTA ── -->
-  <div class="inv-tab-view active" id="ev-tab-nueva" style="max-width:480px;margin:0 auto;width:100%">
+  <div class="inv-tab-view active" id="ev-tab-nueva" style="max-width:520px;margin:0 auto;width:100%;padding-bottom:40px">
 
-    <div class="form-card" style="margin-bottom:14px">
-      <div class="sec-label" style="margin-top:0;color:var(--red)">🎪 Registrar venta de evento</div>
-
-      <label class="form-lbl">Nombre del evento / cliente</label>
-      <input class="form-input" id="ev-name" placeholder="Ej: Boda García, Cumpleaños, Empresa X"/>
-
-      <label class="form-lbl">Producto principal</label>
-      <select class="form-input" id="ev-product" style="background:var(--bg3);color:var(--text)">
-        <option value="">Selecciona producto</option>
-      </select>
-
-      <label class="form-lbl">Cantidad de porciones</label>
-      <input class="form-input" id="ev-qty" type="number" inputmode="numeric" placeholder="80"/>
-
-      <label class="form-lbl">Precio total del evento ($)</label>
-      <input class="form-input" id="ev-price" type="number" inputmode="decimal" placeholder="0.00"/>
-
-      <label class="form-lbl">Notas (opcional)</label>
-      <input class="form-input" id="ev-note" placeholder="Ej: Solo salsa roja, sin cebolla"/>
-
-      <div id="ev-preview" style="display:none;margin:12px 0;padding:12px;background:rgba(224,32,32,.07);border:1px solid rgba(224,32,32,.2);border-radius:10px;font-size:12px;color:var(--text3);line-height:1.8"></div>
-
-      <button class="btn-primary" onclick="registrarEvento()" style="background:linear-gradient(135deg,#4a0e0e,#380a0a);border:1px solid rgba(224,32,32,.4);margin-top:4px;font-size:15px">
-        🎪 Registrar evento
-      </button>
+    <!-- Info básica -->
+    <div class="form-card" style="margin-bottom:12px">
+      <div class="sec-label" style="margin-top:0;color:var(--red)">Información del evento</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label class="form-lbl">Nombre / cliente</label>
+          <input class="form-input" id="ev-name" placeholder="Boda García…"/>
+        </div>
+        <div>
+          <label class="form-lbl">Fecha del evento</label>
+          <input class="form-input" id="ev-date" type="date"/>
+        </div>
+      </div>
+      <label class="form-lbl">Notas</label>
+      <input class="form-input" id="ev-note" placeholder="Sin cebolla, solo salsa roja…"/>
     </div>
 
-    <div style="font-size:11px;color:var(--text4);text-align:center;line-height:1.7;padding:0 8px">
-      Al registrar se descontarán los ingredientes automáticamente según la receta del producto × cantidad.
+    <!-- Líneas de productos -->
+    <div class="form-card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="sec-label" style="margin:0;color:var(--red)">Productos del evento</div>
+        <button onclick="addEvLine()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(224,32,32,.4);background:rgba(224,32,32,.08);color:#f57474;font-size:12px;font-weight:700;cursor:pointer">+ Agregar</button>
+      </div>
+      <div id="ev-lines"></div>
     </div>
+
+    <!-- Precio y margen -->
+    <div class="form-card" style="margin-bottom:12px">
+      <div class="sec-label" style="margin-top:0;color:var(--red)">Precio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label class="form-lbl">Precio total del evento ($)</label>
+          <input class="form-input" id="ev-price" type="number" inputmode="decimal" placeholder="0.00" oninput="updateEvMargen()"/>
+        </div>
+        <div>
+          <label class="form-lbl">Costo estimado</label>
+          <div class="form-input" id="ev-costo" style="background:var(--bg3);color:var(--text4);cursor:default">$0.00</div>
+        </div>
+      </div>
+      <div id="ev-margen" style="display:none;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center"></div>
+    </div>
+
+    <button class="btn-primary" onclick="registrarEvento()" style="background:linear-gradient(135deg,#4a0e0e,#380a0a);border:1px solid rgba(224,32,32,.4);font-size:15px;width:100%">
+      🎪 Registrar evento
+    </button>
   </div>
 
   <!-- ── HISTORIAL ── -->
@@ -4055,32 +4069,31 @@ function confirmResolve(yes){
 }
 
 /* ══════════════════════════════════════════
-   EVENTOS — panel
+   EVENTOS — panel completo
 ══════════════════════════════════════════ */
 const SK_EVENTOS='dk_eventos_v1';
-let eventosHistory=[];
+let evLines=[]; // [{productId, qty, ings:[{ingId,qty,mult,active}]}]
 
 function bootEventos(){
-  initFirebase(FB_CONFIG);
-  // Load products, ingredients, recipes from Firebase
   if(fbDb){
-    fbDb.ref('products').on('value',snap=>{const d=snap.val();if(d)products=Object.values(d).filter(Boolean);populateEvProductSelect();});
+    fbDb.ref('products').on('value',snap=>{const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}});
     fbDb.ref('ingredients').on('value',snap=>{
-      const d=snap.val();
-      if(d){const seen=new Set();ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));}
+      const d=snap.val();if(!d)return;
+      const seen=new Set();
+      ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
     });
     fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
     fbDb.ref('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
     fbDb.ref('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
-    fbDb.ref('sales').on('value',snap=>{
-      const d=snap.val();
-      if(d){eventosHistory=Object.values(d).filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);}
-      renderEventosHistorial();
-    });
   }
-  try{eventosHistory=JSON.parse(safeStorage.getItem(SK_EVENTOS))||[];}catch{eventosHistory=[];}
+  // Set today's date
+  const today=new Date();
+  const dateInput=document.getElementById('ev-date');
+  if(dateInput) dateInput.value=toDateKey(today);
+
   document.getElementById('eventos-screen').classList.add('active');
-  setTimeout(()=>{populateEvProductSelect();renderEventosHistorial();},800);
+  evLines=[];
+  setTimeout(()=>{addEvLine();renderEvLines();},600);
 }
 
 function eventosLogout(){
@@ -4091,103 +4104,214 @@ function eventosLogout(){
 function setEventosTab(t){
   ['nueva','historial'].forEach(k=>{
     document.getElementById(`ev-tab-${k}`)?.classList.toggle('active',k===t);
-  });
-  document.querySelectorAll('#eventos-screen .inv-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['nueva','historial'][i]===t);
+    document.getElementById(`ev-btn-${k}`)?.classList.toggle('active',k===t);
   });
   if(t==='historial')renderEventosHistorial();
 }
 
-function populateEvProductSelect(){
-  const sel=document.getElementById('ev-product');if(!sel)return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">Selecciona producto</option>'+
-    products.map(p=>`<option value="${p.id}">${p.name} — $${p.basePrice}</option>`).join('');
-  if(cur)sel.value=cur;
-  sel.onchange=updateEvPreview;
-  document.getElementById('ev-qty').oninput=updateEvPreview;
-  document.getElementById('ev-price').oninput=updateEvPreview;
+/* ── LINE MANAGEMENT ── */
+function addEvLine(){
+  evLines.push({productId:products[0]?.id||null,qty:1,ings:[]});
+  renderEvLines();
+}
+function removeEvLine(i){
+  evLines.splice(i,1);
+  if(!evLines.length) evLines.push({productId:products[0]?.id||null,qty:1,ings:[]});
+  renderEvLines();
+}
+function buildLineIngs(productId,qty){
+  const p=products.find(x=>x.id===productId);if(!p)return[];
+  const rec=recipes[productId]||[];
+  // General condiments for this product
+  const genApply=generalRecipe.filter(r=>{
+    const mults=r.productMultipliers||{};
+    return Object.keys(mults).length===0||mults[String(productId)]!=null;
+  });
+  const all=[...rec.map(r=>({ingId:r.ingId,baseQty:r.qty,mult:1,active:true,isGen:false})),
+             ...genApply.map(r=>({ingId:r.ingId,baseQty:r.qty,mult:r.productMultipliers?.[String(productId)]||1,active:true,isGen:true}))];
+  // Deduplicate by ingId
+  const seen=new Set();
+  return all.filter(x=>{if(seen.has(x.ingId))return false;seen.add(x.ingId);return true;});
 }
 
-function updateEvPreview(){
-  const pid=parseInt(document.getElementById('ev-product').value);
-  const qty=parseInt(document.getElementById('ev-qty').value)||0;
-  const price=parseFloat(document.getElementById('ev-price').value)||0;
-  const prev=document.getElementById('ev-preview');
-  if(!pid||!qty){prev.style.display='none';return;}
-  const p=products.find(x=>x.id===pid);if(!p){prev.style.display='none';return;}
-  const rec=recipes[pid]||[];
-  const ingLines=rec.map(r=>{
-    const ing=ingredients.find(i=>i.id===r.ingId);
-    if(!ing)return '';
-    const total=r.qty*qty;
-    return `<span style="color:var(--text2)">${ing.name}</span>: ${total} ${ing.unit}`;
-  }).filter(Boolean);
-  const pxU=qty>0?`$${(price/qty).toFixed(2)}/porción`:'';
-  prev.style.display='block';
-  prev.innerHTML=`<strong style="color:var(--red)">${qty} × ${p.name}</strong> · ${pxU}<br><br>`+ingLines.join('<br>');
+function renderEvLines(){
+  const el=document.getElementById('ev-lines');if(!el)return;
+  if(!products.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:8px">Cargando productos...</div>';return;}
+  el.innerHTML='';
+  evLines.forEach((line,li)=>{
+    // Ensure ings are initialized
+    if(!line.ings.length&&line.productId) line.ings=buildLineIngs(line.productId,line.qty);
+
+    const wrap=document.createElement('div');
+    wrap.style.cssText=`border:1px solid rgba(224,32,32,.2);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(224,32,32,.03)`;
+
+    // Product + qty + remove row
+    const top=document.createElement('div');
+    top.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:10px';
+    top.innerHTML=`
+      <select style="flex:2;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none">
+        ${products.map(p=>`<option value="${p.id}" ${line.productId===p.id?'selected':''}>${p.name}</option>`).join('')}
+      </select>
+      <input type="number" inputmode="numeric" value="${line.qty||''}" placeholder="Cant."
+        style="width:70px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;text-align:center;outline:none"/>
+      <span style="font-size:11px;color:var(--text4);flex-shrink:0">pzas</span>
+      ${evLines.length>1?`<button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0">✕</button>`:''}
+    `;
+    const sel=top.querySelector('select');
+    const qtyInput=top.querySelector('input');
+    const rmBtn=top.querySelector('button');
+    sel.onchange=()=>{
+      evLines[li].productId=parseInt(sel.value)||sel.value;
+      evLines[li].ings=buildLineIngs(evLines[li].productId,evLines[li].qty);
+      renderEvLines();updateEvMargen();
+    };
+    qtyInput.oninput=()=>{
+      evLines[li].qty=parseInt(qtyInput.value)||0;
+      renderEvLines();updateEvMargen();
+    };
+    if(rmBtn) rmBtn.onclick=()=>removeEvLine(li);
+    wrap.appendChild(top);
+
+    // Ingredients list
+    const ingTitle=document.createElement('div');
+    ingTitle.style.cssText='font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px';
+    ingTitle.textContent='Ingredientes — activa/desactiva y ajusta multiplicador';
+    wrap.appendChild(ingTitle);
+
+    line.ings.forEach((ing,ii)=>{
+      const ingredient=ingredients.find(x=>x.id===ing.ingId);if(!ingredient)return;
+      const totalQty=(ing.baseQty*(ing.mult||1)*(line.qty||0)).toFixed(2).replace(/\.?0+$/,'');
+      const row=document.createElement('div');
+      row.style.cssText=`display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'};border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
+      row.innerHTML=`
+        <input type="checkbox" ${ing.active?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0"/>
+        <span style="flex:1;font-size:12px;color:${ing.active?'var(--text2)':'var(--text4)'}">${ingredient.name}</span>
+        <span style="font-size:10px;color:var(--text4)">×</span>
+        <input type="number" inputmode="decimal" value="${ing.mult||1}" min="0" step="0.5"
+          style="width:48px;background:var(--bg3);color:${ing.active?'#2ab8b8':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none"
+          ${ing.active?'':'disabled'}/>
+        <span style="font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:56px;flex-shrink:0;text-align:right">
+          ${ing.active?`${totalQty} ${ingredient.unit}`:'—'}
+        </span>
+      `;
+      const cb=row.querySelector('input[type=checkbox]');
+      const multInp=row.querySelector('input[type=number]');
+      cb.onchange=()=>{
+        evLines[li].ings[ii].active=cb.checked;
+        multInp.disabled=!cb.checked;
+        renderEvLines();updateEvMargen();
+      };
+      multInp.oninput=()=>{
+        evLines[li].ings[ii].mult=parseFloat(multInp.value)||0;
+        renderEvLines();updateEvMargen();
+      };
+      wrap.appendChild(row);
+    });
+    el.appendChild(wrap);
+  });
+  updateEvMargen();
+}
+
+function calcEvCosto(){
+  let total=0;
+  evLines.forEach(line=>{
+    line.ings.filter(x=>x.active).forEach(x=>{
+      const ing=ingredients.find(i=>i.id===x.ingId);if(!ing||!ing.costPerUnit)return;
+      total+=ing.costPerUnit*x.baseQty*(x.mult||1)*(line.qty||0);
+    });
+  });
+  return total;
+}
+function updateEvMargen(){
+  const costo=calcEvCosto();
+  const costoEl=document.getElementById('ev-costo');
+  const margenEl=document.getElementById('ev-margen');
+  if(costoEl) costoEl.textContent=`$${costo.toFixed(2)}`;
+  const precio=parseFloat(document.getElementById('ev-price')?.value)||0;
+  if(!margenEl)return;
+  if(!precio||!costo){margenEl.style.display='none';return;}
+  const ganancia=precio-costo;
+  const pct=(ganancia/precio*100).toFixed(1);
+  margenEl.style.display='block';
+  margenEl.style.background=ganancia>=0?'rgba(42,184,184,.08)':'rgba(224,32,32,.08)';
+  margenEl.style.color=ganancia>=0?'#2ab8b8':'#f57474';
+  margenEl.style.border=`1px solid ${ganancia>=0?'rgba(42,184,184,.2)':'rgba(224,32,32,.2)'}`;
+  margenEl.innerHTML=ganancia>=0
+    ?`✅ Ganancia: <strong>$${ganancia.toFixed(2)}</strong> · Margen: <strong>${pct}%</strong>`
+    :`⚠️ Pérdida: <strong>$${Math.abs(ganancia).toFixed(2)}</strong> · Margen: <strong>${pct}%</strong>`;
 }
 
 function registrarEvento(){
-  const pid=parseInt(document.getElementById('ev-product').value);
-  const qty=parseInt(document.getElementById('ev-qty').value)||0;
-  const price=parseFloat(document.getElementById('ev-price').value)||0;
   const name=document.getElementById('ev-name').value.trim();
+  const date=document.getElementById('ev-date').value||toDateKey(new Date());
   const note=document.getElementById('ev-note').value.trim();
-  if(!pid){showToast('Selecciona un producto','red');return;}
-  if(!qty){showToast('Escribe la cantidad','red');return;}
-  if(!price){showToast('Escribe el precio total','red');return;}
+  const price=parseFloat(document.getElementById('ev-price').value)||0;
   if(!name){showToast('Escribe el nombre del evento','red');return;}
+  if(!price){showToast('Escribe el precio total','red');return;}
+  if(!evLines.length||evLines.every(l=>!l.productId||!l.qty)){showToast('Agrega al menos un producto','red');return;}
 
-  const p=products.find(x=>x.id===pid);if(!p)return;
+  const totalQty=evLines.reduce((s,l)=>s+(l.qty||0),0);
+  const costo=calcEvCosto();
   const now=new Date();
+  const items=evLines.filter(l=>l.productId&&l.qty).map(l=>{
+    const p=products.find(x=>x.id===l.productId);
+    return {name:p?p.name:'?',qty:l.qty,price:price/totalQty,var:'Normal',extras:''};
+  });
+
   const sale={
-    id:Date.now(),
-    timestamp:now.getTime(),
-    date:toDateKey(now),
-    time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
-    total:price,
-    isEvento:true,
-    eventoName:name,
-    note,
-    items:[{name:p.name,qty,price:price/qty,var:'Normal',extras:''}],
+    id:Date.now(),timestamp:now.getTime(),
+    date,time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+    total:price,isEvento:true,eventoName:name,note,
+    items,costoEstimado:parseFloat(costo.toFixed(2)),
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
   };
-
-  // Save to Firebase sales
   if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
 
-  // Descontar inventario usando misma lógica que POS
-  descontarInventario(sale.items);
+  // Descontar inventario por línea con multiplicadores
+  let changed=false;
+  evLines.forEach(line=>{
+    if(!line.productId||!line.qty)return;
+    line.ings.filter(x=>x.active).forEach(x=>{
+      const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-x.baseQty*(x.mult||1)*line.qty).toFixed(3));
+      changed=true;
+    });
+  });
+  if(changed) fbSaveIngredients();
 
-  // Log en historial de inventario
-  logInvHistory('consumo',`Evento: ${name} — ${qty}× ${p.name} — $${price.toFixed(2)}`,
-    {eventoName:name,qty,productName:p.name,total:price,isEvento:true});
+  logInvHistory('consumo',`Evento: ${name} — ${totalQty} pzas · $${price.toFixed(2)} · costo ≈$${costo.toFixed(2)}`,
+    {isEvento:true,eventoName:name,total:price,costo});
 
-  // Reset form
+  // Reset
+  evLines=[];
   document.getElementById('ev-name').value='';
-  document.getElementById('ev-qty').value='';
   document.getElementById('ev-price').value='';
   document.getElementById('ev-note').value='';
-  document.getElementById('ev-preview').style.display='none';
+  document.getElementById('ev-date').value=toDateKey(new Date());
+  addEvLine();
 
-  showToast(`✅ Evento registrado — ${qty}× ${p.name}  $${price.toFixed(2)}`,'green');
+  showToast(`✅ ${name} — ${totalQty} pzas · $${price.toFixed(2)}`,'green');
   setEventosTab('historial');
 }
 
 function renderEventosHistorial(){
   const el=document.getElementById('ev-historial-list');if(!el)return;
-  // Read from invHistory (consumo isEvento) or sales
-  const evSales=(typeof sales!=='undefined'?sales:[]).filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);
+  const evSales=(typeof sales!=='undefined'?sales:[])
+    .filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);
   if(!evSales.length){el.innerHTML='<div class="admin-empty">Sin eventos registrados</div>';return;}
   el.innerHTML=evSales.map(s=>{
-    const it=s.items?.[0];
+    const pList=s.items?s.items.map(it=>`${it.qty}× ${it.name}`).join(', '):'';
+    const margen=s.costoEstimado&&s.total?((s.total-s.costoEstimado)/s.total*100).toFixed(1):null;
     return `<div style="border-left:3px solid rgba(224,32,32,.5);background:rgba(224,32,32,.05);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
         <div style="font-size:14px;font-weight:800;color:var(--text)">🎪 ${s.eventoName||'Evento'}</div>
-        <div style="font-size:15px;font-weight:800;color:var(--red)">$${s.total.toFixed(2)}</div>
+        <div style="text-align:right">
+          <div style="font-size:15px;font-weight:800;color:var(--red)">$${s.total.toFixed(2)}</div>
+          ${margen?`<div style="font-size:10px;color:#2ab8b8">${margen}% margen</div>`:''}
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--text3)">${it?`${it.qty}× ${it.name}`:''}</div>
+      <div style="font-size:12px;color:var(--text3)">${pList}</div>
+      ${s.costoEstimado?`<div style="font-size:11px;color:var(--text4);margin-top:2px">Costo ≈$${s.costoEstimado.toFixed(2)}</div>`:''}
       <div style="font-size:11px;color:var(--text4);margin-top:4px">${s.date} · ${s.time}${s.note?` · ${s.note}`:''}</div>
     </div>`;
   }).join('');
