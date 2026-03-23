@@ -3733,8 +3733,10 @@ function agregarGasto(){
   const fecha=document.getElementById('gasto-fecha').value||new Date().toISOString().slice(0,10);
   if(!desc){showToast('Escribe una descripción','red');return;}
   if(!monto){showToast('Escribe el monto','red');return;}
+  // Derive timestamp from the user-entered date (noon to avoid timezone shifts)
+  const fechaTs=new Date(fecha+'T12:00:00').getTime();
   const g={
-    id:'g_'+Date.now(),timestamp:Date.now(),
+    id:'g_'+Date.now(),timestamp:fechaTs,
     desc,monto:parseFloat(monto.toFixed(2)),cat,fecha,
     user:safeStorage.getItem(SK_DISPLAY)||'Admin'
   };
@@ -3804,19 +3806,44 @@ function renderGastos(){
   if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
 
   const catIcon={compra:'🛒',operativo:'🔧',equipo:'📦',otro:'📝'};
-  el.innerHTML=gs.map(g=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px">
+  el.innerHTML='';
+  gs.forEach(g=>{
+    const card=document.createElement('div');
+    card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
+    card.innerHTML=`
       <div style="font-size:20px;flex-shrink:0">${catIcon[g.cat]||'📝'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
-        <div style="font-size:11px;color:var(--text4);margin-top:2px">${g.fecha} · ${g.user}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+          <input type="date" value="${g.fecha}"
+            style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 7px;font-size:11px;color:var(--text3);outline:none;cursor:pointer;color-scheme:dark"
+            title="Editar fecha"/>
+          <span style="font-size:11px;color:var(--text4)">· ${g.user}</span>
+        </div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:15px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
-        <button onclick="eliminarGasto('${g.id}')" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
+        <button class="g-del-btn" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
-      </div>
-    </div>`).join('');
+      </div>`;
+    // Edit fecha inline
+    const dateInp=card.querySelector('input[type=date]');
+    dateInp.onchange=()=>{
+      const newFecha=dateInp.value;
+      if(!newFecha)return;
+      const idx=gastos.findIndex(x=>x.id===g.id);
+      if(idx<0)return;
+      gastos[idx].fecha=newFecha;
+      gastos[idx].timestamp=new Date(newFecha+'T12:00:00').getTime();
+      safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      if(fbDb) fbDb.ref('gastos/'+g.id).update({fecha:newFecha,timestamp:gastos[idx].timestamp}).catch(()=>{});
+      showToast('Fecha actualizada','green');
+      renderGastos();
+    };
+    // Delete button
+    card.querySelector('.g-del-btn').onclick=()=>eliminarGasto(g.id);
+    el.appendChild(card);
+  });
 }
 
 /* ── Gastos charts ── */
