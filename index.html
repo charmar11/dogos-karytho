@@ -3966,8 +3966,8 @@ function setGastosPeriod(p){
   });
   const sub=document.getElementById('gp-sub-hoy');
   if(sub) sub.style.display=p==='hoy'?'flex':'none';
-  // If gastos might not be loaded yet, do a fresh Firebase read then render
-  if(fbDb&&gastos.length===0){
+  // Always do a fresh FB read to ensure gastos are current before rendering
+  if(fbDb){
     fbDb.ref('gastos').once('value',snap=>{
       const d=snap.val();
       if(d&&Object.keys(d).length>0){
@@ -4407,26 +4407,28 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
 
   let keys;
   if(isDiaCompleto){
-    // Día completo: agrupa los datos por HORA (igual que antes pero fijo 24h)
-    // Re-agrupa el map de minutos en horas para el día de hoy
+    // ── Día completo: agrupar por hora, mostrar solo entre primera y última con dato ──
     const t=new Date();
     const yyyy=t.getFullYear(),mm=String(t.getMonth()+1).padStart(2,'0'),dd2=String(t.getDate()).padStart(2,'0');
+    // Build 24-hour slots
     const hourMap={};
     Array.from({length:24},(_,h)=>{
       const hk=yyyy+'-'+mm+'-'+dd2+'T'+String(h).padStart(2,'0');
       hourMap[hk]={ing:0,gas:0};
     });
-    // Sum minute-level data into hours
+    // Aggregate minute-level map into hour slots
     Object.keys(map).forEach(k=>{
-      // minute keys look like 2026-03-23T11:23, hour keys like 2026-03-23T11
-      const hk=k.slice(0,16).length>13?k.slice(0,13):k.slice(0,13);
-      if(hourMap[hk]){hourMap[hk].ing+=map[k].ing;hourMap[hk].gas+=map[k].gas;}
+      const hk=k.slice(0,13); // 'YYYY-MM-DDTHH'
+      if(hourMap[hk]){hourMap[hk].ing+=map[k].ing||0;hourMap[hk].gas+=map[k].gas||0;}
     });
-    keys=Object.keys(hourMap).sort();
-    // Override map with hourMap for the rest of the function
     Object.assign(map,hourMap);
+    // Only show hours from first data point to last data point (no empty extremes)
+    const allH=Object.keys(hourMap).sort();
+    const firstIdx=allH.findIndex(h=>hourMap[h].ing>0||hourMap[h].gas>0);
+    const lastIdx=allH.length-1-[...allH].reverse().findIndex(h=>hourMap[h].ing>0||hourMap[h].gas>0);
+    keys=firstIdx<0?allH:allH.slice(Math.max(0,firstIdx),lastIdx+1);
   } else {
-    // Solo puntos con actividad real, sin huecos vacíos
+    // ── Todos los demás modos: solo puntos con actividad, sin huecos ──
     const allK=Object.keys(map).filter(k=>(map[k].ing||0)>0||(map[k].gas||0)>0).sort();
     keys=allK.slice(-20);
   }
