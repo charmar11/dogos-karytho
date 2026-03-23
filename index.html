@@ -4147,11 +4147,11 @@ function buildLineIngs(productId,qty){
     const mults=r.productMultipliers||{};
     return Object.keys(mults).length===0||mults[String(productId)]!=null;
   });
-  const all=[...rec.map(r=>({ingId:r.ingId,qtyPer:r.qty,active:true,isGen:false})),
+  const all=[...rec.map(r=>({ingId:r.ingId,qtyPer:r.qty,active:true,isGen:false,pct:100})),
              ...genApply.map(r=>{
                const mults=r.productMultipliers||{};
                const m=mults[String(productId)]||1;
-               return {ingId:r.ingId,qtyPer:r.qty*m,active:true,isGen:true};
+               return {ingId:r.ingId,qtyPer:r.qty*m,active:true,isGen:true,pct:100};
              })];
   const seen=new Set();
   return all.filter(x=>{if(seen.has(x.ingId))return false;seen.add(x.ingId);return true;});
@@ -4167,14 +4167,10 @@ function renderEvLines(){
     const wrap=document.createElement('div');
     wrap.style.cssText=`border:1px solid rgba(224,32,32,.2);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(224,32,32,.03)`;
 
-    // ── Fila: Producto + cantidad + % + botón eliminar línea ──
+    // ── Fila: Producto + cantidad + botón eliminar línea ──
     const top=document.createElement('div');
-    top.style.cssText='display:flex;flex-direction:column;gap:8px;margin-bottom:10px';
-
-    // Fila 1: selector + cantidad + quitar
-    const topRow=document.createElement('div');
-    topRow.style.cssText='display:flex;gap:8px;align-items:center';
-    topRow.innerHTML=`
+    top.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:10px';
+    top.innerHTML=`
       <select style="flex:2;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none">
         ${products.map(p=>`<option value="${p.id}" ${line.productId===p.id?'selected':''}>${p.name}</option>`).join('')}
       </select>
@@ -4183,28 +4179,9 @@ function renderEvLines(){
       <span style="font-size:11px;color:var(--text4);flex-shrink:0">pzas</span>
       ${evLines.length>1?`<button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0" title="Eliminar línea">✕</button>`:''}
     `;
-
-    // Fila 2: % estimado + barra visual
-    const pctRow=document.createElement('div');
-    const tp=totalPct();
-    const pctVal=parseFloat(line.pct)||0;
-    const clr=pctColor(tp);
-    pctRow.style.cssText='display:flex;align-items:center;gap:8px';
-    pctRow.innerHTML=`
-      <span style="font-size:11px;color:var(--text4);white-space:nowrap;font-weight:700">% estimado</span>
-      <div style="flex:1;height:6px;background:var(--bg3);border-radius:4px;overflow:hidden">
-        <div style="height:100%;width:${Math.min(pctVal,100)}%;background:${clr};border-radius:4px;transition:width .25s,background .25s"></div>
-      </div>
-      <input type="number" inputmode="decimal" min="0" max="100" value="${pctVal}"
-        style="width:58px;flex-shrink:0;background:var(--bg2);color:${clr};border:1.5px solid ${clr}40;border-radius:8px;padding:6px 6px;font-size:14px;font-weight:800;text-align:center;outline:none"/>
-      <span style="font-size:13px;font-weight:800;color:${clr};flex-shrink:0">%</span>
-    `;
-
-    const sel=topRow.querySelector('select');
-    const qtyInput=topRow.querySelector('input[type=number]');
-    const rmBtn=topRow.querySelector('button');
-    const pctInput=pctRow.querySelector('input[type=number]');
-
+    const sel=top.querySelector('select');
+    const qtyInput=top.querySelector('input[type=number]');
+    const rmBtn=top.querySelector('button');
     sel.onchange=()=>{
       evLines[li].productId=parseInt(sel.value)||sel.value;
       evLines[li].ings=buildLineIngs(evLines[li].productId,evLines[li].qty);
@@ -4214,29 +4191,8 @@ function renderEvLines(){
       evLines[li].qty=parseInt(qtyInput.value)||0;
       renderEvLines();updateEvMargen();
     };
-    pctInput.oninput=()=>{
-      evLines[li].pct=parseFloat(pctInput.value)||0;
-      renderEvLines();updateEvMargen();
-    };
     if(rmBtn) rmBtn.onclick=()=>removeEvLine(li);
-
-    top.appendChild(topRow);
-    top.appendChild(pctRow);
     wrap.appendChild(top);
-
-    // ── Badge suma total de % ──
-    if(li===evLines.length-1){
-      const sumBadge=document.createElement('div');
-      const sumClr=pctColor(tp);
-      const sumOk=tp===100;
-      sumBadge.style.cssText=`display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:9px;margin-bottom:10px;background:${sumOk?'rgba(42,184,184,.08)':tp>100?'rgba(245,116,116,.08)':'rgba(245,200,0,.08)'};border:1px solid ${sumClr}40`;
-      sumBadge.innerHTML=`
-        <span style="font-size:12px;color:var(--text4);font-weight:700">Total porcentajes</span>
-        <span style="font-size:15px;font-weight:800;color:${sumClr}">${tp}% ${sumOk?'✓':tp>100?'⚠ excede 100%':'— falta '+(100-tp)+'%'}</span>
-      `;
-      // Insert before the wrap so it appears after all lines
-      el.appendChild(sumBadge);
-    }
 
     // ── Encabezado ingredientes ──
     const ingHeader=document.createElement('div');
@@ -4262,71 +4218,118 @@ function renderEvLines(){
 
     line.ings.forEach((ing,ii)=>{
       const ingredient=ingredients.find(x=>x.id===ing.ingId);if(!ingredient)return;
-      const total=((ing.qtyPer||0)*(line.qty||0));
-      const totalStr=total%1===0?total.toFixed(0):total.toFixed(2);
-      const isCustom=!!ing.isCustom; // ingredientes añadidos manualmente en eventos
+      // pct por ingrediente: default 100 si no está definido
+      if(ing.pct==null) ing.pct=100;
+      const ingPct=parseFloat(ing.pct)||0;
+      const efectivo=((ing.qtyPer||0)*(line.qty||0)*(ingPct/100));
+      const efectivoStr=efectivo%1===0?efectivo.toFixed(0):efectivo.toFixed(2);
+      const isCustom=!!ing.isCustom;
 
       const row=document.createElement('div');
-      row.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'};border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
+      row.style.cssText=`border-radius:8px;margin-bottom:4px;overflow:hidden;border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
 
-      // Checkbox
+      // Fila principal: checkbox · nombre · cant/pza · unidad · total · quitar
+      const mainRow=document.createElement('div');
+      mainRow.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 8px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'}`;
+
       const cb=document.createElement('input');
       cb.type='checkbox';cb.checked=ing.active;
       cb.style.cssText='accent-color:#2ab8b8;flex-shrink:0';
 
-      // Nombre
       const nameSpan=document.createElement('span');
-      nameSpan.style.cssText=`flex:1;font-size:12px;color:${ing.active?'var(--text2)':'var(--text4)'}`;
+      nameSpan.style.cssText=`flex:1;font-size:12px;font-weight:600;color:${ing.active?'var(--text2)':'var(--text4)'}`;
       nameSpan.textContent=ingredient.name+(isCustom?' ✦':'');
 
-      // Input cantidad por pieza
       const qtyInp=document.createElement('input');
       qtyInp.type='number';qtyInp.inputMode='decimal';
       qtyInp.value=ing.qtyPer||'';qtyInp.placeholder='0';
-      qtyInp.style.cssText=`width:60px;background:var(--bg3);color:${ing.active?'var(--text)':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none`;
+      qtyInp.style.cssText=`width:56px;background:var(--bg3);color:${ing.active?'var(--text)':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 5px;font-size:12px;text-align:center;outline:none`;
       if(!ing.active) qtyInp.disabled=true;
 
-      // Unidad
       const unitSpan=document.createElement('span');
-      unitSpan.style.cssText='font-size:11px;color:var(--text4);flex-shrink:0';
+      unitSpan.style.cssText='font-size:10px;color:var(--text4);flex-shrink:0';
       unitSpan.textContent=`${ingredient.unit}/pza`;
 
-      // Total calculado
       const totalSpan=document.createElement('span');
-      totalSpan.style.cssText=`font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:56px;flex-shrink:0;text-align:right`;
-      totalSpan.textContent=ing.active&&line.qty?`= ${totalStr} ${ingredient.unit}`:'—';
+      totalSpan.style.cssText=`font-size:11px;font-weight:700;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:52px;flex-shrink:0;text-align:right`;
+      totalSpan.textContent=ing.active&&line.qty?`= ${efectivoStr} ${ingredient.unit}`:'—';
 
-      // Botón eliminar ingrediente (siempre visible)
       const rmIngBtn=document.createElement('button');
-      rmIngBtn.title='Quitar ingrediente';
-      rmIngBtn.style.cssText='background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1;transition:color .15s';
+      rmIngBtn.title='Quitar';
+      rmIngBtn.style.cssText='background:transparent;border:none;color:var(--text4);font-size:13px;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1;transition:color .15s';
       rmIngBtn.textContent='✕';
       rmIngBtn.onmouseover=()=>rmIngBtn.style.color='var(--red)';
       rmIngBtn.onmouseout=()=>rmIngBtn.style.color='var(--text4)';
-      rmIngBtn.onclick=()=>{
-        evLines[li].ings.splice(ii,1);
-        renderEvLines();updateEvMargen();
-      };
+      rmIngBtn.onclick=()=>{ evLines[li].ings.splice(ii,1); renderEvLines();updateEvMargen(); };
 
+      mainRow.appendChild(cb);
+      mainRow.appendChild(nameSpan);
+      mainRow.appendChild(qtyInp);
+      mainRow.appendChild(unitSpan);
+      mainRow.appendChild(totalSpan);
+      mainRow.appendChild(rmIngBtn);
+
+      // Fila % por ingrediente (solo si activo)
+      const pctRow=document.createElement('div');
+      pctRow.style.cssText=`display:flex;align-items:center;gap:6px;padding:4px 8px 6px 28px;background:${ing.active?'rgba(42,184,184,.03)':'rgba(255,255,255,.01)'};border-top:1px solid ${ing.active?'rgba(42,184,184,.1)':'rgba(255,255,255,.03)'}`;
+
+      const pctBarWrap=document.createElement('div');
+      pctBarWrap.style.cssText='flex:1;height:4px;background:var(--bg4);border-radius:3px;overflow:hidden';
+      const pctBarFill=document.createElement('div');
+      const barClr=ingPct===100?'#2ab8b8':ingPct>100?'#f57474':'#f5c800';
+      pctBarFill.style.cssText=`height:100%;width:${Math.min(ingPct,100)}%;background:${barClr};border-radius:3px;transition:width .2s,background .2s`;
+      pctBarWrap.appendChild(pctBarFill);
+
+      const pctLbl=document.createElement('span');
+      pctLbl.style.cssText='font-size:10px;color:var(--text4);white-space:nowrap';
+      pctLbl.textContent='% de este ing.';
+
+      const pctInp=document.createElement('input');
+      pctInp.type='number';pctInp.inputMode='decimal';
+      pctInp.min='0';pctInp.max='100';pctInp.value=ingPct;
+      pctInp.style.cssText=`width:50px;background:var(--bg3);color:${barClr};border:1px solid ${barClr}55;border-radius:6px;padding:3px 5px;font-size:12px;font-weight:800;text-align:center;outline:none`;
+      if(!ing.active) pctInp.disabled=true;
+
+      const pctSymbol=document.createElement('span');
+      pctSymbol.style.cssText=`font-size:11px;font-weight:800;color:${barClr}`;
+      pctSymbol.textContent='%';
+
+      pctRow.appendChild(pctLbl);
+      pctRow.appendChild(pctBarWrap);
+      pctRow.appendChild(pctInp);
+      pctRow.appendChild(pctSymbol);
+
+      // Eventos
       cb.onchange=()=>{
         evLines[li].ings[ii].active=cb.checked;
         qtyInp.disabled=!cb.checked;
+        pctInp.disabled=!cb.checked;
         renderEvLines();updateEvMargen();
       };
       qtyInp.oninput=()=>{
         evLines[li].ings[ii].qtyPer=parseFloat(qtyInp.value)||0;
-        const t=(evLines[li].ings[ii].qtyPer*(line.qty||0));
-        const tStr=t%1===0?t.toFixed(0):t.toFixed(2);
-        totalSpan.textContent=`= ${tStr} ${ingredient.unit}`;
+        const ef=(evLines[li].ings[ii].qtyPer*(line.qty||0)*((evLines[li].ings[ii].pct??100)/100));
+        const efStr=ef%1===0?ef.toFixed(0):ef.toFixed(2);
+        totalSpan.textContent=`= ${efStr} ${ingredient.unit}`;
+        updateEvMargen();
+      };
+      pctInp.oninput=()=>{
+        const v=parseFloat(pctInp.value);
+        evLines[li].ings[ii].pct=isNaN(v)?100:v;
+        const ef=(evLines[li].ings[ii].qtyPer||0)*(line.qty||0)*((evLines[li].ings[ii].pct)/100);
+        const efStr=ef%1===0?ef.toFixed(0):ef.toFixed(2);
+        totalSpan.textContent=`= ${efStr} ${ingredient.unit}`;
+        const newClr=v===100?'#2ab8b8':v>100?'#f57474':'#f5c800';
+        pctBarFill.style.width=Math.min(v,100)+'%';
+        pctBarFill.style.background=newClr;
+        pctInp.style.color=newClr;
+        pctInp.style.borderColor=newClr+'55';
+        pctSymbol.style.color=newClr;
         updateEvMargen();
       };
 
-      row.appendChild(cb);
-      row.appendChild(nameSpan);
-      row.appendChild(qtyInp);
-      row.appendChild(unitSpan);
-      row.appendChild(totalSpan);
-      row.appendChild(rmIngBtn);
+      row.appendChild(mainRow);
+      row.appendChild(pctRow);
       wrap.appendChild(row);
     });
 
@@ -4403,7 +4406,7 @@ function openAddIngModal(li){
       const addBtn=item.querySelector('button');
       const doAdd=()=>{
         const v=parseFloat(qtyI.value)||0;
-        evLines[_addIngTargetLine].ings.push({ingId:ing.id,qtyPer:v,active:true,isCustom:true});
+        evLines[_addIngTargetLine].ings.push({ingId:ing.id,qtyPer:v,active:true,isCustom:true,pct:100});
         overlay.remove();
         renderEvLines();updateEvMargen();
         showToast(`✦ ${ing.name} agregado`,'green');
@@ -4422,12 +4425,10 @@ function openAddIngModal(li){
 function calcEvCosto(){
   let total=0;
   evLines.forEach(line=>{
-    const pctFactor=(parseFloat(line.pct)||0)/100;
     line.ings.filter(x=>x.active).forEach(x=>{
       const ing=ingredients.find(i=>i.id===x.ingId);if(!ing||!ing.costPerUnit)return;
-      // Costo ponderado: qty real de esta línea = total_pzas × pct
-      const totalQtyEvento=evLines.reduce((s,l)=>s+(l.qty||0),0);
-      total+=ing.costPerUnit*(x.qtyPer||0)*(totalQtyEvento*pctFactor);
+      const ingPct=(x.pct!=null?x.pct:100)/100;
+      total+=ing.costPerUnit*(x.qtyPer||0)*(line.qty||0)*ingPct;
     });
   });
   return total;
@@ -4460,18 +4461,12 @@ function registrarEvento(){
   if(!price){showToast('Escribe el precio total','red');return;}
   if(!evLines.length||evLines.every(l=>!l.productId||!l.qty)){showToast('Agrega al menos un producto','red');return;}
 
-  // Validar que porcentajes sumen 100
-  const tp=totalPct();
-  if(Math.round(tp)!==100){showToast(`Los porcentajes suman ${tp}% — deben sumar 100%`,'red');return;}
-
   const totalQty=evLines.reduce((s,l)=>s+(l.qty||0),0);
   const costo=calcEvCosto();
   const now=new Date();
   const items=evLines.filter(l=>l.productId&&l.qty).map(l=>{
     const p=products.find(x=>x.id===l.productId);
-    const pctFactor=(parseFloat(l.pct)||0)/100;
-    const qtyEfectiva=parseFloat((totalQty*pctFactor).toFixed(3));
-    return {name:p?p.name:'?',qty:l.qty,qtyEfectiva,pct:l.pct,price:price*(pctFactor),var:'Normal',extras:''};
+    return {name:p?p.name:'?',qty:l.qty,price:price/evLines.filter(x=>x.productId&&x.qty).length,var:'Normal',extras:''};
   });
 
   const sale={
@@ -4481,21 +4476,20 @@ function registrarEvento(){
     items,costoEstimado:parseFloat(costo.toFixed(2)),
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos',
     evLinesSnapshot:evLines.filter(l=>l.productId&&l.qty).map(l=>({
-      productId:l.productId,qty:l.qty,pct:l.pct,
-      ings:l.ings.map(x=>({ingId:x.ingId,qtyPer:x.qtyPer||0,active:x.active}))
+      productId:l.productId,qty:l.qty,
+      ings:l.ings.map(x=>({ingId:x.ingId,qtyPer:x.qtyPer||0,active:x.active,pct:x.pct!=null?x.pct:100}))
     }))
   };
   if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
 
-  // Descontar inventario ponderado por % estimado
+  // Descontar inventario — cada ingrediente usa su propio %
   let changed=false;
   evLines.forEach(line=>{
     if(!line.productId||!line.qty)return;
-    const pctFactor=(parseFloat(line.pct)||0)/100;
-    const qtyEfectiva=totalQty*pctFactor; // piezas reales estimadas para esta línea
     line.ings.filter(x=>x.active).forEach(x=>{
       const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat((ingredients[idx].stock-(x.qtyPer||0)*qtyEfectiva).toFixed(3));
+      const ingPct=(x.pct!=null?x.pct:100)/100;
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-(x.qtyPer||0)*line.qty*ingPct).toFixed(3));
       changed=true;
     });
   });
@@ -4558,13 +4552,11 @@ function deshacerEvento(saleId){
       if(fbDb&&s.evLinesSnapshot){
         // Restaurar usando snapshot exacto con qtyEfectiva ponderada por %
         let changed=false;
-        const totalQtyEvento=s.evLinesSnapshot.reduce((sum,l)=>sum+(l.qty||0),0);
         s.evLinesSnapshot.forEach(line=>{
-          const pctFactor=(parseFloat(line.pct)||0)/100;
-          const qtyEfectiva=pctFactor>0?totalQtyEvento*pctFactor:(line.qty||0);
           (line.ings||[]).filter(x=>x.active).forEach(x=>{
             const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
-            ingredients[idx].stock=parseFloat((ingredients[idx].stock+(x.qtyPer||0)*qtyEfectiva).toFixed(3));
+            const ingPct=(x.pct!=null?x.pct:100)/100;
+            ingredients[idx].stock=parseFloat((ingredients[idx].stock+(x.qtyPer||0)*(line.qty||0)*ingPct).toFixed(3));
             changed=true;
           });
         });
