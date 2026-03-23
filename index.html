@@ -1963,15 +1963,27 @@ body{
   <!-- ── TAB: ACTIVIDAD ── -->
   <!-- ── TAB: GASTOS ── -->
   <div class="admin-tab-view" id="adm-tab-gastos">
-    <!-- Balance general -->
+
+    <!-- ── Balance: 3 stats en grid de 3 columnas ── -->
     <div class="form-card" style="margin-bottom:12px">
       <div class="sec-label" style="margin-top:0">💰 Balance: Ingresos vs Gastos</div>
-      <div class="admin-stat-grid" style="margin-bottom:10px">
-        <div class="admin-stat"><div class="admin-stat-lbl">Ingresos</div><div class="admin-stat-val" id="adm-g-ingresos">$0</div><div class="admin-stat-sub" id="adm-g-per">Histórico</div></div>
-        <div class="admin-stat"><div class="admin-stat-lbl">Gastos</div><div class="admin-stat-val" id="adm-g-gastos" style="color:var(--red)">$0</div></div>
-        <div class="admin-stat"><div class="admin-stat-lbl">Ganancia</div><div class="admin-stat-val" id="adm-g-ganancia">$0</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="admin-stat" style="margin:0">
+          <div class="admin-stat-lbl">Ingresos</div>
+          <div class="admin-stat-val" id="adm-g-ingresos" style="font-size:18px">$0</div>
+          <div class="admin-stat-sub" id="adm-g-per">Histórico</div>
+        </div>
+        <div class="admin-stat" style="margin:0">
+          <div class="admin-stat-lbl">Gastos</div>
+          <div class="admin-stat-val" id="adm-g-gastos" style="color:var(--red);font-size:18px">$0</div>
+        </div>
+        <div class="admin-stat" style="margin:0">
+          <div class="admin-stat-lbl">Ganancia</div>
+          <div class="admin-stat-val" id="adm-g-ganancia" style="font-size:18px">$0</div>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <!-- Filtros de periodo -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="admin-range-btn active" onclick="setGastosPeriod('hoy')">Hoy</button>
         <button class="admin-range-btn" onclick="setGastosPeriod('semana')">Semana</button>
         <button class="admin-range-btn" onclick="setGastosPeriod('mes')">Mes</button>
@@ -1979,7 +1991,31 @@ body{
       </div>
     </div>
 
-    <!-- Agregar gasto -->
+    <!-- ── Gráficas ── -->
+    <div class="form-card" style="margin-bottom:12px">
+      <div class="sec-label" style="margin-top:0">📊 Visualización</div>
+      <!-- Gráfica 1: Barras — Ingresos vs Gastos por día/período -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;color:var(--text4);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Ingresos vs Gastos</div>
+        <div style="position:relative;height:180px">
+          <canvas id="g-chart-balance"></canvas>
+        </div>
+      </div>
+      <!-- Divider -->
+      <div style="height:1px;background:var(--border);margin:4px 0 16px"></div>
+      <!-- Gráfica 2: Dona — Distribución por categoría de gastos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center">
+        <div>
+          <div style="font-size:11px;color:var(--text4);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Gastos por categoría</div>
+          <div style="position:relative;height:150px">
+            <canvas id="g-chart-cat"></canvas>
+          </div>
+        </div>
+        <div id="g-cat-legend" style="font-size:12px;line-height:2"></div>
+      </div>
+    </div>
+
+    <!-- ── Registrar gasto ── -->
     <div class="form-card" style="margin-bottom:12px">
       <div class="sec-label" style="margin-top:0">➕ Registrar gasto</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
@@ -2012,11 +2048,11 @@ body{
       </button>
     </div>
 
-    <!-- Lista de gastos -->
+    <!-- ── Historial ── -->
     <div class="form-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div class="sec-label" style="margin:0">📋 Historial de gastos</div>
-        <button onclick="exportarGastos()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer">⬇ Exportar</button>
+        <button onclick="exportarGastos()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer">⬇ CSV</button>
       </div>
       <div id="adm-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
     </div>
@@ -3775,7 +3811,10 @@ function renderGastos(){
   if(gN){gN.textContent='$'+ganancia.toFixed(2);gN.style.color=ganancia>=0?'#2ab8b8':'#E02020';}
   if(gP) gP.textContent=perLbl;
 
-  // Lista
+  // ── Gráfica 1: Ingresos vs Gastos (barras por días o total) ──
+  renderGastosCharts(gs, ingresos, totalGasto, salesFilt);
+
+  // ── Lista ──
   const el=document.getElementById('adm-gastos-list');if(!el)return;
   if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
 
@@ -3792,6 +3831,88 @@ function renderGastos(){
         <button onclick="eliminarGasto('${g.id}')" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
       </div>
+    </div>`).join('');
+}
+
+/* ── Gastos charts ── */
+let gChartBalance=null, gChartCat=null;
+function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
+  // ── Chart 1: Barras — últimos días o resumen único ──
+  const c1=document.getElementById('g-chart-balance');
+  if(!c1)return;
+
+  // Agrupar por fecha (últimos 7 días si periodo largo, o por día disponible)
+  const daysMap={};
+  salesFilt.forEach(s=>{
+    if(!daysMap[s.date]) daysMap[s.date]={ing:0,gasto:0};
+    daysMap[s.date].ing+=s.total;
+  });
+  gs.forEach(g=>{
+    if(!daysMap[g.fecha]) daysMap[g.fecha]={ing:0,gasto:0};
+    daysMap[g.fecha].gasto+=g.monto;
+  });
+  const labels=Object.keys(daysMap).sort().slice(-7);
+  const ingData=labels.map(d=>parseFloat((daysMap[d]?.ing||0).toFixed(2)));
+  const gasData=labels.map(d=>parseFloat((daysMap[d]?.gasto||0).toFixed(2)));
+  const shortLabels=labels.map(d=>{
+    const parts=d.split('/');
+    return parts.length===3?`${parts[0]}/${parts[1]}`:d.slice(5);
+  });
+
+  if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
+  gChartBalance=new Chart(c1,{
+    type:'bar',
+    data:{
+      labels:shortLabels.length?shortLabels:['Sin datos'],
+      datasets:[
+        {label:'Ingresos',data:ingData.length?ingData:[0],backgroundColor:'rgba(42,184,184,.7)',borderRadius:6,borderSkipped:false},
+        {label:'Gastos',data:gasData.length?gasData:[0],backgroundColor:'rgba(224,32,32,.7)',borderRadius:6,borderSkipped:false}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#aaa',font:{size:11}}},tooltip:{callbacks:{label:c=>`$${c.parsed.y.toFixed(2)}`}}},
+      scales:{
+        x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+
+  // ── Chart 2: Dona — gastos por categoría ──
+  const c2=document.getElementById('g-chart-cat');
+  if(!c2)return;
+  const catTotals={compra:0,operativo:0,equipo:0,otro:0};
+  gs.forEach(g=>{ catTotals[g.cat]=(catTotals[g.cat]||0)+g.monto; });
+  const catLabels=['🛒 Compra','🔧 Operativo','📦 Equipo','📝 Otro'];
+  const catValues=[catTotals.compra,catTotals.operativo,catTotals.equipo,catTotals.otro];
+  const catColors=['rgba(245,200,0,.8)','rgba(42,184,184,.8)','rgba(108,99,255,.8)','rgba(245,116,116,.8)'];
+  const hasData=catValues.some(v=>v>0);
+
+  if(gChartCat){gChartCat.destroy();gChartCat=null;}
+  gChartCat=new Chart(c2,{
+    type:'doughnut',
+    data:{
+      labels:catLabels,
+      datasets:[{data:hasData?catValues:[1],backgroundColor:hasData?catColors:['rgba(255,255,255,.08)'],borderWidth:0,hoverOffset:6}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>hasData?`$${c.parsed.toFixed(2)}`:''}}
+      }
+    }
+  });
+
+  // Leyenda manual
+  const leg=document.getElementById('g-cat-legend');if(!leg)return;
+  const catRawColors=['#f5c800','#2ab8b8','#6c63ff','#f57474'];
+  leg.innerHTML=catLabels.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="width:10px;height:10px;border-radius:3px;background:${catRawColors[i]};flex-shrink:0"></div>
+      <span style="color:var(--text3)">${l}</span>
+      <span style="color:var(--text);font-weight:700;margin-left:auto">$${(catValues[i]||0).toFixed(0)}</span>
     </div>`).join('');
 }
 
