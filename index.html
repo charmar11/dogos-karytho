@@ -1516,6 +1516,7 @@ body{
 <div class="tabs">
   <div class="tab active" onclick="setTab('cobrar')">Cobrar</div>
   <div class="tab" onclick="setTab('historial')">Historial</div>
+  <div class="tab" onclick="setTab('gastos')">Gastos</div>
   <div class="tab" onclick="setTab('productos')">Productos</div>
 </div>
 
@@ -2919,6 +2920,7 @@ function loadGastoCats(){
         gastoCats=Object.values(d).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
         safeStorage.setItem(SK_GASTO_CATS,JSON.stringify(gastoCats));
         renderGastoCatSelect();
+        renderCidopGastoCatSelect();
       }
     });
   }
@@ -2973,6 +2975,8 @@ function bootApp(){
   document.getElementById('main-app').style.display='block';
   load();
   loadInvData(); // load ingredients + recipes so descontarInventario works
+  loadGastoCats();
+  if(typeof loadGastos==='function') loadGastos(); // sync gastos from Firebase
   updateDate();renderGrid();renderFavStrip();renderOrder();
   setFbStatus('connecting');
   initFirebase(FB_CONFIG);
@@ -3032,12 +3036,13 @@ function getPeriodSales(){
 
 /* ─── Tabs ─── */
 function setTab(tab){
-  ['cobrar','historial','productos'].forEach((t,i)=>{
+  ['cobrar','historial','gastos','productos'].forEach((t,i)=>{
     document.getElementById('view-'+t).classList.toggle('active',t===tab);
     document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
   });
-  if(tab==='historial')renderHistorial();
-  if(tab==='productos')renderProdAdmin();
+  if(tab==='historial') renderHistorial();
+  if(tab==='productos') renderProdAdmin();
+  if(tab==='gastos')    initCidopGastos();
 }
 function setPeriod(p){
   currentPeriod=p;
@@ -3203,6 +3208,110 @@ function updateCambio(){
   // Deselect bill if manual input
   if(cash!==activeBill){document.querySelectorAll('.bill-btn').forEach(b=>b.classList.remove('selected'));activeBill=null;}
 }
+/* ── CIPOD Gastos ── */
+let cidopGastosPeriod='dia';
+
+function initCidopGastos(){
+  // Set default date
+  const fi=document.getElementById('cidop-gasto-fecha');
+  if(fi&&!fi.value) fi.value=new Date().toISOString().slice(0,10);
+  // Populate category select
+  renderCidopGastoCatSelect();
+  renderCidopGastosList();
+}
+
+function renderCidopGastoCatSelect(){
+  const sel=document.getElementById('cidop-gasto-cat');if(!sel)return;
+  const cur=sel.value;
+  if(!gastoCats||!gastoCats.length){
+    sel.innerHTML='<option value="">— Sin categorías —</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">— Elige categoría —</option>'+
+    gastoCats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  if(gastoCats.find(c=>c.id===cur)) sel.value=cur;
+}
+
+function agregarGastoCidop(){
+  const desc=document.getElementById('cidop-gasto-desc').value.trim();
+  const monto=parseFloat(document.getElementById('cidop-gasto-monto').value)||0;
+  const cat=document.getElementById('cidop-gasto-cat').value||'otro';
+  const fecha=document.getElementById('cidop-gasto-fecha').value||new Date().toISOString().slice(0,10);
+  if(!desc){showToast('Escribe una descripción','red');return;}
+  if(!monto){showToast('Escribe el monto','red');return;}
+  const fechaTs=new Date(fecha+'T12:00:00').getTime();
+  const g={
+    id:'g_'+Date.now(),timestamp:fechaTs,
+    desc,monto:parseFloat(monto.toFixed(2)),cat,fecha,
+    user:safeStorage.getItem(SK_DISPLAY)||'Cajero'
+  };
+  if(!gastos) gastos=[];
+  gastos.unshift(g);
+  safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+  document.getElementById('cidop-gasto-desc').value='';
+  document.getElementById('cidop-gasto-monto').value='';
+  showToast('✅ Gasto guardado','green');
+  if(fbDb){
+    fbDb.ref('gastos/'+g.id).set(g).catch(()=>{
+      showToast('Sin conexión — guardado localmente','red');
+    });
+  }
+  renderCidopGastosList();
+}
+
+function setCidopGastosPeriod(p){
+  cidopGastosPeriod=p;
+  document.querySelectorAll('#cidop-gastos-period-btns .period-tab').forEach((b,i)=>{
+    b.classList.toggle('active',['dia','semana','mes','todo'][i]===p);
+  });
+  renderCidopGastosList();
+}
+
+function getCidopGastosFiltrados(){
+  if(!gastos) return [];
+  const today=toDateKey(new Date());
+  if(cidopGastosPeriod==='dia') return gastos.filter(g=>toDateKey(new Date(g.timestamp))===today);
+  if(cidopGastosPeriod==='semana') return gastos.filter(g=>isSameWeek(g.timestamp));
+  if(cidopGastosPeriod==='mes') return gastos.filter(g=>isSameMonth(g.timestamp));
+  return [...gastos];
+}
+
+function renderCidopGastosList(){
+  const el=document.getElementById('cidop-gastos-list');if(!el)return;
+  const gs=getCidopGastosFiltrados();
+  if(!gs.length){
+    el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';
+    return;
+  }
+  el.innerHTML='';
+  gs.forEach(g=>{
+    const catObj=(gastoCats&&gastoCats.find(c=>c.id===g.cat))||{icon:'📝',name:g.cat||'Otro',color:'#888'};
+    const card=document.createElement('div');
+    card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
+    card.innerHTML=`
+      <div style="width:34px;height:34px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catObj.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">${g.fecha} · ${g.user}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:15px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
+        <button style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
+      </div>`;
+    card.querySelector('button').onclick=()=>{
+      customConfirm('¿Eliminar este gasto?','Eliminar',()=>{
+        gastos=gastos.filter(x=>x.id!==g.id);
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+        if(fbDb) fbDb.ref('gastos/'+g.id).remove().catch(()=>{});
+        showToast('Gasto eliminado','green');
+        renderCidopGastosList();
+      });
+    };
+    el.appendChild(card);
+  });
+}
+
 function confirmarCobro(){
   if(!order.length)return;
   const total=order.reduce((s,o)=>s+o.price*o.qty,0);
