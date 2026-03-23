@@ -1806,32 +1806,18 @@ body{
   </div>
 </div>
 <div class="inv-modal hidden" id="recipe-modal">
-  <div class="inv-modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
-    <div style="font-size:16px;font-weight:800;margin-bottom:2px;color:var(--text)" id="recipe-modal-title">Receta</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px" id="recipe-modal-subtitle">Base del producto</div>
-
-    <!-- Base ingredients section (always shown) -->
-    <div id="recipe-base-section">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:800;color:#2ab8b8;letter-spacing:.08em;text-transform:uppercase">Ingredientes base</div>
-        <div style="font-size:10px;color:var(--text4)" id="recipe-base-hint"></div>
+  <div class="inv-modal-box" style="max-width:400px;max-height:88vh;display:flex;flex-direction:column">
+    <div style="flex-shrink:0;margin-bottom:10px">
+      <div style="font-size:15px;font-weight:800;color:var(--text)" id="recipe-modal-title">Receta</div>
+      <div style="font-size:11px;color:var(--text4);margin-top:2px" id="recipe-modal-subtitle"></div>
+    </div>
+    <div id="recipe-modal-items" style="flex:1;overflow-y:auto;min-height:0"></div>
+    <div style="flex-shrink:0;padding-top:10px;border-top:1px solid var(--border);margin-top:8px">
+      <button class="btn-add-var" onclick="addRecipeRow()" style="width:100%;margin-bottom:10px">+ Ingrediente</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="closeRecipeModal()" style="flex:1">Cancelar</button>
+        <button class="btn-primary" onclick="saveRecipe()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
       </div>
-      <div id="recipe-modal-base-items"></div>
-      <button class="btn-add-var" onclick="addRecipeBaseRow()" style="margin-bottom:14px">+ Ingrediente base</button>
-    </div>
-
-    <!-- Variant overrides section (only shown for non-Normal variants) -->
-    <div id="recipe-variant-section" style="display:none">
-      <div style="height:1px;background:var(--border);margin:0 0 12px"></div>
-      <div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Cambios para esta variante</div>
-      <div style="font-size:11px;color:var(--text4);margin-bottom:8px;line-height:1.6">Agrega o sobreescribe cantidades. Si un ingrediente base está aquí con cantidad 0, se elimina para esta variante.</div>
-      <div id="recipe-modal-variant-items"></div>
-      <button class="btn-add-var" onclick="addRecipeVariantRow()" style="margin-bottom:14px">+ Cambio para esta variante</button>
-    </div>
-
-    <div style="display:flex;gap:10px">
-      <button class="btn-secondary" onclick="closeRecipeModal()" style="flex:1">Cancelar</button>
-      <button class="btn-primary" onclick="saveRecipe()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar receta</button>
     </div>
   </div>
 </div>
@@ -4675,148 +4661,124 @@ function renderInvRecipes(){
   if(!products.length){list.innerHTML='<div class="admin-empty">Sin productos en el menu.</div>';return;}
 
   list.innerHTML=products.map(p=>{
-    const baseRec=recipes[p.id]||[];
-    // Collect unique variant/extra names (exclude 'Normal' duplicates)
     const varNames=[...(p.variations||[]).map(v=>v.name)];
     const extraNames=(p.extras||[]).map(e=>e.name);
-    const allOverrideNames=[...new Set([...varNames,...extraNames])];
+    const allVariants=[...new Set([...varNames,...extraNames])];
 
-    // General condimento cost for this product
-    let condCosto=0;
-    generalRecipe.forEach(r=>{
-      const app=!r.productIds||r.productIds.length===0||r.productIds.includes(String(p.id))||r.productIds.includes(p.id);
-      if(!app)return;
-      const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)condCosto+=ing.costPerUnit*r.qty;
-    });
-
-    // Base cost
-    let baseCosto=condCosto;
-    baseRec.forEach(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)baseCosto+=ing.costPerUnit*r.qty;});
-
-    const baseSection=`
-      <div style="margin-bottom:${allOverrideNames.length?'0':'0'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;font-weight:800;color:#2ab8b8;text-transform:uppercase;letter-spacing:.06em">Base</span>
-            ${baseCosto>0?`<span style="font-size:11px;color:var(--text3)">≈$${baseCosto.toFixed(2)}/u</span>`:''}
+    // Base recipe row
+    function recipeRow(label, key, isVariant){
+      const rec=key===p.id?(recipes[p.id]||[]):mergeRecipe(recipes[p.id]||[],recipes[key]||[]);
+      const ingList=rec.filter(r=>r.qty>0).map(r=>{
+        const ing=ingredients.find(i=>i.id===r.ingId);
+        return ing?`${ing.name} ${r.qty}${ing.unit}`:'';
+      }).filter(Boolean).join(' · ');
+      const costSum=rec.reduce((s,r)=>{const ing=ingredients.find(i=>i.id===r.ingId);return s+(ing&&ing.costPerUnit>0?ing.costPerUnit*r.qty:0);},0);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:${isVariant?'600':'700'};color:${isVariant?'var(--text3)':'var(--text)'}">
+            ${isVariant?`<span style="color:var(--text4);margin-right:4px">↳</span>`:''}${label}
+            ${costSum>0?`<span style="font-size:11px;color:var(--text4);font-weight:400;margin-left:6px">≈$${costSum.toFixed(2)}</span>`:''}
           </div>
-          <button class="btn-ing teal" onclick="openRecipeModal(${p.id},'Normal')" style="padding:5px 10px;font-size:11px">✏️ Editar base</button>
-        </div>
-        <div style="padding-left:4px">${baseRec.length?recipeIngHTML(baseRec):'<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin receta base — toca Editar base</div>'}</div>
-      </div>`;
-
-    const varSections=allOverrideNames.map(vName=>{
-      const isExtra=extraNames.includes(vName)&&!varNames.includes(vName);
-      const overrides=recipes[`${p.id}_${vName}`]||[];
-      const merged=mergeRecipe(baseRec,overrides);
-      let vCosto=condCosto;
-      merged.forEach(r=>{const ing=ingredients.find(i=>i.id===r.ingId);if(ing&&ing.costPerUnit>0)vCosto+=ing.costPerUnit*r.qty;});
-      const badge=isExtra
-        ?`<span style="font-size:10px;background:rgba(245,200,0,.15);color:var(--gold);padding:2px 6px;border-radius:5px;margin-left:6px">extra</span>`
-        :`<span style="font-size:10px;background:rgba(42,184,184,.1);color:#2ab8b8;padding:2px 6px;border-radius:5px;margin-left:6px">variante</span>`;
-      const diffNote=overrides.length?`<span style="font-size:10px;color:var(--text4);margin-left:6px">${overrides.length} cambio${overrides.length>1?'s':''} vs base</span>`:'<span style="font-size:10px;color:var(--text4);margin-left:6px">igual al base</span>';
-      return `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
-            <span style="font-size:12px;font-weight:700;color:var(--text)">${vName}</span>${badge}${diffNote}
-            ${vCosto>0?`<span style="font-size:11px;color:var(--text3)">≈$${vCosto.toFixed(2)}/u</span>`:''}
+          <div style="font-size:11px;color:var(--text4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${ingList||'<span style="color:rgba(255,255,255,.2)">Sin receta</span>'}
           </div>
-          <button class="btn-ing" onclick="openRecipeModal(${p.id},'${vName}')" style="padding:5px 10px;font-size:11px;border-color:rgba(245,200,0,.3);color:var(--gold)">✏️ Editar</button>
         </div>
-        <div style="padding-left:4px">${recipeIngHTML(merged)}</div>
+        <button class="btn-ing teal" onclick="openRecipeModal(${p.id},'${label==='Base'?'Normal':label}')" style="flex-shrink:0;padding:6px 12px;font-size:11px">✏️</button>
       </div>`;
-    }).join('');
+    }
 
-    return `<div class="form-card" style="margin-bottom:12px;padding:14px">
-      <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:2px">${p.name}</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Precio base: $${p.basePrice}</div>
-      ${baseSection}${varSections}
+    const rows=recipeRow('Base',p.id,false)
+      +allVariants.map(v=>recipeRow(v,`${p.id}_${v}`,true)).join('');
+
+    return `<div class="form-card" style="margin-bottom:10px;padding:12px 14px">
+      <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:6px">
+        ${p.name} <span style="font-size:11px;color:var(--text4);font-weight:400">$${p.basePrice}</span>
+      </div>
+      ${rows}
     </div>`;
   }).join('');
 }
 let recipeVarName='Normal';
-let recipeBaseRows=[];
-let recipeVarRows=[];
 
-function openRecipeModal(productId,varName){
+function openRecipeModal(productId, varName){
   const p=products.find(x=>x.id===productId);if(!p)return;
   recipeProductId=productId;
   recipeVarName=varName||'Normal';
   const isBase=recipeVarName==='Normal';
+  const key=isBase?productId:`${productId}_${recipeVarName}`;
 
-  recipeBaseRows=[...(recipes[productId]||[]).map(r=>({...r}))];
-  recipeVarRows=isBase?[]:[...(recipes[`${productId}_${recipeVarName}`]||[]).map(r=>({...r}))];
+  // For variants: show merged recipe (base + overrides) as flat list
+  const baseRec=recipes[productId]||[];
+  if(isBase){
+    recipeRows=baseRec.map(r=>({...r}));
+  } else {
+    // Show the full merged recipe for this variant so user sees complete picture
+    const overrides=recipes[key]||[];
+    const merged=mergeRecipe(baseRec,overrides);
+    recipeRows=merged.map(r=>({...r}));
+  }
 
-  document.getElementById('recipe-modal-title').textContent=isBase
-    ?`Receta base — ${p.name}`:`${p.name} — ${recipeVarName}`;
+  const label=isBase?p.name:`${p.name} · ${recipeVarName}`;
+  document.getElementById('recipe-modal-title').textContent=label;
   document.getElementById('recipe-modal-subtitle').textContent=isBase
-    ?'Define los ingredientes que lleva siempre este producto'
-    :'Hereda todo del base · aquí solo defines los cambios';
-  document.getElementById('recipe-variant-section').style.display=isBase?'none':'block';
-  const hint=document.getElementById('recipe-base-hint');
-  if(hint)hint.textContent=isBase?'':'(editable — se hereda en todas las variantes)';
-
-  renderRecipeBaseRows();
-  if(!isBase)renderRecipeVarRows();
+    ?`${baseRec.length} ingredientes`
+    :`Variante — editando receta completa`;
+  renderRecipeModalRows();
   document.getElementById('recipe-modal').classList.remove('hidden');
 }
 function closeRecipeModal(){document.getElementById('recipe-modal').classList.add('hidden');}
 
-function makeIngRow(r,i,arr,rerenderFn){
-  const ing=ingredients.find(x=>x.id===r.ingId);
-  const div=document.createElement('div');
-  div.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--bg3);border-radius:10px;padding:9px';
-  div.innerHTML=`
-    <span style="font-size:18px;flex-shrink:0">${ing?ingEmoji(ing.name):'📦'}</span>
-    <select style="flex:2;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
-      <option value="">Ingrediente</option>
-      ${ingredients.map(x=>`<option value="${x.id}" ${r.ingId===x.id?'selected':''}>${x.name} (${x.unit})</option>`).join('')}
-    </select>
-    <input type="number" inputmode="decimal" value="${r.qty!==undefined?r.qty:''}" placeholder="Cant."
-      style="width:66px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
-    <span style="font-size:11px;color:var(--text3);min-width:24px;flex-shrink:0">${ing?ing.unit:''}</span>
-    <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px">✕</button>
-  `;
-  const sel=div.querySelector('select');
-  const qty=div.querySelector('input');
-  const unitLbl=div.querySelector('span:nth-child(4)');
-  sel.onchange=()=>{arr[i].ingId=sel.value;const ng=ingredients.find(x=>x.id===sel.value);unitLbl.textContent=ng?ng.unit:'';div.querySelector('span:first-child').textContent=ng?ingEmoji(ng.name):'📦';};
-  qty.oninput=()=>{arr[i].qty=parseFloat(qty.value)??0;};
-  div.querySelector('button').onclick=()=>{arr.splice(i,1);rerenderFn();};
-  return div;
-}
-
-function renderRecipeBaseRows(){
-  const el=document.getElementById('recipe-modal-base-items');if(!el)return;
+function renderRecipeModalRows(){
+  const el=document.getElementById('recipe-modal-items');if(!el)return;
   if(!ingredients.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:8px 0">Agrega ingredientes en Stock primero</div>';return;}
-  if(!recipeBaseRows.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:6px 0">Sin ingredientes base todavía</div>';return;}
+  if(!recipeRows.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:6px 0">Sin ingredientes. Toca + Ingrediente.</div>';return;}
   el.innerHTML='';
-  recipeBaseRows.forEach((r,i)=>el.appendChild(makeIngRow(r,i,recipeBaseRows,renderRecipeBaseRows)));
+  recipeRows.forEach((r,i)=>{
+    const ing=ingredients.find(x=>x.id===r.ingId);
+    const cat=ing&&ing.categoryId?ingCategories.find(c=>c.id===ing.categoryId):null;
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:7px;background:var(--bg3);border-radius:9px;padding:8px 10px';
+    row.innerHTML=`
+      <span style="font-size:16px;flex-shrink:0">${ing?ingEmoji(ing.name):'📦'}</span>
+      <select style="flex:2;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:7px 8px;font-size:13px;outline:none">
+        <option value="">Ingrediente</option>
+        ${ingredients.map(x=>`<option value="${x.id}" ${r.ingId===x.id?'selected':''}>${x.name}</option>`).join('')}
+      </select>
+      <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="0"
+        style="width:58px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:7px 6px;font-size:13px;outline:none;text-align:center"/>
+      <span style="font-size:11px;color:var(--text3);min-width:22px;flex-shrink:0">${ing?ing.unit:''}</span>
+      <button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0;padding:2px">✕</button>
+    `;
+    const sel=row.querySelector('select');
+    const qty=row.querySelector('input');
+    const unitLbl=row.querySelector('span:nth-child(4)');
+    sel.onchange=()=>{
+      recipeRows[i].ingId=sel.value;
+      const ng=ingredients.find(x=>x.id===sel.value);
+      unitLbl.textContent=ng?ng.unit:'';
+      row.querySelector('span:first-child').textContent=ng?ingEmoji(ng.name):'📦';
+    };
+    qty.oninput=()=>{recipeRows[i].qty=parseFloat(qty.value)||0;};
+    row.querySelector('button').onclick=()=>{recipeRows.splice(i,1);renderRecipeModalRows();};
+    el.appendChild(row);
+  });
 }
-function renderRecipeVarRows(){
-  const el=document.getElementById('recipe-modal-variant-items');if(!el)return;
-  if(!recipeVarRows.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:6px 0">Sin cambios — heredará todo del base</div>';return;}
-  el.innerHTML='';
-  recipeVarRows.forEach((r,i)=>el.appendChild(makeIngRow(r,i,recipeVarRows,renderRecipeVarRows)));
-}
-// Backwards compat
-function renderRecipeModalRows(){renderRecipeBaseRows();}
-function addRecipeRow(){recipeBaseRows.push({ingId:'',qty:1});renderRecipeBaseRows();}
-function addRecipeBaseRow(){recipeBaseRows.push({ingId:'',qty:1});renderRecipeBaseRows();}
-function addRecipeVariantRow(){recipeVarRows.push({ingId:'',qty:1});renderRecipeVarRows();}
+function addRecipeRow(){recipeRows.push({ingId:'',qty:1});renderRecipeModalRows();}
+// backwards compat
+function addRecipeBaseRow(){addRecipeRow();}
+function addRecipeVariantRow(){addRecipeRow();}
+function renderRecipeBaseRows(){renderRecipeModalRows();}
+function renderRecipeVarRows(){renderRecipeModalRows();}
 
 function saveRecipe(){
   const p=products.find(x=>x.id===recipeProductId);
   const isBase=recipeVarName==='Normal';
-  // Save base always
-  recipes[recipeProductId]=recipeBaseRows.filter(r=>r.ingId);
-  if(!isBase){
-    const vk=`${recipeProductId}_${recipeVarName}`;
-    const vv=recipeVarRows.filter(r=>r.ingId);
-    if(vv.length) recipes[vk]=vv; else delete recipes[vk];
-  }
+  const key=isBase?recipeProductId:`${recipeProductId}_${recipeVarName}`;
+  recipes[key]=recipeRows.filter(r=>r.ingId&&r.qty>0);
+  // If editing a variant as flat merged, also keep base clean
+  if(!isBase) recipes[recipeProductId]=recipes[recipeProductId]||[];
   fbSaveRecipes();
-  logInvHistory('ajuste',`Receta — ${p?p.name:recipeProductId}${isBase?'':`(${recipeVarName})`}`);
+  logInvHistory('ajuste',`Receta — ${p?p.name:recipeProductId}${isBase?'':' ('+recipeVarName+')'}`);
   closeRecipeModal();
   renderInvRecipes();
   showToast('Receta guardada','green');
@@ -5442,7 +5404,6 @@ function descontarInventario(items){
 
     rec.forEach(r=>{
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
-      if(ingredients[idx].deductType==='estimado')return; // estimado = no auto-deduct
       ingredients[idx].stock=parseFloat((ingredients[idx].stock-r.qty*it.qty).toFixed(3));
       changed=true;
     });
