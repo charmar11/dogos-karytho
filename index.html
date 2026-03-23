@@ -3708,54 +3708,29 @@ let admChartInstance=null;
 let gastos=[];
 let gastosPeriod='hoy';
 
-// Tracks IDs currently being written so the listener won't wipe them
-const _gastosPending=new Set();
-
 function loadGastos(){
-  // 1. Always start from localStorage — never lose data on reload
+  if(!fbDb){return;}
+  // Firebase is the single source of truth for gastos.
+  // Show cached version instantly, then sync with Firebase.
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
-  if(!fbDb){
-    const tab=document.getElementById('adm-tab-gastos');
-    if(tab&&tab.classList.contains('active')) renderGastos();
-    return;
-  }
 
-  // 2. Read Firebase once — only to ADD items we don't have locally
-  //    Local ALWAYS wins: if it's in local, keep local version
-  fbDb.ref('gastos').once('value',snap=>{
+  // Realtime listener — Firebase drives the array completely
+  fbDb.ref('gastos').on('value',snap=>{
     const d=snap.val();
-    const fbGastos=d?Object.values(d).filter(Boolean):[];
-    const localIds=new Set(gastos.map(g=>g.id));
-    // Add FB items not in local (came from another device)
-    fbGastos.forEach(g=>{
-      if(g.id&&!localIds.has(g.id)) gastos.push(g);
-    });
-    gastos.sort((a,b)=>b.timestamp-a.timestamp);
-    safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-    // Push local-only gastos to Firebase so other devices get them
-    const fbIds=new Set(fbGastos.map(g=>g.id));
-    gastos.forEach(g=>{
-      if(g.id&&!fbIds.has(g.id)) fbDb.ref('gastos/'+g.id).set(g).catch(()=>{});
-    });
-
-    // 3. Realtime listener — MERGE, never replace
-    //    Skip if a write is pending (avoid race condition)
-    fbDb.ref('gastos').on('value',snap=>{
-      if(_gastosPending.size>0)return;
-      const d=snap.val();
-      if(!d||Object.keys(d).length===0)return; // never wipe on empty snapshot
-      const fbList=Object.values(d).filter(Boolean);
-      // Merge: add any FB item not already local, keep all local items
-      const localIds=new Set(gastos.map(g=>g.id));
-      fbList.forEach(g=>{
-        if(g.id&&!localIds.has(g.id)){gastos.push(g);localIds.add(g.id);}
-      });
-      gastos.sort((a,b)=>b.timestamp-a.timestamp);
+    // If Firebase has data, use it as authoritative
+    if(d&&Object.keys(d).length>0){
+      gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
       safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-      const tab=document.getElementById('adm-tab-gastos');
-      if(tab&&tab.classList.contains('active')) renderGastos();
-    });
-
+    }
+    // If Firebase is empty but we have local cache, push local up to Firebase
+    else if(!d||Object.keys(d||{}).length===0){
+      const cached=gastos;
+      if(cached.length>0){
+        cached.forEach(g=>{if(g.id) fbDb.ref('gastos/'+g.id).set(g).catch(()=>{});});
+        // Don't clear gastos — keep showing cached until Firebase confirms
+        return;
+      }
+    }
     const tab=document.getElementById('adm-tab-gastos');
     if(tab&&tab.classList.contains('active')) renderGastos();
   });
@@ -3774,19 +3749,18 @@ function agregarGasto(){
     desc,monto:parseFloat(monto.toFixed(2)),cat,fecha,
     user:safeStorage.getItem(SK_DISPLAY)||'Admin'
   };
-  // Optimistic: add locally first so UI is instant
+  // Add optimistically to local array for instant UI
   gastos.unshift(g);
   safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
   renderGastos();
   document.getElementById('gasto-desc').value='';
   document.getElementById('gasto-monto').value='';
   showToast('✅ Gasto guardado','green');
-  // Upload to Firebase — mark as pending so listener ignores stale snapshots
+  // Write to Firebase — listener will confirm and re-render
   if(fbDb){
-    _gastosPending.add(g.id);
-    fbDb.ref('gastos/'+g.id).set(g)
-      .then(()=>{ _gastosPending.delete(g.id); })
-      .catch(()=>{ _gastosPending.delete(g.id); showToast('Sin conexión — gasto guardado localmente','red'); });
+    fbDb.ref('gastos/'+g.id).set(g).catch(()=>{
+      showToast('Sin conexión — reintentando...','red');
+    });
   }
 }
 
@@ -3928,14 +3902,26 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
         legend:{
           labels:{color:'#aaa',font:{size:11}},
           onClick:(e,legendItem,legend)=>{
-            // Highlight clicked dataset, dim the other
-            const idx=legendItem.datasetIndex;
             const chart=legend.chart;
-            chart.data.datasets.forEach((ds,i)=>{
-              ds.backgroundColor=i===idx
-                ?(i===0?'rgba(42,184,184,.95)':'rgba(224,32,32,.95)')
-                :(i===0?'rgba(42,184,184,.2)':'rgba(224,32,32,.2)');
-            });
+            const idx=legendItem.datasetIndex;
+            // Toggle: if already expanded (other is dimmed), reset both; else expand clicked
+            const otherDimmed=chart.data.datasets[1-idx].backgroundColor.includes('.15');
+            if(otherDimmed){
+              // Reset to normal
+              chart.data.datasets[0].backgroundColor='rgba(42,184,184,.7)';
+              chart.data.datasets[1].backgroundColor='rgba(224,32,32,.7)';
+              chart.data.datasets[0].borderWidth=0;
+              chart.data.datasets[1].borderWidth=0;
+            } else {
+              // Expand clicked, dim other
+              const clrs=['rgba(42,184,184,.95)','rgba(224,32,32,.95)'];
+              const dim=['rgba(42,184,184,.15)','rgba(224,32,32,.15)'];
+              chart.data.datasets[idx].backgroundColor=clrs[idx];
+              chart.data.datasets[1-idx].backgroundColor=dim[1-idx];
+              chart.data.datasets[idx].borderWidth=2;
+              chart.data.datasets[idx].borderColor=idx===0?'#2ab8b8':'#e02020';
+              chart.data.datasets[1-idx].borderWidth=0;
+            }
             chart.update();
           }
         },
