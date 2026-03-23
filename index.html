@@ -2219,6 +2219,64 @@ body{
   </div>
 </div>
 
+<!-- ===== EVENTOS PANEL ===== -->
+<div class="inv-screen" id="eventos-screen" style="background:linear-gradient(180deg,#0a0a14,#0d0d1a)">
+  <div class="inv-header" style="background:linear-gradient(180deg,#0e0e1e,#0a0a18);border-bottom-color:var(--red)">
+    <div>
+      <div class="inv-title" style="color:var(--red)">🎪 Eventos</div>
+      <div class="inv-sub">DOGOS KARYTHO</div>
+    </div>
+    <button class="btn-inv-logout" style="color:var(--red);border-color:rgba(224,32,32,.3)" onclick="eventosLogout()">Salir</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="inv-tabs" style="background:#0d0d1a">
+    <button class="inv-tab active" onclick="setEventosTab('nueva')" style="--tab-color:var(--red)">🎯 Nueva venta</button>
+    <button class="inv-tab" onclick="setEventosTab('historial')">📋 Historial</button>
+  </div>
+
+  <!-- ── NUEVA VENTA ── -->
+  <div class="inv-tab-view active" id="ev-tab-nueva" style="max-width:480px;margin:0 auto;width:100%">
+
+    <div class="form-card" style="margin-bottom:14px">
+      <div class="sec-label" style="margin-top:0;color:var(--red)">🎪 Registrar venta de evento</div>
+
+      <label class="form-lbl">Nombre del evento / cliente</label>
+      <input class="form-input" id="ev-name" placeholder="Ej: Boda García, Cumpleaños, Empresa X"/>
+
+      <label class="form-lbl">Producto principal</label>
+      <select class="form-input" id="ev-product" style="background:var(--bg3);color:var(--text)">
+        <option value="">Selecciona producto</option>
+      </select>
+
+      <label class="form-lbl">Cantidad de porciones</label>
+      <input class="form-input" id="ev-qty" type="number" inputmode="numeric" placeholder="80"/>
+
+      <label class="form-lbl">Precio total del evento ($)</label>
+      <input class="form-input" id="ev-price" type="number" inputmode="decimal" placeholder="0.00"/>
+
+      <label class="form-lbl">Notas (opcional)</label>
+      <input class="form-input" id="ev-note" placeholder="Ej: Solo salsa roja, sin cebolla"/>
+
+      <div id="ev-preview" style="display:none;margin:12px 0;padding:12px;background:rgba(224,32,32,.07);border:1px solid rgba(224,32,32,.2);border-radius:10px;font-size:12px;color:var(--text3);line-height:1.8"></div>
+
+      <button class="btn-primary" onclick="registrarEvento()" style="background:linear-gradient(135deg,#4a0e0e,#380a0a);border:1px solid rgba(224,32,32,.4);margin-top:4px;font-size:15px">
+        🎪 Registrar evento
+      </button>
+    </div>
+
+    <div style="font-size:11px;color:var(--text4);text-align:center;line-height:1.7;padding:0 8px">
+      Al registrar se descontarán los ingredientes automáticamente según la receta del producto × cantidad.
+    </div>
+  </div>
+
+  <!-- ── HISTORIAL ── -->
+  <div class="inv-tab-view" id="ev-tab-historial">
+    <div class="sec-label" style="margin-top:0">Eventos registrados</div>
+    <div id="ev-historial-list"><div class="admin-empty">Sin eventos registrados</div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2437,6 +2495,7 @@ function doLogin(){
       document.getElementById('login-screen').classList.add('hidden');
       if(data.role==='admin') bootAdmin();
       else if(data.role==='inventario') bootInventario();
+      else if(data.role==='eventos') bootEventos();
       else bootApp();
     }
   });
@@ -3996,8 +4055,143 @@ function confirmResolve(yes){
 }
 
 /* ══════════════════════════════════════════
-   INVENTARIO — sistema completo
+   EVENTOS — panel
 ══════════════════════════════════════════ */
+const SK_EVENTOS='dk_eventos_v1';
+let eventosHistory=[];
+
+function bootEventos(){
+  initFirebase(FB_CONFIG);
+  // Load products, ingredients, recipes from Firebase
+  if(fbDb){
+    fbDb.ref('products').on('value',snap=>{const d=snap.val();if(d)products=Object.values(d).filter(Boolean);populateEvProductSelect();});
+    fbDb.ref('ingredients').on('value',snap=>{
+      const d=snap.val();
+      if(d){const seen=new Set();ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));}
+    });
+    fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
+    fbDb.ref('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
+    fbDb.ref('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
+    fbDb.ref('sales').on('value',snap=>{
+      const d=snap.val();
+      if(d){eventosHistory=Object.values(d).filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);}
+      renderEventosHistorial();
+    });
+  }
+  try{eventosHistory=JSON.parse(safeStorage.getItem(SK_EVENTOS))||[];}catch{eventosHistory=[];}
+  document.getElementById('eventos-screen').classList.add('active');
+  setTimeout(()=>{populateEvProductSelect();renderEventosHistorial();},800);
+}
+
+function eventosLogout(){
+  safeStorage.removeItem(SK_SESSION);safeStorage.removeItem(SK_ROLE);safeStorage.removeItem(SK_DISPLAY);
+  location.reload();
+}
+
+function setEventosTab(t){
+  ['nueva','historial'].forEach(k=>{
+    document.getElementById(`ev-tab-${k}`)?.classList.toggle('active',k===t);
+  });
+  document.querySelectorAll('#eventos-screen .inv-tab').forEach((b,i)=>{
+    b.classList.toggle('active',['nueva','historial'][i]===t);
+  });
+  if(t==='historial')renderEventosHistorial();
+}
+
+function populateEvProductSelect(){
+  const sel=document.getElementById('ev-product');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Selecciona producto</option>'+
+    products.map(p=>`<option value="${p.id}">${p.name} — $${p.basePrice}</option>`).join('');
+  if(cur)sel.value=cur;
+  sel.onchange=updateEvPreview;
+  document.getElementById('ev-qty').oninput=updateEvPreview;
+  document.getElementById('ev-price').oninput=updateEvPreview;
+}
+
+function updateEvPreview(){
+  const pid=parseInt(document.getElementById('ev-product').value);
+  const qty=parseInt(document.getElementById('ev-qty').value)||0;
+  const price=parseFloat(document.getElementById('ev-price').value)||0;
+  const prev=document.getElementById('ev-preview');
+  if(!pid||!qty){prev.style.display='none';return;}
+  const p=products.find(x=>x.id===pid);if(!p){prev.style.display='none';return;}
+  const rec=recipes[pid]||[];
+  const ingLines=rec.map(r=>{
+    const ing=ingredients.find(i=>i.id===r.ingId);
+    if(!ing)return '';
+    const total=r.qty*qty;
+    return `<span style="color:var(--text2)">${ing.name}</span>: ${total} ${ing.unit}`;
+  }).filter(Boolean);
+  const pxU=qty>0?`$${(price/qty).toFixed(2)}/porción`:'';
+  prev.style.display='block';
+  prev.innerHTML=`<strong style="color:var(--red)">${qty} × ${p.name}</strong> · ${pxU}<br><br>`+ingLines.join('<br>');
+}
+
+function registrarEvento(){
+  const pid=parseInt(document.getElementById('ev-product').value);
+  const qty=parseInt(document.getElementById('ev-qty').value)||0;
+  const price=parseFloat(document.getElementById('ev-price').value)||0;
+  const name=document.getElementById('ev-name').value.trim();
+  const note=document.getElementById('ev-note').value.trim();
+  if(!pid){showToast('Selecciona un producto','red');return;}
+  if(!qty){showToast('Escribe la cantidad','red');return;}
+  if(!price){showToast('Escribe el precio total','red');return;}
+  if(!name){showToast('Escribe el nombre del evento','red');return;}
+
+  const p=products.find(x=>x.id===pid);if(!p)return;
+  const now=new Date();
+  const sale={
+    id:Date.now(),
+    timestamp:now.getTime(),
+    date:toDateKey(now),
+    time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+    total:price,
+    isEvento:true,
+    eventoName:name,
+    note,
+    items:[{name:p.name,qty,price:price/qty,var:'Normal',extras:''}],
+    user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
+  };
+
+  // Save to Firebase sales
+  if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
+
+  // Descontar inventario usando misma lógica que POS
+  descontarInventario(sale.items);
+
+  // Log en historial de inventario
+  logInvHistory('consumo',`Evento: ${name} — ${qty}× ${p.name} — $${price.toFixed(2)}`,
+    {eventoName:name,qty,productName:p.name,total:price,isEvento:true});
+
+  // Reset form
+  document.getElementById('ev-name').value='';
+  document.getElementById('ev-qty').value='';
+  document.getElementById('ev-price').value='';
+  document.getElementById('ev-note').value='';
+  document.getElementById('ev-preview').style.display='none';
+
+  showToast(`✅ Evento registrado — ${qty}× ${p.name}  $${price.toFixed(2)}`,'green');
+  setEventosTab('historial');
+}
+
+function renderEventosHistorial(){
+  const el=document.getElementById('ev-historial-list');if(!el)return;
+  // Read from invHistory (consumo isEvento) or sales
+  const evSales=(typeof sales!=='undefined'?sales:[]).filter(s=>s.isEvento).sort((a,b)=>b.timestamp-a.timestamp);
+  if(!evSales.length){el.innerHTML='<div class="admin-empty">Sin eventos registrados</div>';return;}
+  el.innerHTML=evSales.map(s=>{
+    const it=s.items?.[0];
+    return `<div style="border-left:3px solid rgba(224,32,32,.5);background:rgba(224,32,32,.05);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">🎪 ${s.eventoName||'Evento'}</div>
+        <div style="font-size:15px;font-weight:800;color:var(--red)">$${s.total.toFixed(2)}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text3)">${it?`${it.qty}× ${it.name}`:''}</div>
+      <div style="font-size:11px;color:var(--text4);margin-top:4px">${s.date} · ${s.time}${s.note?` · ${s.note}`:''}</div>
+    </div>`;
+  }).join('');
+}
 let ingredients=[];   // [{id,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit,categoryId,deductType}]
 let recipes={};
 let generalRecipe=[];
@@ -5468,6 +5662,11 @@ if(savedSession==='1' && savedRole==='admin'){
     fbListening=false;
     bootInventario();
   },500);
+} else if(savedSession==='1' && savedRole==='eventos'){
+  document.getElementById('login-screen').classList.add('hidden');
+  load();loadInvData();
+  initFirebase(FB_CONFIG);
+  setTimeout(()=>{fbListening=false;bootEventos();},500);
 } else if(savedSession==='1' && savedRole==='user'){
   document.getElementById('login-screen').classList.add('hidden');
   bootApp();
