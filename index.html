@@ -2064,7 +2064,7 @@ body{
           <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:.3px">📊 Flujo financiero</div>
           <div style="font-size:11px;color:var(--text4);margin-top:3px" id="g-chart-period-lbl">Histórico</div>
         </div>
-        <div style="display:flex;gap:16px;align-items:center">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="gChartToggle(0)">
             <svg width="28" height="12"><line x1="0" y1="6" x2="28" y2="6" stroke="#2ab8b8" stroke-width="2.5"/><circle cx="14" cy="6" r="4" fill="#2ab8b8" stroke="#0f0f0f" stroke-width="1.5"/></svg>
             <span style="font-size:11px;color:var(--text2);font-weight:600">Ingresos</span>
@@ -2072,6 +2072,10 @@ body{
           <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="gChartToggle(1)">
             <svg width="28" height="12"><line x1="0" y1="6" x2="28" y2="6" stroke="#e86040" stroke-width="2.5"/><circle cx="14" cy="6" r="4" fill="#e86040" stroke="#0f0f0f" stroke-width="1.5"/></svg>
             <span style="font-size:11px;color:var(--text2);font-weight:600">Gastos</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="gChartToggle(2)">
+            <svg width="28" height="12"><line x1="0" y1="6" x2="7" y2="6" stroke="#64dc64" stroke-width="2" stroke-dasharray="4,3"/><line x1="11" y1="6" x2="18" y2="6" stroke="#64dc64" stroke-width="2" stroke-dasharray="4,3"/><line x1="22" y1="6" x2="28" y2="6" stroke="#64dc64" stroke-width="2" stroke-dasharray="4,3"/></svg>
+            <span style="font-size:11px;color:var(--text2);font-weight:600">Ganancia</span>
           </div>
         </div>
       </div>
@@ -4370,14 +4374,25 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     map[k].gas+=g.monto;
   });
 
-  // Only keep keys that have actual data — no empty buckets
-  const allKeys=Object.keys(map).sort();
-  // Show last 14 max, but only non-empty keys
-  const keys=allKeys.filter(k=>map[k].ing>0||map[k].gas>0).slice(-14);
+  // Include ALL keys with any data (sales OR gastos), no empty buckets
+  const allKeys=Object.keys(map).sort().slice(-14);
+  const keys=allKeys; // show all, even if one side is 0
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
-  const ganData=keys.map((_,i)=>+((ingData[i]-gasData[i]).toFixed(2)));
+
+  // Ganancia acumulada (running total) — refleja la ganancia REAL hasta ese momento
+  // No per-interval, sino suma progresiva de ing - gas
+  let runIng=0, runGas=0;
+  const ganData=keys.map((_,i)=>{
+    runIng+=ingData[i]; runGas+=gasData[i];
+    return +((runIng-runGas).toFixed(2));
+  });
+  // Also compute cumulative ing/gas for display (so line shows growth, not just that hour)
+  const ingCum=keys.map((_,i)=>+(ingData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
+  const gasCum=keys.map((_,i)=>+(gasData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
+
   const xLabels=keys.map(displayKey);
+  // Show chart if there are any sales OR gastos
   const isEmpty=!keys.length;
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
@@ -4390,49 +4405,63 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     data:{
       labels:isEmpty?['—']:xLabels,
       datasets:[
-        // ── Área ganancia positiva (fill between: +values only) ──
+        // ── Área ganancia positiva ──
         {
           label:'_pos',
           data:isEmpty?[0]:ganData.map(v=>v>=0?v:0),
-          backgroundColor:'rgba(42,200,100,.13)',
-          borderWidth:0,pointRadius:0,fill:true,
-          tension:0.35,order:4,
+          backgroundColor:'rgba(42,200,100,.12)',
+          borderWidth:0,pointRadius:0,fill:true,tension:0.35,order:5,
         },
-        // ── Área pérdida (fill negativa) ──
+        // ── Área pérdida ──
         {
           label:'_neg',
           data:isEmpty?[0]:ganData.map(v=>v<0?v:0),
           backgroundColor:'rgba(224,80,60,.12)',
-          borderWidth:0,pointRadius:0,fill:true,
-          tension:0.35,order:4,
+          borderWidth:0,pointRadius:0,fill:true,tension:0.35,order:5,
         },
-        // ── Línea Gastos ──
+        // ── Línea Gastos (acumulada) ──
         {
           label:'Gastos',
-          data:isEmpty?[0]:gasData,
+          data:isEmpty?[0]:gasCum,
           borderColor:'#e86040',
           backgroundColor:'transparent',
           borderWidth:2.5,
-          pointRadius:keys.length<=8?5:3,
+          pointRadius:keys.length<=8?4:2,
           pointHoverRadius:7,
           pointBackgroundColor:'#e86040',
-          pointBorderColor:'#111',
-          pointBorderWidth:1.5,
+          pointBorderColor:'#111',pointBorderWidth:1.5,
           tension:0.35,fill:false,order:2,
         },
-        // ── Línea Ingresos ──
+        // ── Línea Ingresos (acumulada) ──
         {
           label:'Ingresos',
-          data:isEmpty?[0]:ingData,
+          data:isEmpty?[0]:ingCum,
           borderColor:'#2ab8b8',
           backgroundColor:'transparent',
           borderWidth:2.5,
-          pointRadius:keys.length<=8?5:3,
+          pointRadius:keys.length<=8?4:2,
           pointHoverRadius:7,
           pointBackgroundColor:'#2ab8b8',
-          pointBorderColor:'#111',
-          pointBorderWidth:1.5,
+          pointBorderColor:'#111',pointBorderWidth:1.5,
           tension:0.35,fill:false,order:1,
+        },
+        // ── Línea Ganancia (running total) ──
+        {
+          label:'Ganancia',
+          data:isEmpty?[0]:ganData,
+          borderColor:ctx=>{
+            if(!ctx.chart.data.datasets[4])return '#64dc64';
+            const d=ctx.chart.data.datasets[4].data;
+            return d[d.length-1]>=0?'rgba(100,220,100,.9)':'rgba(245,116,116,.9)';
+          },
+          backgroundColor:'transparent',
+          borderWidth:2,borderDash:[5,3],
+          pointRadius:0,pointHoverRadius:5,
+          pointBackgroundColor:ganData.map(v=>v>=0?'#64dc64':'#f57474'),
+          tension:0.35,fill:false,order:3,
+          segment:{
+            borderColor:ctx=>ctx.p1.parsed.y>=0?'rgba(100,220,100,.85)':'rgba(245,116,116,.85)'
+          }
         },
       ]
     },
@@ -4451,21 +4480,19 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
             title:items=>items[0]?.label||'',
             label:c=>{
               if(c.dataset.label==='_pos'||c.dataset.label==='_neg') return null;
-              return '  '+c.dataset.label+': $'+c.parsed.y.toFixed(2);
+              if(c.dataset.label==='Ganancia'){
+                const v=c.parsed.y;
+                return '  '+(v>=0?'✅ Ganancia':'⚠️ Pérdida')+': $'+Math.abs(v).toFixed(2);
+              }
+              return '  '+c.dataset.label+' (acum.): $'+c.parsed.y.toFixed(2);
             },
             afterBody:items=>{
               if(!items.length)return [];
               const idx=items[0].dataIndex;
-              const ing=ingData[idx]||0, gas=gasData[idx]||0;
+              const ing=ingCum[idx]||0, gas=gasCum[idx]||0;
               if(!ing&&!gas)return [];
-              const gan=ing-gas;
-              const pct=ing>0?Math.round(gan/ing*100):0;
-              const sign=gan>=0?'✅':'⚠️';
-              return [
-                '',
-                '  '+sign+' Ganancia: $'+gan.toFixed(2),
-                '  Margen: '+pct+'%'
-              ];
+              const pct=ing>0?Math.round((ing-gas)/ing*100):0;
+              return ['  Margen acumulado: '+pct+'%'];
             }
           }
         }
@@ -4492,8 +4519,9 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   // Toggle visibility of Ingresos/Gastos lines
   window.gChartToggle=idx=>{
     if(!gChartBalance)return;
-    // idx 0 = Ingresos (ds index 3), idx 1 = Gastos (ds index 2)
-    const dsIdx=idx===0?3:2;
+    // idx 0 = Ingresos (ds 3), idx 1 = Gastos (ds 2), idx 2 = Ganancia (ds 4)
+    const dsIdx=[3,2,4][idx];
+    if(dsIdx===undefined)return;
     const meta=gChartBalance.getDatasetMeta(dsIdx);
     meta.hidden=!meta.hidden;
     gChartBalance.update();
