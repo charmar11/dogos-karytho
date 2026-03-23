@@ -3703,38 +3703,40 @@ let gastos=[];
 let gastosPeriod='todo';
 
 function loadGastos(){
-  // Load local cache first so UI is instant
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
   if(!fbDb)return;
 
-  // Step 1: read Firebase once to get the authoritative list
+  // Read once first to sync local→Firebase
   fbDb.ref('gastos').once('value',snap=>{
     const d=snap.val();
     const fbGastos=d?Object.values(d).filter(Boolean):[];
     const fbIds=new Set(fbGastos.map(g=>g.id));
 
-    // Step 2: upload any local gastos that Firebase doesn't have yet
+    // Push any local gastos Firebase doesn't have
     gastos.forEach(g=>{
-      if(g.id&&!fbIds.has(g.id)){
+      if(g.id&&!fbIds.has(g.id))
         fbDb.ref('gastos/'+g.id).set(g).catch(()=>{});
-      }
     });
 
-    // Step 3: merge — union of Firebase + local, deduped by id
+    // Merge: union by id, Firebase wins on conflict
     const allById={};
     gastos.forEach(g=>{if(g.id)allById[g.id]=g;});
-    fbGastos.forEach(g=>{if(g.id)allById[g.id]=g;}); // FB wins on conflict
+    fbGastos.forEach(g=>{if(g.id)allById[g.id]=g;});
     gastos=Object.values(allById).sort((a,b)=>b.timestamp-a.timestamp);
     safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
 
-    // Step 4: now start realtime listener — FB is already in sync
+    // Now start realtime listener — always merge instead of replace
+    // so a pending local write never gets wiped by a stale snapshot
     fbDb.ref('gastos').on('value',snap=>{
       const d=snap.val();
-      if(d){
-        gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
-        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-      }
-      // Only update UI if tab is open — don't wipe gastos if snap is null
+      const fbList=d?Object.values(d).filter(Boolean):[];
+      // Merge: keep any local id not yet in this snapshot
+      const fbIds=new Set(fbList.map(g=>g.id));
+      const merged={};
+      fbList.forEach(g=>{if(g.id)merged[g.id]=g;});
+      gastos.forEach(g=>{if(g.id&&!fbIds.has(g.id))merged[g.id]=g;});
+      gastos=Object.values(merged).sort((a,b)=>b.timestamp-a.timestamp);
+      safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
       const tab=document.getElementById('adm-tab-gastos');
       if(tab&&tab.classList.contains('active')) renderGastos();
     });
