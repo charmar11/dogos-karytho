@@ -4322,19 +4322,33 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const perEl=document.getElementById('g-chart-period-lbl');
   if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // Agrupación según periodo
-  const groupMode=gastosPeriod==='todo'?'month':gastosPeriod==='mes'?'week':'day';
+  // Agrupación según periodo:
+  // hoy → por hora | semana → por día | mes → por semana | todo → por mes
+  const groupMode=gastosPeriod==='todo'?'month':gastosPeriod==='mes'?'week':gastosPeriod==='semana'?'day':'hour';
 
-  function groupKey(iso){
+  function groupKey(isoOrTs, ts){
+    // ts = timestamp number (for hour grouping)
+    if(groupMode==='hour'){
+      const d=new Date(ts);
+      return d.toISOString().slice(0,13); // YYYY-MM-DDTHH
+    }
+    const iso=isoOrTs;
     const p=iso.split('-');
     if(groupMode==='day') return iso;
     if(groupMode==='month') return p[0]+'-'+p[1];
+    // week: Monday
     const d=new Date(iso+'T12:00:00');
     const diff=(d.getDay()===0?-6:1-d.getDay());
     d.setDate(d.getDate()+diff);
     return d.toISOString().slice(0,10);
   }
   function displayKey(k){
+    if(groupMode==='hour'){
+      const h=parseInt(k.slice(11,13));
+      const ampm=h<12?'am':'pm';
+      const h12=h===0?12:h>12?h-12:h;
+      return h12+ampm;
+    }
     const p=k.split('-');
     if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
     return parseInt(p[2])+'/'+parseInt(p[1]);
@@ -4343,18 +4357,23 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const map={};
   salesFilt.forEach(s=>{
     const iso=toISODate(s.date);if(!iso)return;
-    const k=groupKey(iso);
+    const ts=s.timestamp?new Date(s.timestamp).getTime():new Date(iso+'T12:00:00').getTime();
+    const k=groupKey(iso,ts);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].ing+=s.total;
   });
   gs.forEach(g=>{
     const iso=toISODate(g.fecha);if(!iso)return;
-    const k=groupKey(iso);
+    const ts=g.timestamp||new Date(iso+'T12:00:00').getTime();
+    const k=groupKey(iso,ts);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].gas+=g.monto;
   });
 
-  const keys=Object.keys(map).sort().slice(-14);
+  // Only keep keys that have actual data — no empty buckets
+  const allKeys=Object.keys(map).sort();
+  // Show last 14 max, but only non-empty keys
+  const keys=allKeys.filter(k=>map[k].ing>0||map[k].gas>0).slice(-14);
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
   const ganData=keys.map((_,i)=>+((ingData[i]-gasData[i]).toFixed(2)));
