@@ -1581,8 +1581,14 @@ body{
 
   <!-- Registrar gasto -->
   <div class="form-card" style="margin-bottom:14px">
-    <div class="sec-label" style="margin-top:0">➕ Registrar gasto</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div class="sec-label" style="margin:0">➕ Registrar gasto</div>
+      <button onclick="openGastoCatsModal()" type="button"
+        style="font-size:10px;font-weight:700;color:#2ab8b8;background:rgba(42,184,184,.08);border:1px solid rgba(42,184,184,.3);border-radius:7px;padding:5px 10px;cursor:pointer">
+        🏷️ Categorías
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:12px">
       <div>
         <label class="form-lbl">Descripción</label>
         <input class="form-input" id="cidop-gasto-desc" placeholder="Catsup Venecia…"/>
@@ -1609,6 +1615,19 @@ body{
     </button>
   </div>
 
+  <!-- Historial -->
+  <div class="form-card">
+    <div class="sec-label" style="margin-top:0">📋 Historial de gastos</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="cidop-gastos-period-btns">
+      <button class="period-tab active" onclick="setCidopGastosPeriod('dia')">Hoy</button>
+      <button class="period-tab" onclick="setCidopGastosPeriod('semana')">Semana</button>
+      <button class="period-tab" onclick="setCidopGastosPeriod('mes')">Mes</button>
+      <button class="period-tab" onclick="setCidopGastosPeriod('todo')">Todo</button>
+    </div>
+    <div id="cidop-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
+  </div>
+</div>
+
 <div id="view-productos" class="view">
   <div class="sec-label">📦 Productos activos</div>
   <div id="prod-admin-list"></div>
@@ -1625,19 +1644,6 @@ body{
     <div id="new-extras-list"></div>
     <button class="btn-add-var" onclick="addExtraField()">+ Agregar extra</button>
     <button class="btn-primary" onclick="saveNewProduct()">Guardar producto</button>
-  </div>
-
-
-  <!-- Historial -->
-  <div class="form-card">
-    <div class="sec-label" style="margin-top:0">📋 Historial de gastos</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="cidop-gastos-period-btns">
-      <button class="period-tab active" onclick="setCidopGastosPeriod('dia')">Hoy</button>
-      <button class="period-tab" onclick="setCidopGastosPeriod('semana')">Semana</button>
-      <button class="period-tab" onclick="setCidopGastosPeriod('mes')">Mes</button>
-      <button class="period-tab" onclick="setCidopGastosPeriod('todo')">Todo</button>
-    </div>
-    <div id="cidop-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
   </div>
 </div>
 
