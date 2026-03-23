@@ -2092,10 +2092,16 @@ body{
     <div class="form-card" style="margin-top:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="sec-label" style="margin:0">📋 Historial de gastos</div>
-        <button onclick="exportarGastosExcel()"
-          style="padding:7px 14px;border-radius:8px;border:1px solid rgba(42,184,184,.35);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:12px;font-weight:700;cursor:pointer">
-          📊 Exportar Excel
-        </button>
+        <div style="display:flex;gap:8px">
+          <button onclick="exportarGastosExcel()"
+            style="padding:7px 12px;border-radius:8px;border:1px solid rgba(42,184,184,.35);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+            📊 Finanzas
+          </button>
+          <button onclick="exportarHistorialGastos()"
+            style="padding:7px 12px;border-radius:8px;border:1px solid rgba(245,200,0,.35);background:rgba(245,200,0,.08);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+            📋 Historial
+          </button>
+        </div>
       </div>
       <div id="adm-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
     </div>
@@ -4098,88 +4104,223 @@ function renderGastos(){
   });
 }
 
-/* ── Excel export de Gastos ── */
+/* ══════════════════════════════════════════
+   EXCEL EXPORTS — Gastos Karytho
+══════════════════════════════════════════ */
+function _fmtCurrency(ws, rows, cols){
+  const PESO='$#,##0.00';
+  rows.forEach(r=>{
+    cols.forEach(c=>{
+      const addr=XLSX.utils.encode_cell({r,c});
+      if(ws[addr]&&typeof ws[addr].v==='number') ws[addr].z=PESO;
+    });
+  });
+}
+function _boldRow(ws, row, ncols){
+  for(let c=0;c<ncols;c++){
+    const addr=XLSX.utils.encode_cell({r:row,c});
+    if(ws[addr]) ws[addr].s={font:{bold:true}};
+  }
+}
+
+/* ── Excel 1: Finanzas (Balance + Detalle por periodo) ── */
 function exportarGastosExcel(){
   if(typeof XLSX==='undefined'){showToast('XLSX no disponible','red');return;}
-  const gs=getGastosFiltrados();
-  if(!gs.length){showToast('Sin gastos en este periodo','red');return;}
 
-  const wb=XLSX.utils.book_new();
-  const PESO='$#,##0.00';
-  const perLbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
-
-  // ── Hoja 1: Detalle de gastos ──
-  const rows=[['Fecha','Descripción','Categoría','Monto','Registrado por']];
-  gs.forEach(g=>{
-    const cat=getCatById(g.cat);
-    rows.push([g.fecha, g.desc, cat.icon+' '+cat.name, g.monto, g.user]);
-  });
-  // Totals row
-  rows.push(['','','TOTAL', gs.reduce((s,g)=>s+g.monto,0), '']);
-  const ws1=XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:12},{wch:36},{wch:22},{wch:12},{wch:16}];
-  // Format monto column (D) as currency
-  rows.forEach((_,r)=>{
-    if(r===0)return;
-    const addr='D'+(r+1);
-    if(ws1[addr]&&typeof ws1[addr].v==='number') ws1[addr].z=PESO;
-  });
-  // Style header
-  ['A1','B1','C1','D1','E1'].forEach(a=>{
-    if(ws1[a]) ws1[a].s={font:{bold:true},fill:{fgColor:{rgb:'1A1A2A'}}};
-  });
-  XLSX.utils.book_append_sheet(wb,ws1,'Gastos');
-
-  // ── Hoja 2: Resumen por categoría ──
-  const catMap={};
-  gs.forEach(g=>{
-    const cat=getCatById(g.cat);
-    const k=cat.icon+' '+cat.name;
-    if(!catMap[k])catMap[k]=0;
-    catMap[k]+=g.monto;
-  });
-  const rows2=[['Categoría','Total gastos','% del total']];
-  const totalG=gs.reduce((s,g)=>s+g.monto,0);
-  Object.entries(catMap).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
-    rows2.push([k, v, totalG>0?(v/totalG*100).toFixed(1)+'%':'0%']);
-  });
-  rows2.push(['TOTAL',totalG,'100%']);
-  const ws2=XLSX.utils.aoa_to_sheet(rows2);
-  ws2['!cols']=[{wch:26},{wch:14},{wch:12}];
-  rows2.forEach((_,r)=>{
-    if(r===0)return;
-    const addr='B'+(r+1);
-    if(ws2[addr]&&typeof ws2[addr].v==='number') ws2[addr].z=PESO;
-  });
-  XLSX.utils.book_append_sheet(wb,ws2,'Por categoría');
-
-  // ── Hoja 3: Balance (ingresos vs gastos) ──
   const today=toDateKey(new Date());
   let salesFilt=sales;
   if(gastosPeriod==='hoy') salesFilt=sales.filter(s=>s.date===today);
   else if(gastosPeriod==='semana') salesFilt=sales.filter(s=>isSameWeek(s.timestamp));
   else if(gastosPeriod==='mes') salesFilt=sales.filter(s=>isSameMonth(s.timestamp));
-  const totalIngresos=salesFilt.reduce((s,v)=>s+v.total,0);
-  const ganancia=totalIngresos-totalG;
-  const margen=totalIngresos>0?(ganancia/totalIngresos*100).toFixed(1)+'%':'—';
-  const rows3=[
-    ['Concepto','Monto',perLbl],
-    ['Ingresos totales', totalIngresos,''],
-    ['Gastos totales', totalG,''],
-    ['Ganancia neta', ganancia,''],
-    ['Margen', margen,''],
-  ];
-  const ws3=XLSX.utils.aoa_to_sheet(rows3);
-  ws3['!cols']=[{wch:22},{wch:14},{wch:14}];
-  [2,3,4].forEach(r=>{
-    const addr='B'+r;
-    if(ws3[addr]&&typeof ws3[addr].v==='number') ws3[addr].z=PESO;
-  });
-  XLSX.utils.book_append_sheet(wb,ws3,'Balance');
 
-  const fname='gastos-karytho-'+perLbl.toLowerCase().replace(/ /g,'-')+'-'+new Date().toISOString().slice(0,10)+'.xlsx';
+  const gs=getGastosFiltrados();
+  const totalIngresos=parseFloat(salesFilt.reduce((s,v)=>s+v.total,0).toFixed(2));
+  const totalGastos=parseFloat(gs.reduce((s,g)=>s+g.monto,0).toFixed(2));
+  const ganancia=parseFloat((totalIngresos-totalGastos).toFixed(2));
+  const margenPct=totalIngresos>0?parseFloat((ganancia/totalIngresos*100).toFixed(2)):0;
+  const perLbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'Todo';
+  const dateStamp=new Date().toISOString().slice(0,10);
+  const wb=XLSX.utils.book_new();
+
+  // ━━ Hoja 1: Resumen financiero ━━
+  const r1=[
+    ['DOGOS KARYTHO — Resumen Financiero','','','',''],
+    ['Periodo:',perLbl,'Generado:',dateStamp,''],
+    ['','','','',''],
+    ['CONCEPTO','MONTO','','',''],
+    ['Ingresos totales',totalIngresos,'','',''],
+    ['Gastos totales',totalGastos,'','',''],
+    ['──────────────────','','','',''],
+    ['Ganancia neta',ganancia,'','',''],
+    ['Margen de ganancia',margenPct/100,'','',''],
+    ['','','','',''],
+    ['DETALLE DE INGRESOS POR VENTA','MONTO','FECHA','HORA','TIPO'],
+  ];
+  salesFilt.sort((a,b)=>a.timestamp-b.timestamp).forEach(s=>{
+    r1.push([
+      s.isEvento?(s.eventoName||'Evento'):'Venta CIPOD',
+      s.total, s.date, s.time,
+      s.isEvento?'Evento':'Venta'
+    ]);
+  });
+  r1.push(['','','','','']);
+  r1.push(['TOTAL INGRESOS',totalIngresos,'','','']);
+
+  const ws1=XLSX.utils.aoa_to_sheet(r1);
+  ws1['!cols']=[{wch:34},{wch:14},{wch:14},{wch:10},{wch:10}];
+  ws1['!merges']=[{s:{r:0,c:0},e:{r:0,c:4}}];
+  // Currency: col B rows 4..8 + last total row + ingresos rows
+  const ingStartRow=11;
+  for(let i=ingStartRow;i<r1.length;i++){
+    const addr=XLSX.utils.encode_cell({r:i,c:1});
+    if(ws1[addr]&&typeof ws1[addr].v==='number') ws1[addr].z='$#,##0.00';
+  }
+  [3,4,5,7].forEach(r=>{
+    const addr=XLSX.utils.encode_cell({r,c:1});
+    if(ws1[addr]&&typeof ws1[addr].v==='number') ws1[addr].z='$#,##0.00';
+  });
+  // Margen as percentage
+  const margenAddr=XLSX.utils.encode_cell({r:8,c:1});
+  if(ws1[margenAddr]) ws1[margenAddr].z='0.00%';
+  _boldRow(ws1,0,5);_boldRow(ws1,3,2);_boldRow(ws1,7,2);_boldRow(ws1,10,5);
+  _boldRow(ws1,r1.length-1,2);
+  XLSX.utils.book_append_sheet(wb,ws1,'Finanzas');
+
+  // ━━ Hoja 2: Gastos por categoría ━━
+  const catMap={};
+  gs.forEach(g=>{
+    const cat=getCatById(g.cat);
+    const k=cat.name;
+    if(!catMap[k])catMap[k]={name:k,icon:cat.icon,total:0,count:0};
+    catMap[k].total+=g.monto; catMap[k].count++;
+  });
+  const r2=[
+    ['DOGOS KARYTHO — Gastos por Categoría','','',''],
+    ['Periodo:',perLbl,'',''],
+    ['','','',''],
+    ['CATEGORÍA','TOTAL GASTADO','# GASTOS','% DEL TOTAL'],
+  ];
+  Object.values(catMap).sort((a,b)=>b.total-a.total).forEach(c=>{
+    r2.push([
+      c.icon+' '+c.name,
+      parseFloat(c.total.toFixed(2)),
+      c.count,
+      totalGastos>0?parseFloat((c.total/totalGastos).toFixed(4)):0
+    ]);
+  });
+  r2.push(['','','','']);
+  r2.push(['TOTAL',totalGastos,gs.length,totalGastos>0?1:0]);
+  const ws2=XLSX.utils.aoa_to_sheet(r2);
+  ws2['!cols']=[{wch:28},{wch:16},{wch:10},{wch:14}];
+  const catDataStart=4;
+  for(let i=catDataStart;i<r2.length;i++){
+    const bAddr=XLSX.utils.encode_cell({r:i,c:1});
+    if(ws2[bAddr]&&typeof ws2[bAddr].v==='number') ws2[bAddr].z='$#,##0.00';
+    const dAddr=XLSX.utils.encode_cell({r:i,c:3});
+    if(ws2[dAddr]&&typeof ws2[dAddr].v==='number') ws2[dAddr].z='0.00%';
+  }
+  _boldRow(ws2,0,4);_boldRow(ws2,3,4);_boldRow(ws2,r2.length-1,4);
+  XLSX.utils.book_append_sheet(wb,ws2,'Por categoría');
+
+  const fname='finanzas-karytho-'+perLbl.replace(/ /g,'-')+'-'+dateStamp+'.xlsx';
   XLSX.writeFile(wb,fname);
-  showToast('📊 Excel exportado','green');
+  showToast('📊 Finanzas exportadas','green');
+}
+
+/* ── Excel 2: Historial de gastos agrupado por periodo ── */
+function exportarHistorialGastos(){
+  if(typeof XLSX==='undefined'){showToast('XLSX no disponible','red');return;}
+  const allGs=[...gastos].sort((a,b)=>a.timestamp-b.timestamp);
+  if(!allGs.length){showToast('Sin gastos registrados','red');return;}
+
+  const wb=XLSX.utils.book_new();
+  const perLbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'Todo';
+  const dateStamp=new Date().toISOString().slice(0,10);
+
+  // ── Agrupador según periodo ──
+  const groupMode=gastosPeriod==='todo'?'month':gastosPeriod==='mes'?'week':gastosPeriod==='semana'?'day':'hour';
+
+  function getGroupKey(g){
+    const ts=new Date(g.timestamp);
+    if(groupMode==='hour') return ts.toLocaleDateString('es-MX')+' '+ts.getHours().toString().padStart(2,'0')+':00';
+    if(groupMode==='day') return ts.toLocaleDateString('es-MX');
+    if(groupMode==='week'){
+      const d=new Date(ts); const day=d.getDay(); const diff=(day===0?-6:1-day);
+      d.setDate(d.getDate()+diff);
+      return 'Semana del '+d.toLocaleDateString('es-MX');
+    }
+    return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][ts.getMonth()]+' '+ts.getFullYear();
+  }
+
+  // ━━ Hoja 1: Historial detallado (todos los gastos, ordenados) ━━
+  const r1=[
+    ['DOGOS KARYTHO — Historial de Gastos','','','','',''],
+    ['Periodo:',perLbl,'Agrupado por:',
+      {hour:'Hora',day:'Día',week:'Semana',month:'Mes'}[groupMode],
+      'Generado:',dateStamp],
+    ['','','','','',''],
+    ['FECHA','HORA','DESCRIPCIÓN','CATEGORÍA','MONTO','REGISTRADO POR'],
+  ];
+  const gs=getGastosFiltrados().sort((a,b)=>a.timestamp-b.timestamp);
+  gs.forEach(g=>{
+    const cat=getCatById(g.cat);
+    const ts=new Date(g.timestamp);
+    r1.push([
+      g.fecha,
+      ts.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+      g.desc,
+      cat.icon+' '+cat.name,
+      parseFloat(g.monto.toFixed(2)),
+      g.user
+    ]);
+  });
+  r1.push(['','','','','','']);
+  r1.push(['','','','TOTAL',parseFloat(gs.reduce((s,g)=>s+g.monto,0).toFixed(2)),'']);
+  const ws1=XLSX.utils.aoa_to_sheet(r1);
+  ws1['!cols']=[{wch:12},{wch:8},{wch:34},{wch:22},{wch:12},{wch:16}];
+  for(let i=4;i<r1.length;i++){
+    const addr=XLSX.utils.encode_cell({r:i,c:4});
+    if(ws1[addr]&&typeof ws1[addr].v==='number') ws1[addr].z='$#,##0.00';
+  }
+  _boldRow(ws1,0,6);_boldRow(ws1,3,6);_boldRow(ws1,r1.length-1,6);
+  XLSX.utils.book_append_sheet(wb,ws1,'Historial');
+
+  // ━━ Hoja 2: Resumen agrupado (hoy=hora, semana=día, mes=semana, todo=mes) ━━
+  const groupMap={};
+  gs.forEach(g=>{
+    const k=getGroupKey(g);
+    if(!groupMap[k])groupMap[k]={label:k,total:0,count:0,items:[]};
+    groupMap[k].total+=g.monto;
+    groupMap[k].count++;
+    groupMap[k].items.push(g);
+  });
+
+  const modeLabel={hour:'HORA',day:'DÍA',week:'SEMANA',month:'MES'}[groupMode];
+  const r2=[
+    ['DOGOS KARYTHO — Gastos Agrupados por '+modeLabel,'','',''],
+    ['Periodo:',perLbl,'Generado:',dateStamp],
+    ['','','',''],
+    [modeLabel,'TOTAL GASTADO','# GASTOS','DETALLE'],
+  ];
+  Object.values(groupMap).forEach(grp=>{
+    const detail=grp.items.map(g=>getCatById(g.cat).icon+' '+g.desc+' $'+g.monto.toFixed(2)).join(' | ');
+    r2.push([grp.label, parseFloat(grp.total.toFixed(2)), grp.count, detail]);
+  });
+  r2.push(['','','','']);
+  const grandTotal=parseFloat(gs.reduce((s,g)=>s+g.monto,0).toFixed(2));
+  r2.push(['TOTAL',grandTotal,gs.length,'']);
+  const ws2=XLSX.utils.aoa_to_sheet(r2);
+  ws2['!cols']=[{wch:22},{wch:14},{wch:10},{wch:60}];
+  for(let i=4;i<r2.length;i++){
+    const addr=XLSX.utils.encode_cell({r:i,c:1});
+    if(ws2[addr]&&typeof ws2[addr].v==='number') ws2[addr].z='$#,##0.00';
+  }
+  _boldRow(ws2,0,4);_boldRow(ws2,3,4);_boldRow(ws2,r2.length-1,4);
+  XLSX.utils.book_append_sheet(wb,ws2,'Agrupado por '+modeLabel.toLowerCase());
+
+  const fname='historial-gastos-karytho-'+perLbl.replace(/ /g,'-')+'-'+dateStamp+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  showToast('📊 Historial exportado','green');
 }
 
 /* ── Gastos charts ── */
