@@ -4337,117 +4337,93 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const perEl=document.getElementById('g-chart-period-lbl');
   if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // Agrupación según periodo + sub-periodo
   const isHoy=gastosPeriod==='hoy';
   const isDiaCompleto=isHoy&&gastosSubPeriod==='dia';
-  // Hora: por minuto exacto (timestamp), sin huecos
-  // Día completo: 24 horas fijas
-  // Semana: por día | Mes: por semana | Todo: por mes
-  const groupMode=gastosPeriod==='todo'?'month':
-                  gastosPeriod==='mes'?'week':
-                  gastosPeriod==='semana'?'day':'minute'; // hoy → minuto
 
-  function groupKey(isoOrTs, ts){
+  // ── Helpers: always use local time ──
+  function localKey(ts, mode){
     const d=new Date(ts);
-    const yyyy=d.getFullYear(),mm=String(d.getMonth()+1).padStart(2,'0'),dd2=String(d.getDate()).padStart(2,'0');
-    const hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
-    if(groupMode==='minute') return yyyy+'-'+mm+'-'+dd2+'T'+hh+':'+mi;
-    if(groupMode==='hour')   return yyyy+'-'+mm+'-'+dd2+'T'+hh;
-    const iso=isoOrTs;
-    const p=iso.split('-');
-    if(groupMode==='day') return iso;
-    if(groupMode==='month') return p[0]+'-'+p[1];
-    // week: Monday
-    const dw=new Date(iso+'T12:00:00');
-    const diff=(dw.getDay()===0?-6:1-dw.getDay());
-    dw.setDate(dw.getDate()+diff);
-    return dw.toISOString().slice(0,10);
-  }
-  function displayKey(k){
-    if(groupMode==='minute'){
-      const h=parseInt(k.slice(11,13)),mi=k.slice(14,16)||'00';
-      const ampm=h<12?'am':'pm';
-      const h12=h===0?12:h>12?h-12:h;
-      return h12+':'+mi+ampm;
+    const Y=d.getFullYear(), M=String(d.getMonth()+1).padStart(2,'0');
+    const D=String(d.getDate()).padStart(2,'0');
+    const H=String(d.getHours()).padStart(2,'0'), Mi=String(d.getMinutes()).padStart(2,'0');
+    if(mode==='minute') return Y+'-'+M+'-'+D+'T'+H+':'+Mi;
+    if(mode==='hour')   return Y+'-'+M+'-'+D+'T'+H;
+    if(mode==='day')    return Y+'-'+M+'-'+D;
+    if(mode==='week'){
+      // Monday of that week
+      const dw=new Date(d); dw.setHours(12,0,0,0);
+      const diff=(dw.getDay()===0?-6:1-dw.getDay());
+      dw.setDate(dw.getDate()+diff);
+      return dw.getFullYear()+'-'+String(dw.getMonth()+1).padStart(2,'0')+'-'+String(dw.getDate()).padStart(2,'0');
     }
-    // hour keys (from isDiaCompleto or hour mode): YYYY-MM-DDTHH
-    if(k.length===13&&k[10]==='T'){
-      const h=parseInt(k.slice(11,13));
-      const ampm=h<12?'am':'pm';
-      const h12=h===0?12:h>12?h-12:h;
-      return h12+ampm;
+    if(mode==='month') return Y+'-'+M;
+    return Y+'-'+M+'-'+D;
+  }
+  function displayKey(k, mode){
+    if(mode==='minute'||mode==='hour'){
+      const h=parseInt(k.slice(11,13)), mi=(k.slice(14,16)||'00');
+      const ampm=h<12?'am':'pm', h12=h===0?12:h>12?h-12:h;
+      return mode==='minute'?h12+':'+mi+ampm:h12+ampm;
     }
     const p=k.split('-');
-    if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
-    // day: D/M
+    if(mode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
+    // day or week: D/M
     return parseInt(p[2])+'/'+parseInt(p[1]);
   }
 
+  // ── Get timestamp from sale or gasto ──
+  function getTS(item, dateField){
+    if(item.timestamp){
+      const t=new Date(item.timestamp).getTime();
+      if(!isNaN(t)&&t>0) return t;
+    }
+    // Fallback: parse date field as local noon
+    const iso=toISODate(item[dateField]||'');
+    return iso?new Date(iso+'T12:00:00').getTime():Date.now();
+  }
+
+  // ── Choose groupMode ──
+  const mode=gastosPeriod==='todo'?'month':
+             gastosPeriod==='mes'?'week':
+             gastosPeriod==='semana'?'day':'minute';
+
+  // ── Aggregate ──
   const map={};
-  // Helper: get ISO date from a sale (handles both ISO and es-MX formats)
-  function saleISO(s){return toISODate(s.date)||'';}
-  function saleTS(s){return s.timestamp?new Date(s.timestamp).getTime():0;}
-  function gastoISO(g){return toISODate(g.fecha)||'';}
-  function gastoTS(g){if(g.timestamp){const t=new Date(g.timestamp).getTime();if(!isNaN(t))return t;}const iso=toISODate(g.fecha)||'2000-01-01';return new Date(iso+'T12:00:00').getTime();}
-
-  salesFilt.forEach(s=>{
-    const iso=saleISO(s); if(!iso)return;
-    const ts=saleTS(s)||new Date(iso+'T12:00:00').getTime();
-    const k=groupKey(iso,ts);
+  function add(ts,ing,gas){
+    const k=localKey(ts,isDiaCompleto?'hour':mode);
     if(!map[k])map[k]={ing:0,gas:0};
-    map[k].ing+=s.total;
-  });
-  gs.forEach(g=>{
-    const iso=gastoISO(g); if(!iso)return;
-    const ts=gastoTS(g);
-    const k=groupKey(iso,ts);
-    if(!map[k])map[k]={ing:0,gas:0};
-    map[k].gas+=g.monto;
-  });
+    map[k].ing+=ing; map[k].gas+=gas;
+  }
+  salesFilt.forEach(s=>add(getTS(s,'date'),s.total,0));
+  gs.forEach(g=>add(getTS(g,'fecha'),0,g.monto));
 
+  // ── Build keys list ──
   let keys;
   if(isDiaCompleto){
-    // ── Día completo: agrupar por hora, mostrar solo entre primera y última con dato ──
-    const t=new Date();
-    const yyyy=t.getFullYear(),mm=String(t.getMonth()+1).padStart(2,'0'),dd2=String(t.getDate()).padStart(2,'0');
-    // Build 24-hour slots
-    const hourMap={};
-    Array.from({length:24},(_,h)=>{
-      const hk=yyyy+'-'+mm+'-'+dd2+'T'+String(h).padStart(2,'0');
-      hourMap[hk]={ing:0,gas:0};
-    });
-    // Aggregate minute-level map into hour slots
-    Object.keys(map).forEach(k=>{
-      const hk=k.slice(0,13); // 'YYYY-MM-DDTHH'
-      if(hourMap[hk]){hourMap[hk].ing+=map[k].ing||0;hourMap[hk].gas+=map[k].gas||0;}
-    });
-    Object.assign(map,hourMap);
-    // Only show hours from first data point to last data point (no empty extremes)
-    const allH=Object.keys(hourMap).sort();
-    const firstIdx=allH.findIndex(h=>hourMap[h].ing>0||hourMap[h].gas>0);
-    const lastIdx=allH.length-1-[...allH].reverse().findIndex(h=>hourMap[h].ing>0||hourMap[h].gas>0);
-    keys=firstIdx<0?allH:allH.slice(Math.max(0,firstIdx),lastIdx+1);
+    // 24 hour slots, show only between first and last with data
+    const d=new Date();
+    const Y=d.getFullYear(),M=String(d.getMonth()+1).padStart(2,'0'),D=String(d.getDate()).padStart(2,'0');
+    const all24=Array.from({length:24},(_,h)=>Y+'-'+M+'-'+D+'T'+String(h).padStart(2,'0'));
+    all24.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+    const first=all24.findIndex(k=>map[k].ing>0||map[k].gas>0);
+    const last=all24.length-1-[...all24].reverse().findIndex(k=>map[k].ing>0||map[k].gas>0);
+    keys=first<0?all24:all24.slice(Math.max(0,first),last+1);
   } else {
-    // ── Todos los demás modos: solo puntos con actividad, sin huecos ──
-    const allK=Object.keys(map).filter(k=>(map[k].ing||0)>0||(map[k].gas||0)>0).sort();
-    keys=allK.slice(-20);
+    // Only points with data, sorted, max 20
+    keys=Object.keys(map).filter(k=>map[k].ing>0||map[k].gas>0).sort().slice(-20);
   }
-  const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
-  const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
 
-  // Ganancia acumulada (running total) — refleja la ganancia REAL hasta ese momento
-  // No per-interval, sino suma progresiva de ing - gas
-  let runIng=0, runGas=0;
-  const ganData=keys.map((_,i)=>{
-    runIng+=ingData[i]; runGas+=gasData[i];
-    return +((runIng-runGas).toFixed(2));
-  });
-  // Also compute cumulative ing/gas for display (so line shows growth, not just that hour)
+  const dispMode=isDiaCompleto?'hour':mode;
+  const xLabels=keys.map(k=>displayKey(k,dispMode));
+  const ingData=keys.map(k=>+((map[k]?.ing||0).toFixed(2)));
+  const gasData=keys.map(k=>+((map[k]?.gas||0).toFixed(2)));
+
+  // Running totals
+  let rI=0,rG=0;
+  const ganData=keys.map((_,i)=>{rI+=ingData[i];rG+=gasData[i];return +((rI-rG).toFixed(2));});
   const ingCum=keys.map((_,i)=>+(ingData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
   const gasCum=keys.map((_,i)=>+(gasData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
 
-  const xLabels=keys.map(displayKey);
-  // Show chart if there are any sales OR gastos
   const isEmpty=!keys.length;
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
