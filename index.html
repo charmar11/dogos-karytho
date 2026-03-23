@@ -4075,8 +4075,11 @@ const SK_EVENTOS='dk_eventos_v1';
 let evLines=[]; // [{productId, qty, ings:[{ingId,qty,mult,active}]}]
 
 function bootEventos(){
+  load(); // Loads products and sales from local cache
   if(fbDb){
-    fbDb.ref('products').on('value',snap=>{const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}});
+    fbDb.ref('products').on('value',snap=>{
+      const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}
+    });
     fbDb.ref('ingredients').on('value',snap=>{
       const d=snap.val();if(!d)return;
       const seen=new Set();
@@ -4085,6 +4088,15 @@ function bootEventos(){
     fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
     fbDb.ref('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
     fbDb.ref('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
+    // ── Sincronizar ventas en tiempo real (para historial y CIPOD) ──
+    fbDb.ref('sales').on('value',snap=>{
+      const d=snap.val();
+      sales=d?Object.values(d).sort((a,b)=>b.timestamp-a.timestamp):[];
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+      // Actualizar historial si está abierto
+      const evHistTab=document.getElementById('ev-tab-historial');
+      if(evHistTab&&evHistTab.classList.contains('active')) renderEventosHistorial();
+    });
   }
   // Set today's date
   const today=new Date();
@@ -4270,7 +4282,11 @@ function registrarEvento(){
     date,time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
     total:price,isEvento:true,eventoName:name,note,
     items,costoEstimado:parseFloat(costo.toFixed(2)),
-    user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
+    user:safeStorage.getItem(SK_DISPLAY)||'Eventos',
+    evLinesSnapshot:evLines.filter(l=>l.productId&&l.qty).map(l=>({
+      productId:l.productId,qty:l.qty,
+      ings:l.ings.map(x=>({ingId:x.ingId,qtyPer:x.qtyPer||0,active:x.active}))
+    }))
   };
   if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
 
@@ -4320,8 +4336,73 @@ function renderEventosHistorial(){
       <div style="font-size:12px;color:var(--text3)">${pList}</div>
       ${s.costoEstimado?`<div style="font-size:11px;color:var(--text4);margin-top:2px">Costo ≈$${s.costoEstimado.toFixed(2)}</div>`:''}
       <div style="font-size:11px;color:var(--text4);margin-top:4px">${s.date} · ${s.time}${s.note?` · ${s.note}`:''}</div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button onclick="deshacerEvento(${s.id})"
+          style="flex:1;padding:9px 12px;border-radius:8px;border:1.5px solid rgba(224,32,32,.4);background:transparent;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;transition:background .15s"
+          onmouseover="this.style.background='rgba(224,32,32,.12)'" onmouseout="this.style.background='transparent'">
+          ↩️ Deshacer venta
+        </button>
+      </div>
     </div>`;
   }).join('');
+}
+
+/* ── Deshacer evento: elimina la venta y restaura inventario ── */
+function deshacerEvento(saleId){
+  const s=sales.find(x=>x.id===saleId);
+  if(!s){showToast('Venta no encontrada','red');return;}
+  customConfirm(
+    `¿Deshacer el evento "${s.eventoName||'Evento'}" ($${s.total.toFixed(2)})?\n\nSe eliminará del historial y se restaurará el inventario descontado.`,
+    'Deshacer',
+    ()=>{
+      // 1. Restaurar inventario — sumar de vuelta lo que se descontó
+      if(fbDb&&s.evLinesSnapshot){
+        // Si se guardó snapshot de líneas, úsalo para restaurar exacto
+        let changed=false;
+        s.evLinesSnapshot.forEach(line=>{
+          (line.ings||[]).filter(x=>x.active).forEach(x=>{
+            const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
+            ingredients[idx].stock=parseFloat((ingredients[idx].stock+(x.qtyPer||0)*line.qty).toFixed(3));
+            changed=true;
+          });
+        });
+        if(changed) fbSaveIngredients();
+      } else if(s.items&&s.items.length){
+        // Fallback: usar descontarInventario en reversa (suma en vez de restar)
+        let changed=false;
+        s.items.forEach(it=>{
+          const p=products.find(x=>x.name===it.name);if(!p)return;
+          const rec=recipes[p.id]||[];
+          rec.forEach(r=>{
+            const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
+            ingredients[idx].stock=parseFloat((ingredients[idx].stock+r.qty*it.qty).toFixed(3));
+            changed=true;
+          });
+          generalRecipe.forEach(r=>{
+            const mults=r.productMultipliers||{};
+            const hasAny=Object.keys(mults).length>0;
+            let mult=hasAny?(mults[String(p.id)]??mults[p.id]??null):1;
+            if(mult==null)return;
+            const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
+            ingredients[idx].stock=parseFloat((ingredients[idx].stock+r.qty*mult*it.qty).toFixed(3));
+            changed=true;
+          });
+        });
+        if(changed) fbSaveIngredients();
+      }
+
+      // 2. Eliminar la venta de Firebase y del array local
+      if(fbDb) fbDb.ref('sales/'+saleId).remove().catch(()=>{});
+      sales=sales.filter(x=>x.id!==saleId);
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+
+      // 3. Log en historial de inventario
+      logInvHistory('ajuste',`Deshacer evento: ${s.eventoName||'Evento'} — inventario restaurado`);
+
+      showToast(`↩️ Evento "${s.eventoName}" deshecho`,'green');
+      renderEventosHistorial();
+    }
+  );
 }
 let ingredients=[];   // [{id,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit,categoryId,deductType}]
 let recipes={};
