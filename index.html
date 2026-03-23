@@ -2032,12 +2032,15 @@ body{
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div>
-          <label class="form-lbl">Categoría</label>
+          <label class="form-lbl" style="display:flex;justify-content:space-between;align-items:center">
+            Categoría
+            <button onclick="openGastoCatsModal()" type="button"
+              style="font-size:10px;font-weight:700;color:#2ab8b8;background:transparent;border:none;cursor:pointer;padding:0;letter-spacing:.04em">
+              ＋ Gestionar
+            </button>
+          </label>
           <select class="form-input" id="gasto-cat" style="-webkit-appearance:none">
             <option value="compra">🛒 Compra ingrediente</option>
-            <option value="operativo">🔧 Gasto operativo</option>
-            <option value="equipo">📦 Equipo / material</option>
-            <option value="otro">📝 Otro</option>
           </select>
         </div>
         <div>
@@ -2899,6 +2902,38 @@ function renderActivityLog(){
 const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
+const SK_GASTO_CATS='dk_gasto_cats_v1';
+// Default categories — user can add/edit/delete
+const DEFAULT_GASTO_CATS=[
+  {id:'compra',  name:'Compra ingrediente', icon:'🛒', color:'#f5c800'},
+  {id:'operativo',name:'Gasto operativo',   icon:'🔧', color:'#2ab8b8'},
+  {id:'equipo',  name:'Equipo / material',  icon:'📦', color:'#6c63ff'},
+  {id:'otro',    name:'Otro',               icon:'📝', color:'#f57474'},
+];
+let gastoCats=[...DEFAULT_GASTO_CATS];
+
+function loadGastoCats(){
+  try{
+    const saved=JSON.parse(safeStorage.getItem(SK_GASTO_CATS));
+    if(saved&&saved.length) gastoCats=saved;
+  }catch{}
+  if(fbDb){
+    fbDb.ref('gasto_cats').on('value',snap=>{
+      const d=snap.val();
+      if(d&&Object.keys(d).length>0){
+        gastoCats=Object.values(d).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
+        safeStorage.setItem(SK_GASTO_CATS,JSON.stringify(gastoCats));
+        renderGastoCatSelect();
+      }
+    });
+  }
+  renderGastoCatSelect();
+}
+function saveGastoCats(){
+  safeStorage.setItem(SK_GASTO_CATS,JSON.stringify(gastoCats));
+  if(fbDb){const obj={};gastoCats.forEach(c=>obj[c.id]=c);fbDb.ref('gasto_cats').set(obj).catch(()=>{});}
+}
+function getCatById(id){return gastoCats.find(c=>c.id===id)||{id,name:id,icon:'📝',color:'#888'};}
 function isInvPaused(){return safeStorage.getItem(SK_INV_PAUSA)==='1';}
 const DEFAULT_PRODUCTS=[
   {id:1,name:"Dogo Sencillo",basePrice:30,variations:[{name:"Normal",price:30},{name:"Con Papas",price:40}],extras:[{name:"Doble Wini",price:10}]},
@@ -3437,6 +3472,7 @@ function bootAdmin(){
     startMembersListener();
     startActivityListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
+    loadGastoCats();
     loadGastos();
   },800);
 }
@@ -3792,6 +3828,96 @@ function getGastosFiltrados(){
   return [...gastos];
 }
 
+function renderGastoCatSelect(){
+  const sel=document.getElementById('gasto-cat');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML=gastoCats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+  if(gastoCats.find(c=>c.id===cur)) sel.value=cur;
+}
+
+function openGastoCatsModal(){
+  document.getElementById('gasto-cats-modal')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='gasto-cats-modal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:flex-end;justify-content:center;animation:backdropIn .2s ease';
+  const box=document.createElement('div');
+  box.style.cssText='background:linear-gradient(180deg,#1a1a1a,#161616);border-top:2.5px solid #2ab8b8;border-radius:22px 22px 0 0;padding:20px 18px 44px;width:100%;max-width:500px;max-height:82vh;overflow-y:auto;animation:slideUp .28s cubic-bezier(.32,0,.67,0)';
+  overlay.appendChild(box);
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+  renderGastoCatsModalContent(box);
+}
+
+function renderGastoCatsModalContent(box){
+  box.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:800;color:#2ab8b8">🏷️ Categorías de gastos</div>
+      <button onclick="document.getElementById('gasto-cats-modal').remove()"
+        style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div id="gasto-cats-list" style="margin-bottom:14px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:11px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Nueva categoría</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="new-cat-icon" maxlength="2" placeholder="🏷" value=""
+          style="width:52px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:9px;padding:10px;font-size:20px;text-align:center;color:var(--text);outline:none;flex-shrink:0"/>
+        <input id="new-cat-name" placeholder="Nombre de la categoría"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:9px;padding:10px 12px;font-size:14px;color:var(--text);outline:none"/>
+        <input id="new-cat-color" type="color" value="#2ab8b8"
+          style="width:44px;height:44px;border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;padding:2px;flex-shrink:0"/>
+      </div>
+      <button onclick="addGastoCat()"
+        style="width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,#0e4a4a,#0a3838);color:#2ab8b8;font-size:14px;font-weight:800;cursor:pointer">
+        ➕ Agregar categoría
+      </button>
+    </div>`;
+  renderGastoCatsList(box);
+}
+
+function renderGastoCatsList(box){
+  const el=box.querySelector('#gasto-cats-list');if(!el)return;
+  if(!gastoCats.length){el.innerHTML='<div style="color:var(--text4);font-size:13px;padding:8px">Sin categorías</div>';return;}
+  el.innerHTML='';
+  gastoCats.forEach((c,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:7px';
+    row.innerHTML=`
+      <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}66;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
+      <span style="flex:1;font-size:14px;font-weight:600;color:var(--text)">${c.name}</span>
+      <div style="width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
+      ${DEFAULT_GASTO_CATS.find(d=>d.id===c.id)?'<span style="font-size:10px;color:var(--text4);flex-shrink:0">base</span>':
+        `<button data-id="${c.id}" style="background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;transition:color .15s"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕</button>`}`;
+    const delBtn=row.querySelector('button[data-id]');
+    if(delBtn) delBtn.onclick=()=>{
+      customConfirm(`¿Eliminar la categoría "${c.name}"?\nLos gastos con esta categoría quedarán sin categoría.`,'Eliminar',()=>{
+        gastoCats=gastoCats.filter(x=>x.id!==c.id);
+        saveGastoCats();
+        renderGastoCatSelect();
+        const modal=document.getElementById('gasto-cats-modal');
+        if(modal){const b=modal.querySelector('div[style*="border-top"]')?.parentElement||modal.querySelector('div:last-child');renderGastoCatsModalContent(modal.firstChild);}
+        showToast('Categoría eliminada','green');
+      });
+    };
+    el.appendChild(row);
+  });
+}
+
+function addGastoCat(){
+  const icon=document.getElementById('new-cat-icon')?.value.trim()||'📝';
+  const name=document.getElementById('new-cat-name')?.value.trim();
+  const color=document.getElementById('new-cat-color')?.value||'#888';
+  if(!name){showToast('Escribe el nombre','red');return;}
+  if(gastoCats.find(c=>c.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe esa categoría','red');return;}
+  const id='cat_'+Date.now();
+  gastoCats.push({id,name,icon,color});
+  saveGastoCats();
+  renderGastoCatSelect();
+  const modal=document.getElementById('gasto-cats-modal');
+  if(modal) renderGastoCatsModalContent(modal.firstChild);
+  showToast(`✅ Categoría "${name}" agregada`,'green');
+}
+
 function renderGastos(){
   const gs=getGastosFiltrados();
   const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
@@ -3822,13 +3948,13 @@ function renderGastos(){
   const el=document.getElementById('adm-gastos-list');if(!el)return;
   if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
 
-  const catIcon={compra:'🛒',operativo:'🔧',equipo:'📦',otro:'📝'};
   el.innerHTML='';
   gs.forEach(g=>{
+    const catObj=getCatById(g.cat);
     const card=document.createElement('div');
     card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
     card.innerHTML=`
-      <div style="font-size:20px;flex-shrink:0">${catIcon[g.cat]||'📝'}</div>
+      <div style="width:34px;height:34px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catObj.icon}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
@@ -3906,28 +4032,30 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
           onClick:(e,legendItem,legend)=>{
             const chart=legend.chart;
             const idx=legendItem.datasetIndex;
-            // Toggle: if already expanded (other is dimmed), reset both; else expand clicked
-            const otherDimmed=chart.data.datasets[1-idx].backgroundColor.includes('.15');
-            if(otherDimmed){
-              // Reset to normal
+            const other=1-idx;
+            // If the other dataset is already hidden → reset both to normal
+            if(!chart.data.datasets[other].data.some(v=>v>0)||chart.data.datasets[other]._hidden){
+              chart.data.datasets[0]._hidden=false;
+              chart.data.datasets[1]._hidden=false;
               chart.data.datasets[0].backgroundColor='rgba(42,184,184,.7)';
               chart.data.datasets[1].backgroundColor='rgba(224,32,32,.7)';
-              chart.data.datasets[0].borderWidth=0;
-              chart.data.datasets[1].borderWidth=0;
+              chart.data.datasets[0].data=chart.data.datasets[0]._origData||chart.data.datasets[0].data;
+              chart.data.datasets[1].data=chart.data.datasets[1]._origData||chart.data.datasets[1].data;
             } else {
-              // Expand clicked, dim other
-              const clrs=['rgba(42,184,184,.95)','rgba(224,32,32,.95)'];
-              const dim=['rgba(42,184,184,.15)','rgba(224,32,32,.15)'];
+              // Save originals, expand clicked, zero-out other
+              chart.data.datasets[0]._origData=[...chart.data.datasets[0].data];
+              chart.data.datasets[1]._origData=[...chart.data.datasets[1].data];
+              const clrs=['rgba(42,184,184,.9)','rgba(224,32,32,.9)'];
               chart.data.datasets[idx].backgroundColor=clrs[idx];
-              chart.data.datasets[1-idx].backgroundColor=dim[1-idx];
-              chart.data.datasets[idx].borderWidth=2;
-              chart.data.datasets[idx].borderColor=idx===0?'#2ab8b8':'#e02020';
-              chart.data.datasets[1-idx].borderWidth=0;
+              chart.data.datasets[other].backgroundColor='transparent';
+              chart.data.datasets[other].data=chart.data.datasets[other].data.map(()=>0);
+              chart.data.datasets[other]._hidden=true;
+              chart.data.datasets[idx]._hidden=false;
             }
             chart.update();
           }
         },
-        tooltip:{callbacks:{label:c=>`$${c.parsed.y.toFixed(2)}`}}
+        tooltip:{callbacks:{label:c=>c.parsed.y>0?`$${c.parsed.y.toFixed(2)}`:null}}
       },
       scales:{
         x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
@@ -3936,21 +4064,24 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     }
   });
 
-  // ── Chart 2: Dona — gastos por categoría ──
+  // ── Chart 2: Dona — gastos por categoría (dinámico) ──
   const c2=document.getElementById('g-chart-cat');
   if(!c2)return;
-  const catTotals={compra:0,operativo:0,equipo:0,otro:0};
-  gs.forEach(g=>{ catTotals[g.cat]=(catTotals[g.cat]||0)+g.monto; });
-  const catLabels=['🛒 Compra','🔧 Operativo','📦 Equipo','📝 Otro'];
-  const catValues=[catTotals.compra,catTotals.operativo,catTotals.equipo,catTotals.otro];
-  const catColors=['rgba(245,200,0,.8)','rgba(42,184,184,.8)','rgba(108,99,255,.8)','rgba(245,116,116,.8)'];
+  const catTotalsMap={};
+  gs.forEach(g=>{ catTotalsMap[g.cat]=(catTotalsMap[g.cat]||0)+g.monto; });
+  // Only show cats that have data
+  const activeCats=gastoCats.filter(c=>catTotalsMap[c.id]>0);
+  const catLabels=activeCats.map(c=>`${c.icon} ${c.name}`);
+  const catValues=activeCats.map(c=>catTotalsMap[c.id]||0);
+  const catColors=activeCats.map(c=>c.color+'cc');
+  const catRawColors=activeCats.map(c=>c.color);
   const hasData=catValues.some(v=>v>0);
 
   if(gChartCat){gChartCat.destroy();gChartCat=null;}
   gChartCat=new Chart(c2,{
     type:'doughnut',
     data:{
-      labels:catLabels,
+      labels:hasData?catLabels:['Sin gastos'],
       datasets:[{data:hasData?catValues:[1],backgroundColor:hasData?catColors:['rgba(255,255,255,.08)'],borderWidth:0,hoverOffset:6}]
     },
     options:{
@@ -3962,14 +4093,14 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     }
   });
 
-  // Leyenda manual
+  // Leyenda manual dinámica
   const leg=document.getElementById('g-cat-legend');if(!leg)return;
-  const catRawColors=['#f5c800','#2ab8b8','#6c63ff','#f57474'];
+  if(!hasData){leg.innerHTML='<div style="color:var(--text4);font-size:12px">Sin gastos en este periodo</div>';return;}
   leg.innerHTML=catLabels.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:6px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
       <div style="width:10px;height:10px;border-radius:3px;background:${catRawColors[i]};flex-shrink:0"></div>
-      <span style="color:var(--text3)">${l}</span>
-      <span style="color:var(--text);font-weight:700;margin-left:auto">$${(catValues[i]||0).toFixed(0)}</span>
+      <span style="color:var(--text3);font-size:12px">${l}</span>
+      <span style="color:var(--text);font-weight:700;margin-left:auto;font-size:12px">$${catValues[i].toFixed(0)}</span>
     </div>`).join('');
 }
 
@@ -6539,6 +6670,7 @@ if(savedSession==='1' && savedRole==='admin'){
     startMembersListener();
     startActivityListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
+    loadGastoCats();
     loadGastos();
     document.getElementById('admin-screen').classList.add('active');
     renderAdmin();
