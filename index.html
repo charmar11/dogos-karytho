@@ -4153,13 +4153,12 @@ function renderEvLines(){
   if(!products.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:8px">Cargando productos...</div>';return;}
   el.innerHTML='';
   evLines.forEach((line,li)=>{
-    // Ensure ings are initialized
     if(!line.ings.length&&line.productId) line.ings=buildLineIngs(line.productId,line.qty);
 
     const wrap=document.createElement('div');
     wrap.style.cssText=`border:1px solid rgba(224,32,32,.2);border-radius:10px;padding:10px;margin-bottom:10px;background:rgba(224,32,32,.03)`;
 
-    // Product + qty + remove row
+    // ── Fila: Producto + cantidad + botón eliminar línea ──
     const top=document.createElement('div');
     top.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:10px';
     top.innerHTML=`
@@ -4169,7 +4168,7 @@ function renderEvLines(){
       <input type="number" inputmode="numeric" value="${line.qty||''}" placeholder="Cant."
         style="width:70px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;text-align:center;outline:none"/>
       <span style="font-size:11px;color:var(--text4);flex-shrink:0">pzas</span>
-      ${evLines.length>1?`<button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0">✕</button>`:''}
+      ${evLines.length>1?`<button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;flex-shrink:0" title="Eliminar línea">✕</button>`:''}
     `;
     const sel=top.querySelector('select');
     const qtyInput=top.querySelector('input');
@@ -4186,31 +4185,76 @@ function renderEvLines(){
     if(rmBtn) rmBtn.onclick=()=>removeEvLine(li);
     wrap.appendChild(top);
 
-    // Ingredients list
-    const ingTitle=document.createElement('div');
-    ingTitle.style.cssText='font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px';
-    ingTitle.textContent='Ingredientes — activa/desactiva y ajusta multiplicador';
-    wrap.appendChild(ingTitle);
+    // ── Encabezado ingredientes ──
+    const ingHeader=document.createElement('div');
+    ingHeader.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:6px';
+    ingHeader.innerHTML=`
+      <span style="font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;font-weight:700">Ingredientes</span>
+      <button style="padding:4px 10px;border-radius:7px;border:1px dashed rgba(42,184,184,.45);background:rgba(42,184,184,.07);color:#2ab8b8;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s"
+        onmouseover="this.style.background='rgba(42,184,184,.15)'" onmouseout="this.style.background='rgba(42,184,184,.07)'">
+        + Ingrediente
+      </button>
+    `;
+    const addIngBtn=ingHeader.querySelector('button');
+    addIngBtn.onclick=()=>openAddIngModal(li);
+    wrap.appendChild(ingHeader);
+
+    // ── Filas de ingredientes ──
+    if(!line.ings.length){
+      const empty=document.createElement('div');
+      empty.style.cssText='font-size:12px;color:var(--text4);padding:8px 4px;font-style:italic';
+      empty.textContent='Sin ingredientes — agrega uno con el botón de arriba';
+      wrap.appendChild(empty);
+    }
 
     line.ings.forEach((ing,ii)=>{
       const ingredient=ingredients.find(x=>x.id===ing.ingId);if(!ingredient)return;
       const total=((ing.qtyPer||0)*(line.qty||0));
       const totalStr=total%1===0?total.toFixed(0):total.toFixed(2);
+      const isCustom=!!ing.isCustom; // ingredientes añadidos manualmente en eventos
+
       const row=document.createElement('div');
-      row.style.cssText=`display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'};border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
-      row.innerHTML=`
-        <input type="checkbox" ${ing.active?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0"/>
-        <span style="flex:1;font-size:12px;color:${ing.active?'var(--text2)':'var(--text4)'}">${ingredient.name}</span>
-        <input type="number" inputmode="decimal" value="${ing.qtyPer||''}" placeholder="0"
-          style="width:60px;background:var(--bg3);color:${ing.active?'var(--text)':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none"
-          ${ing.active?'':'disabled'}/>
-        <span style="font-size:11px;color:var(--text4);flex-shrink:0">${ingredient.unit}/pza</span>
-        <span style="font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:60px;flex-shrink:0;text-align:right">
-          ${ing.active&&line.qty?`= ${totalStr} ${ingredient.unit}`:'—'}
-        </span>
-      `;
-      const cb=row.querySelector('input[type=checkbox]');
-      const qtyInp=row.querySelector('input[type=number]');
+      row.style.cssText=`display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'};border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
+
+      // Checkbox
+      const cb=document.createElement('input');
+      cb.type='checkbox';cb.checked=ing.active;
+      cb.style.cssText='accent-color:#2ab8b8;flex-shrink:0';
+
+      // Nombre
+      const nameSpan=document.createElement('span');
+      nameSpan.style.cssText=`flex:1;font-size:12px;color:${ing.active?'var(--text2)':'var(--text4)'}`;
+      nameSpan.textContent=ingredient.name+(isCustom?' ✦':'');
+
+      // Input cantidad por pieza
+      const qtyInp=document.createElement('input');
+      qtyInp.type='number';qtyInp.inputMode='decimal';
+      qtyInp.value=ing.qtyPer||'';qtyInp.placeholder='0';
+      qtyInp.style.cssText=`width:60px;background:var(--bg3);color:${ing.active?'var(--text)':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none`;
+      if(!ing.active) qtyInp.disabled=true;
+
+      // Unidad
+      const unitSpan=document.createElement('span');
+      unitSpan.style.cssText='font-size:11px;color:var(--text4);flex-shrink:0';
+      unitSpan.textContent=`${ingredient.unit}/pza`;
+
+      // Total calculado
+      const totalSpan=document.createElement('span');
+      totalSpan.style.cssText=`font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:56px;flex-shrink:0;text-align:right`;
+      totalSpan.textContent=ing.active&&line.qty?`= ${totalStr} ${ingredient.unit}`:'—';
+
+      // Botón eliminar ingrediente (siempre visible)
+      const rmIngBtn=document.createElement('button');
+      rmIngBtn.title='Quitar ingrediente';
+      rmIngBtn.style.cssText='background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1;transition:color .15s';
+      rmIngBtn.textContent='✕';
+      rmIngBtn.onmouseover=()=>rmIngBtn.style.color='var(--red)';
+      rmIngBtn.onmouseout=()=>rmIngBtn.style.color='var(--text4)';
+      rmIngBtn.onclick=()=>{
+        evLines[li].ings.splice(ii,1);
+        renderEvLines();updateEvMargen();
+      };
+
       cb.onchange=()=>{
         evLines[li].ings[ii].active=cb.checked;
         qtyInp.disabled=!cb.checked;
@@ -4218,17 +4262,108 @@ function renderEvLines(){
       };
       qtyInp.oninput=()=>{
         evLines[li].ings[ii].qtyPer=parseFloat(qtyInp.value)||0;
-        // Update total display inline without re-render
         const t=(evLines[li].ings[ii].qtyPer*(line.qty||0));
         const tStr=t%1===0?t.toFixed(0):t.toFixed(2);
-        row.querySelector('span:last-child').textContent=`= ${tStr} ${ingredient.unit}`;
+        totalSpan.textContent=`= ${tStr} ${ingredient.unit}`;
         updateEvMargen();
       };
+
+      row.appendChild(cb);
+      row.appendChild(nameSpan);
+      row.appendChild(qtyInp);
+      row.appendChild(unitSpan);
+      row.appendChild(totalSpan);
+      row.appendChild(rmIngBtn);
       wrap.appendChild(row);
     });
+
     el.appendChild(wrap);
   });
   updateEvMargen();
+}
+
+/* ── Modal para agregar ingrediente extra a una línea ── */
+let _addIngTargetLine=null;
+function openAddIngModal(li){
+  _addIngTargetLine=li;
+  const line=evLines[li];
+  const usedIds=new Set(line.ings.map(x=>x.ingId));
+  const available=ingredients.filter(x=>!usedIds.has(x.id));
+
+  // Eliminar modal previo si existe
+  document.getElementById('ev-add-ing-modal')?.remove();
+
+  const overlay=document.createElement('div');
+  overlay.id='ev-add-ing-modal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:flex-end;justify-content:center;animation:backdropIn .2s ease';
+
+  const box=document.createElement('div');
+  box.style.cssText='background:linear-gradient(180deg,#1a1a2a,#141420);border-top:2.5px solid #2ab8b8;border-radius:22px 22px 0 0;padding:20px 18px 40px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto;animation:slideUp .28s cubic-bezier(.32,0,.67,0)';
+
+  box.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:800;color:#2ab8b8">➕ Agregar ingrediente</div>
+      <button onclick="document.getElementById('ev-add-ing-modal').remove()"
+        style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <input id="ev-ing-search" placeholder="🔍 Buscar ingrediente…" autocomplete="off"
+      style="width:100%;background:var(--bg3);border:1.5px solid rgba(42,184,184,.3);border-radius:9px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;margin-bottom:12px"/>
+    <div id="ev-ing-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="ev-ing-empty" style="font-size:13px;color:var(--text4);text-align:center;padding:16px;display:none">Sin resultados</div>
+  `;
+
+  overlay.appendChild(box);
+  overlay.onclick=(e)=>{if(e.target===overlay)overlay.remove();};
+  document.body.appendChild(overlay);
+
+  // Focus búsqueda
+  setTimeout(()=>document.getElementById('ev-ing-search')?.focus(),100);
+
+  function renderIngList(filter=''){
+    const listEl=document.getElementById('ev-ing-list');
+    const emptyEl=document.getElementById('ev-ing-empty');
+    if(!listEl)return;
+    listEl.innerHTML='';
+    const filtered=available.filter(x=>!filter||x.name.toLowerCase().includes(filter.toLowerCase()));
+    emptyEl.style.display=filtered.length?'none':'block';
+    filtered.forEach(ing=>{
+      const item=document.createElement('div');
+      item.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;border:1px solid rgba(42,184,184,.15);background:rgba(42,184,184,.04);cursor:pointer;transition:background .15s';
+      item.onmouseover=()=>item.style.background='rgba(42,184,184,.12)';
+      item.onmouseout=()=>item.style.background='rgba(42,184,184,.04)';
+
+      item.innerHTML=`
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${ing.name}</div>
+          <div style="font-size:11px;color:var(--text4);margin-top:2px">Stock: ${ing.stock??'?'} ${ing.unit} · $${ing.costPerUnit??0}/u</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <input type="number" inputmode="decimal" placeholder="cant." value=""
+            style="width:64px;background:var(--bg3);border:1px solid rgba(42,184,184,.3);border-radius:7px;padding:7px 6px;font-size:13px;color:var(--text);text-align:center;outline:none"
+            onclick="event.stopPropagation()"/>
+          <span style="font-size:11px;color:var(--text4)">${ing.unit}/pza</span>
+          <button style="padding:7px 12px;border-radius:7px;border:none;background:#2ab8b8;color:#111;font-size:12px;font-weight:800;cursor:pointer"
+            onclick="event.stopPropagation()">Añadir</button>
+        </div>
+      `;
+      const qtyI=item.querySelector('input[type=number]');
+      const addBtn=item.querySelector('button');
+      const doAdd=()=>{
+        const v=parseFloat(qtyI.value)||0;
+        evLines[_addIngTargetLine].ings.push({ingId:ing.id,qtyPer:v,active:true,isCustom:true});
+        overlay.remove();
+        renderEvLines();updateEvMargen();
+        showToast(`✦ ${ing.name} agregado`,'green');
+      };
+      addBtn.onclick=(e)=>{e.stopPropagation();doAdd();};
+      qtyI.onkeydown=(e)=>{if(e.key==='Enter')doAdd();};
+      item.onclick=()=>{qtyI.focus();};
+      listEl.appendChild(item);
+    });
+  }
+
+  renderIngList();
+  document.getElementById('ev-ing-search').oninput=e=>renderIngList(e.target.value);
 }
 
 function calcEvCosto(){
