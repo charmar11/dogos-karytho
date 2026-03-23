@@ -3964,10 +3964,21 @@ function setGastosPeriod(p){
     const b=document.getElementById('gp-btn-'+k);
     if(b) b.classList.toggle('active',k===p);
   });
-  // Show/hide sub-selector
   const sub=document.getElementById('gp-sub-hoy');
   if(sub) sub.style.display=p==='hoy'?'flex':'none';
-  renderGastos();
+  // If gastos might not be loaded yet, do a fresh Firebase read then render
+  if(fbDb&&gastos.length===0){
+    fbDb.ref('gastos').once('value',snap=>{
+      const d=snap.val();
+      if(d&&Object.keys(d).length>0){
+        gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      }
+      renderGastos();
+    });
+  } else {
+    renderGastos();
+  }
 }
 function setGastosSubPeriod(sp){
   gastosSubPeriod=sp;
@@ -4353,11 +4364,18 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     return dw.toISOString().slice(0,10);
   }
   function displayKey(k){
-    if(groupMode==='minute'||groupMode==='hour'){
+    if(groupMode==='minute'){
       const h=parseInt(k.slice(11,13)),mi=k.slice(14,16)||'00';
       const ampm=h<12?'am':'pm';
       const h12=h===0?12:h>12?h-12:h;
-      return groupMode==='minute'?h12+':'+mi+ampm:h12+ampm;
+      return h12+':'+mi+ampm;
+    }
+    // hour keys (from isDiaCompleto or hour mode): YYYY-MM-DDTHH
+    if(k.length===13&&k[10]==='T'){
+      const h=parseInt(k.slice(11,13));
+      const ampm=h<12?'am':'pm';
+      const h12=h===0?12:h>12?h-12:h;
+      return h12+ampm;
     }
     const p=k.split('-');
     if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
@@ -4370,7 +4388,7 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   function saleISO(s){return toISODate(s.date)||'';}
   function saleTS(s){return s.timestamp?new Date(s.timestamp).getTime():0;}
   function gastoISO(g){return toISODate(g.fecha)||'';}
-  function gastoTS(g){return g.timestamp?new Date(g.timestamp).getTime():new Date((toISODate(g.fecha)||'2000-01-01')+'T12:00:00').getTime();}
+  function gastoTS(g){if(g.timestamp){const t=new Date(g.timestamp).getTime();if(!isNaN(t))return t;}const iso=toISODate(g.fecha)||'2000-01-01';return new Date(iso+'T12:00:00').getTime();}
 
   salesFilt.forEach(s=>{
     const iso=saleISO(s); if(!iso)return;
@@ -4389,17 +4407,28 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
 
   let keys;
   if(isDiaCompleto){
-    // 24 horas fijas de hoy, cero donde no hay datos
+    // Día completo: agrupa los datos por HORA (igual que antes pero fijo 24h)
+    // Re-agrupa el map de minutos en horas para el día de hoy
     const t=new Date();
     const yyyy=t.getFullYear(),mm=String(t.getMonth()+1).padStart(2,'0'),dd2=String(t.getDate()).padStart(2,'0');
-    const allHours=Array.from({length:24},(_,h)=>yyyy+'-'+mm+'-'+dd2+'T'+String(h).padStart(2,'0'));
-    allHours.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
-    keys=allHours;
+    const hourMap={};
+    Array.from({length:24},(_,h)=>{
+      const hk=yyyy+'-'+mm+'-'+dd2+'T'+String(h).padStart(2,'0');
+      hourMap[hk]={ing:0,gas:0};
+    });
+    // Sum minute-level data into hours
+    Object.keys(map).forEach(k=>{
+      // minute keys look like 2026-03-23T11:23, hour keys like 2026-03-23T11
+      const hk=k.slice(0,16).length>13?k.slice(0,13):k.slice(0,13);
+      if(hourMap[hk]){hourMap[hk].ing+=map[k].ing;hourMap[hk].gas+=map[k].gas;}
+    });
+    keys=Object.keys(hourMap).sort();
+    // Override map with hourMap for the rest of the function
+    Object.assign(map,hourMap);
   } else {
-    // Solo puntos con actividad real, sin huecos
-    // Para semana: si hay gastos pero sin venta en ese día, incluirlos igual
+    // Solo puntos con actividad real, sin huecos vacíos
     const allK=Object.keys(map).filter(k=>(map[k].ing||0)>0||(map[k].gas||0)>0).sort();
-    keys=allK.slice(-20); // max 20 puntos
+    keys=allK.slice(-20);
   }
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
