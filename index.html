@@ -4326,15 +4326,22 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const perEl=document.getElementById('g-chart-period-lbl');
   if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // Agrupación según periodo:
-  // hoy → por hora | semana → por día | mes → por semana | todo → por mes
-  const groupMode=gastosPeriod==='todo'?'month':gastosPeriod==='mes'?'week':gastosPeriod==='semana'?'day':'hour';
+  // Agrupación según periodo + sub-periodo
+  // hoy+hora → solo horas con datos | hoy+dia → 24h completas
+  // semana → por día | mes → por semana | todo → por mes
+  const isHoy=gastosPeriod==='hoy';
+  const isDiaCompleto=isHoy&&gastosSubPeriod==='dia';
+  const groupMode=gastosPeriod==='todo'?'month':
+                  gastosPeriod==='mes'?'week':
+                  gastosPeriod==='semana'?'day':'hour';
 
   function groupKey(isoOrTs, ts){
-    // ts = timestamp number (for hour grouping)
     if(groupMode==='hour'){
+      // Use local hour so it matches the user's timezone
       const d=new Date(ts);
-      return d.toISOString().slice(0,13); // YYYY-MM-DDTHH
+      const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0');
+      const dd=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0');
+      return yyyy+'-'+mm+'-'+dd+'T'+hh;
     }
     const iso=isoOrTs;
     const p=iso.split('-');
@@ -4351,7 +4358,7 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       const h=parseInt(k.slice(11,13));
       const ampm=h<12?'am':'pm';
       const h12=h===0?12:h>12?h-12:h;
-      return h12+ampm;
+      return h12+(h===0||h===12?'':'')+ampm;
     }
     const p=k.split('-');
     if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
@@ -4374,9 +4381,20 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     map[k].gas+=g.monto;
   });
 
-  // Include ALL keys with any data (sales OR gastos), no empty buckets
-  const allKeys=Object.keys(map).sort().slice(-14);
-  const keys=allKeys; // show all, even if one side is 0
+  let keys;
+  if(isDiaCompleto){
+    // Día completo: generar las 24 horas de hoy, con 0 donde no hay datos
+    const today=new Date();
+    const yyyy=today.getFullYear(), mm=String(today.getMonth()+1).padStart(2,'0');
+    const dd=String(today.getDate()).padStart(2,'0');
+    const allHours=Array.from({length:24},(_,h)=>yyyy+'-'+mm+'-'+dd+'T'+String(h).padStart(2,'0'));
+    // Fill missing hours with 0
+    allHours.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+    keys=allHours;
+  } else {
+    // Solo horas/días/semanas/meses con actividad real — sin huecos vacíos
+    keys=Object.keys(map).filter(k=>map[k].ing>0||map[k].gas>0).sort().slice(-14);
+  }
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
 
