@@ -5234,9 +5234,10 @@ function renderGeneralRecipeModalRows(){
     const wrap=document.createElement('div');
     wrap.style.cssText='background:var(--bg3);border-radius:10px;padding:10px;margin-bottom:12px';
 
-    // Row 1: ingredient selector + base qty
+    // Row 1: ingredient selector + base qty + toggle button
     const row1=document.createElement('div');
-    row1.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px';
+    row1.style.cssText='display:flex;align-items:center;gap:8px';
+    const activeCount=Object.keys(mults).length;
     row1.innerHTML=`
       <span style="font-size:18px;flex-shrink:0" id="gr-emoji-${i}">${ing?ingEmoji(ing.name):'📦'}</span>
       <select style="flex:2;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:13px;outline:none">
@@ -5246,43 +5247,43 @@ function renderGeneralRecipeModalRows(){
       <input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="Base"
         style="width:70px;flex-shrink:0;background:var(--bg2);color:var(--text);border:1.5px solid var(--border2);border-radius:8px;padding:8px;font-size:13px;outline:none;text-align:center"/>
       <span style="font-size:10px;color:var(--text3);flex-shrink:0" id="gr-unit-${i}">${ing?ing.unit:''}</span>
-      <button style="background:transparent;border:none;color:var(--red);font-size:17px;cursor:pointer;flex-shrink:0">✕</button>
+      <button class="gr-toggle" style="background:transparent;border:1px solid var(--border2);border-radius:6px;color:${activeCount>0?'#2ab8b8':'var(--text4)'};font-size:11px;cursor:pointer;padding:4px 7px;flex-shrink:0;white-space:nowrap" title="Productos">
+        ${activeCount>0?`${activeCount} prod ▾`:'▾'}
+      </button>
+      <button class="gr-rm" style="background:transparent;border:none;color:var(--red);font-size:17px;cursor:pointer;flex-shrink:0">✕</button>
     `;
     const sel=row1.querySelector('select');
     const qty=row1.querySelector('input');
-    const rm=row1.querySelector('button');
+    const toggleBtn=row1.querySelector('.gr-toggle');
+    const rm=row1.querySelector('.gr-rm');
     sel.onchange=()=>{
       generalRecipeRows[i].ingId=sel.value;
       const ng=ingredients.find(x=>x.id===sel.value);
       document.getElementById(`gr-unit-${i}`).textContent=ng?ng.unit:'';
       document.getElementById(`gr-emoji-${i}`).textContent=ng?ingEmoji(ng.name):'📦';
-      // Re-render to update previews
       renderGeneralRecipeModalRows();
     };
     qty.oninput=()=>{
       generalRecipeRows[i].qty=parseFloat(qty.value)||0;
-      // Update all previews in this wrap
       wrap.querySelectorAll('[data-preview]').forEach(span=>{
         const key=span.getAttribute('data-preview');
         const m=generalRecipeRows[i].productMultipliers?.[key];
-        if(m!=null){
-          const total=(generalRecipeRows[i].qty||0)*m;
-          span.textContent=`= ${total.toFixed(total%1?2:0)} ${ing?ing.unit:''}`;
-        }
+        if(m!=null){const total=(generalRecipeRows[i].qty||0)*m;span.textContent=`= ${total.toFixed(total%1?2:0)} ${ing?ing.unit:''}`;}
       });
     };
     rm.onclick=()=>{generalRecipeRows.splice(i,1);renderGeneralRecipeModalRows();};
     wrap.appendChild(row1);
 
-    // Header
-    const hdr=document.createElement('div');
-    hdr.style.cssText='font-size:10px;color:var(--text4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em';
-    hdr.textContent='Producto / Variante — Multiplicador';
-    wrap.appendChild(hdr);
-
-    // Build list: base product + each variant/extra as "Producto / Variante"
+    // Build list: collapsed by default
     const grid=document.createElement('div');
-    grid.style.cssText='display:flex;flex-direction:column;gap:5px';
+    grid.style.cssText='display:none;flex-direction:column;gap:5px;margin-top:8px';
+
+    toggleBtn.onclick=()=>{
+      const open=grid.style.display==='none';
+      grid.style.display=open?'flex':'none';
+      const ac=Object.keys(generalRecipeRows[i].productMultipliers||{}).length;
+      toggleBtn.textContent=open?(ac>0?`${ac} prod ▴`:'▴'):(ac>0?`${ac} prod ▾`:'▾');
+    };
 
     const rows=[];
     products.forEach(p=>{
