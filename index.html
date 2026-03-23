@@ -3077,7 +3077,7 @@ function updateDate(){
   const n=new Date();document.getElementById('header-date').textContent=n.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
 }
 const toDateKey=d=>new Date(d).toLocaleDateString('es-MX');
-function isSameWeek(ts){const d=new Date(ts),now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return d>=mon&&d<=now;}
+function isSameWeek(ts){const d=new Date(ts),now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);const eow=new Date(mon);eow.setDate(mon.getDate()+7);return d>=mon&&d<eow;}
 function isSameMonth(ts){const d=new Date(ts),now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}
 function getPeriodSales(){
   const today=toDateKey(new Date());
