@@ -1999,7 +1999,7 @@ body{
       <!-- Gráfica 1: Barras — Ingresos vs Gastos por día/período -->
       <div style="margin-bottom:18px">
         <div style="font-size:11px;color:var(--text4);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Ingresos vs Gastos</div>
-        <div style="position:relative;height:180px">
+        <div style="position:relative;height:240px">
           <canvas id="g-chart-balance"></canvas>
         </div>
       </div>
@@ -2904,13 +2904,8 @@ const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
 const SK_GASTO_CATS='dk_gasto_cats_v1';
 // Default categories — user can add/edit/delete
-const DEFAULT_GASTO_CATS=[
-  {id:'compra',  name:'Compra ingrediente', icon:'🛒', color:'#f5c800'},
-  {id:'operativo',name:'Gasto operativo',   icon:'🔧', color:'#2ab8b8'},
-  {id:'equipo',  name:'Equipo / material',  icon:'📦', color:'#6c63ff'},
-  {id:'otro',    name:'Otro',               icon:'📝', color:'#f57474'},
-];
-let gastoCats=[...DEFAULT_GASTO_CATS];
+const DEFAULT_GASTO_CATS=[];
+let gastoCats=[];
 
 function loadGastoCats(){
   try{
@@ -3831,6 +3826,10 @@ function getGastosFiltrados(){
 function renderGastoCatSelect(){
   const sel=document.getElementById('gasto-cat');if(!sel)return;
   const cur=sel.value;
+  if(!gastoCats.length){
+    sel.innerHTML='<option value="">— Agrega categorías con ＋ Gestionar —</option>';
+    return;
+  }
   sel.innerHTML=gastoCats.map(c=>`<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
   if(gastoCats.find(c=>c.id===cur)) sel.value=cur;
 }
@@ -3885,9 +3884,8 @@ function renderGastoCatsList(box){
       <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}66;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
       <span style="flex:1;font-size:14px;font-weight:600;color:var(--text)">${c.name}</span>
       <div style="width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
-      ${DEFAULT_GASTO_CATS.find(d=>d.id===c.id)?'<span style="font-size:10px;color:var(--text4);flex-shrink:0">base</span>':
-        `<button data-id="${c.id}" style="background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;transition:color .15s"
-          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕</button>`}`;
+      <button data-id="${c.id}" style="background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;transition:color .15s"
+          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕</button>`;
     const delBtn=row.querySelector('button[data-id]');
     if(delBtn) delBtn.onclick=()=>{
       customConfirm(`¿Eliminar la categoría "${c.name}"?\nLos gastos con esta categoría quedarán sin categoría.`,'Eliminar',()=>{
@@ -3992,26 +3990,43 @@ function renderGastos(){
 /* ── Gastos charts ── */
 let gChartBalance=null, gChartCat=null;
 function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
-  // ── Chart 1: Barras — últimos días o resumen único ──
+  // ── Chart 1: Barras (Ingresos+Gastos) + Línea (Ganancia) ──
   const c1=document.getElementById('g-chart-balance');
   if(!c1)return;
 
-  // Agrupar por fecha (últimos 7 días si periodo largo, o por día disponible)
-  const daysMap={};
+  // Normalizar todas las fechas a YYYY-MM-DD para ordenar correctamente
+  function toISO(dateStr){
+    if(!dateStr) return '';
+    // Already ISO
+    if(/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.slice(0,10);
+    // es-MX: D/M/YYYY or DD/MM/YYYY
+    const p=dateStr.split('/');
+    if(p.length===3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    return dateStr;
+  }
+
+  const daysMap={}; // key: YYYY-MM-DD
   salesFilt.forEach(s=>{
-    if(!daysMap[s.date]) daysMap[s.date]={ing:0,gasto:0};
-    daysMap[s.date].ing+=s.total;
+    const k=toISO(s.date);if(!k)return;
+    if(!daysMap[k]) daysMap[k]={ing:0,gasto:0};
+    daysMap[k].ing+=s.total;
   });
   gs.forEach(g=>{
-    if(!daysMap[g.fecha]) daysMap[g.fecha]={ing:0,gasto:0};
-    daysMap[g.fecha].gasto+=g.monto;
+    const k=toISO(g.fecha);if(!k)return;
+    if(!daysMap[k]) daysMap[k]={ing:0,gasto:0};
+    daysMap[k].gasto+=g.monto;
   });
-  const labels=Object.keys(daysMap).sort().slice(-7);
-  const ingData=labels.map(d=>parseFloat((daysMap[d]?.ing||0).toFixed(2)));
-  const gasData=labels.map(d=>parseFloat((daysMap[d]?.gasto||0).toFixed(2)));
-  const shortLabels=labels.map(d=>{
-    const parts=d.split('/');
-    return parts.length===3?`${parts[0]}/${parts[1]}`:d.slice(5);
+
+  // Sort chronologically, show last 7 days max
+  const sortedKeys=Object.keys(daysMap).sort().slice(-7);
+  const ingData=sortedKeys.map(k=>parseFloat((daysMap[k].ing||0).toFixed(2)));
+  const gasData=sortedKeys.map(k=>parseFloat((daysMap[k].gasto||0).toFixed(2)));
+  const ganData=sortedKeys.map((k,i)=>parseFloat((ingData[i]-gasData[i]).toFixed(2)));
+
+  // Short display labels: "22/3"
+  const shortLabels=sortedKeys.map(k=>{
+    const p=k.split('-');
+    return p.length===3?`${parseInt(p[2])}/${parseInt(p[1])}`:k;
   });
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
@@ -4020,46 +4035,80 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     data:{
       labels:shortLabels.length?shortLabels:['Sin datos'],
       datasets:[
-        {label:'Ingresos',data:ingData.length?ingData:[0],backgroundColor:'rgba(42,184,184,.7)',borderRadius:6,borderSkipped:false},
-        {label:'Gastos',data:gasData.length?gasData:[0],backgroundColor:'rgba(224,32,32,.7)',borderRadius:6,borderSkipped:false}
+        {
+          type:'bar',label:'Ingresos',
+          data:ingData.length?ingData:[0],
+          backgroundColor:'rgba(42,184,184,.7)',borderRadius:5,borderSkipped:false,
+          yAxisID:'y', order:2
+        },
+        {
+          type:'bar',label:'Gastos',
+          data:gasData.length?gasData:[0],
+          backgroundColor:'rgba(224,32,32,.65)',borderRadius:5,borderSkipped:false,
+          yAxisID:'y', order:3
+        },
+        {
+          type:'line',label:'Ganancia',
+          data:ganData.length?ganData:[0],
+          borderColor:'rgba(100,220,100,.9)',
+          backgroundColor:'rgba(100,220,100,.08)',
+          borderWidth:2.5,pointRadius:5,pointHoverRadius:7,
+          pointBackgroundColor:ganData.map(v=>v>=0?'#64dc64':'#f57474'),
+          pointBorderColor:'#111',pointBorderWidth:1.5,
+          tension:0.35,fill:false,
+          yAxisID:'y', order:1
+        }
       ]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
       plugins:{
         legend:{
-          labels:{color:'#aaa',font:{size:11}},
+          labels:{color:'#aaa',font:{size:11},usePointStyle:true,pointStyleWidth:10},
           onClick:(e,legendItem,legend)=>{
             const chart=legend.chart;
             const idx=legendItem.datasetIndex;
-            const other=1-idx;
-            // If the other dataset is already hidden → reset both to normal
-            if(!chart.data.datasets[other].data.some(v=>v>0)||chart.data.datasets[other]._hidden){
-              chart.data.datasets[0]._hidden=false;
-              chart.data.datasets[1]._hidden=false;
+            // Only toggle bar datasets (0=Ingresos, 1=Gastos); line always visible
+            if(idx===2){chart.update();return;}
+            const other=idx===0?1:0;
+            const otherHidden=chart.data.datasets[other]._barHidden;
+            if(otherHidden){
+              // Reset both bars
+              chart.data.datasets[0]._barHidden=false;
+              chart.data.datasets[1]._barHidden=false;
+              chart.data.datasets[0].data=chart.data.datasets[0]._orig||chart.data.datasets[0].data;
+              chart.data.datasets[1].data=chart.data.datasets[1]._orig||chart.data.datasets[1].data;
               chart.data.datasets[0].backgroundColor='rgba(42,184,184,.7)';
-              chart.data.datasets[1].backgroundColor='rgba(224,32,32,.7)';
-              chart.data.datasets[0].data=chart.data.datasets[0]._origData||chart.data.datasets[0].data;
-              chart.data.datasets[1].data=chart.data.datasets[1]._origData||chart.data.datasets[1].data;
+              chart.data.datasets[1].backgroundColor='rgba(224,32,32,.65)';
             } else {
-              // Save originals, expand clicked, zero-out other
-              chart.data.datasets[0]._origData=[...chart.data.datasets[0].data];
-              chart.data.datasets[1]._origData=[...chart.data.datasets[1].data];
-              const clrs=['rgba(42,184,184,.9)','rgba(224,32,32,.9)'];
+              // Save originals
+              chart.data.datasets[0]._orig=[...chart.data.datasets[0].data];
+              chart.data.datasets[1]._orig=[...chart.data.datasets[1].data];
+              // Expand clicked, hide other
+              const clrs=['rgba(42,184,184,.95)','rgba(224,32,32,.95)'];
               chart.data.datasets[idx].backgroundColor=clrs[idx];
-              chart.data.datasets[other].backgroundColor='transparent';
               chart.data.datasets[other].data=chart.data.datasets[other].data.map(()=>0);
-              chart.data.datasets[other]._hidden=true;
-              chart.data.datasets[idx]._hidden=false;
+              chart.data.datasets[other].backgroundColor='transparent';
+              chart.data.datasets[other]._barHidden=true;
+              chart.data.datasets[idx]._barHidden=false;
             }
             chart.update();
           }
         },
-        tooltip:{callbacks:{label:c=>c.parsed.y>0?`$${c.parsed.y.toFixed(2)}`:null}}
+        tooltip:{
+          callbacks:{
+            label:c=>{
+              if(c.parsed.y===0&&c.datasetIndex!==2) return null;
+              const prefix=c.datasetIndex===2?(c.parsed.y>=0?'✅ Ganancia':'⚠️ Pérdida'):c.dataset.label;
+              return ` ${prefix}: $${c.parsed.y.toFixed(2)}`;
+            }
+          }
+        }
       },
       scales:{
-        x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.04)'}}
+        x:{ticks:{color:'#777',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#777',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.06)'}}
       }
     }
   });
