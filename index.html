@@ -2053,27 +2053,23 @@ body{
 
     <!-- ── Visualización ── -->
     <div class="form-card" style="margin-bottom:12px;padding:0;overflow:hidden">
-      <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:16px 18px 0;display:flex;align-items:flex-start;justify-content:space-between">
         <div>
-          <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:.5px">📊 Flujo financiero</div>
-          <div style="font-size:11px;color:var(--text4);margin-top:2px" id="g-chart-period-lbl">Histórico</div>
+          <div style="font-size:13px;font-weight:800;color:var(--text);letter-spacing:.3px">📊 Flujo financiero</div>
+          <div style="font-size:11px;color:var(--text4);margin-top:3px" id="g-chart-period-lbl">Histórico</div>
         </div>
-        <div style="display:flex;gap:12px;align-items:center">
-          <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:10px;height:10px;border-radius:3px;background:rgba(42,184,184,.8)"></div>
-            <span style="font-size:10px;color:var(--text3)">Ingresos</span>
+        <div style="display:flex;gap:16px;align-items:center">
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="gChartToggle(0)">
+            <svg width="28" height="12"><line x1="0" y1="6" x2="28" y2="6" stroke="#2ab8b8" stroke-width="2.5"/><circle cx="14" cy="6" r="4" fill="#2ab8b8" stroke="#0f0f0f" stroke-width="1.5"/></svg>
+            <span style="font-size:11px;color:var(--text2);font-weight:600">Ingresos</span>
           </div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:10px;height:10px;border-radius:3px;background:rgba(224,32,32,.75)"></div>
-            <span style="font-size:10px;color:var(--text3)">Gastos</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:10px;height:10px;border-radius:3px;background:rgba(100,220,100,.6);border:1.5px solid rgba(100,220,100,.9)"></div>
-            <span style="font-size:10px;color:var(--text3)">Ganancia</span>
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="gChartToggle(1)">
+            <svg width="28" height="12"><line x1="0" y1="6" x2="28" y2="6" stroke="#e86040" stroke-width="2.5"/><circle cx="14" cy="6" r="4" fill="#e86040" stroke="#0f0f0f" stroke-width="1.5"/></svg>
+            <span style="font-size:11px;color:var(--text2);font-weight:600">Gastos</span>
           </div>
         </div>
       </div>
-      <div style="position:relative;height:260px;padding:10px 6px 4px">
+      <div style="position:relative;height:280px;padding:12px 8px 8px">
         <canvas id="g-chart-balance"></canvas>
       </div>
       <div style="height:1px;background:var(--border);margin:0 16px"></div>
@@ -4338,104 +4334,101 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const c1=document.getElementById('g-chart-balance');
   if(!c1)return;
 
-  const perLbl=document.getElementById('g-chart-period-lbl');
-  if(perLbl) perLbl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
+  const perEl=document.getElementById('g-chart-period-lbl');
+  if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // ── Aggregate based on period ──
-  // hoy/semana → by day | mes → by week | todo → by month
-  const groupMode = gastosPeriod==='todo'?'month': gastosPeriod==='mes'?'week':'day';
+  // Agrupación según periodo
+  const groupMode=gastosPeriod==='todo'?'month':gastosPeriod==='mes'?'week':'day';
 
-  function groupKey(isoDate){
-    const p=isoDate.split('-'); // [yyyy,mm,dd]
-    if(groupMode==='day') return isoDate;
+  function groupKey(iso){
+    const p=iso.split('-');
+    if(groupMode==='day') return iso;
     if(groupMode==='month') return p[0]+'-'+p[1];
-    // week: get Monday of that week
-    const d=new Date(isoDate+'T12:00:00');
-    const day=d.getDay(); const diff=(day===0?-6:1-day);
+    const d=new Date(iso+'T12:00:00');
+    const diff=(d.getDay()===0?-6:1-d.getDay());
     d.setDate(d.getDate()+diff);
     return d.toISOString().slice(0,10);
   }
   function displayKey(k){
     const p=k.split('-');
-    if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+' '+p[0].slice(2);
-    if(groupMode==='week'){
-      const end=new Date(k+'T12:00:00'); end.setDate(end.getDate()+6);
-      return parseInt(p[2])+'/'+ parseInt(p[1]);
-    }
+    if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
     return parseInt(p[2])+'/'+parseInt(p[1]);
   }
 
   const map={};
   salesFilt.forEach(s=>{
-    const iso=toISODate(s.date); if(!iso)return;
+    const iso=toISODate(s.date);if(!iso)return;
     const k=groupKey(iso);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].ing+=s.total;
   });
   gs.forEach(g=>{
-    const iso=toISODate(g.fecha); if(!iso)return;
+    const iso=toISODate(g.fecha);if(!iso)return;
     const k=groupKey(iso);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].gas+=g.monto;
   });
 
-  const keys=Object.keys(map).sort().slice(-12);
+  const keys=Object.keys(map).sort().slice(-14);
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
-  // Ganancia as floating bar: [min(ing,gas), max(ing,gas)] colored by sign
-  const ganFloat=keys.map((_,i)=>{
-    const ing=ingData[i], gas=gasData[i];
-    const lo=Math.min(ing,gas), hi=Math.max(ing,gas);
-    return [parseFloat(lo.toFixed(2)), parseFloat(hi.toFixed(2))];
-  });
-  const ganPositive=keys.map((_,i)=>ingData[i]>=gasData[i]);
+  const ganData=keys.map((_,i)=>+((ingData[i]-gasData[i]).toFixed(2)));
   const xLabels=keys.map(displayKey);
   const isEmpty=!keys.length;
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
 
+  // Build fill areas between lines
+  // Positive area (ing > gas) = green fill; negative = red fill
+  // We achieve this with two fill datasets using 'stack' trick via clip
   gChartBalance=new Chart(c1,{
-    type:'bar',
+    type:'line',
     data:{
-      labels:isEmpty?['Sin datos']:xLabels,
+      labels:isEmpty?['—']:xLabels,
       datasets:[
-        // ── Base de Ingresos (min entre ing y gas) ──
+        // ── Área ganancia positiva (fill between: +values only) ──
         {
-          label:'Ingresos',
-          data:isEmpty?[0]:keys.map((_,i)=>Math.min(ingData[i],gasData[i])),
-          backgroundColor:'rgba(42,184,184,.65)',
-          hoverBackgroundColor:'rgba(42,184,184,.65)',
-          borderRadius:0,borderSkipped:true,borderWidth:0,
-          stack:'ing',categoryPercentage:0.55,barPercentage:0.85,order:3,
+          label:'_pos',
+          data:isEmpty?[0]:ganData.map(v=>v>=0?v:0),
+          backgroundColor:'rgba(42,200,100,.13)',
+          borderWidth:0,pointRadius:0,fill:true,
+          tension:0.35,order:4,
         },
-        // ── Ganancia encima de Ingresos (solo cuando ing > gas) ──
+        // ── Área pérdida (fill negativa) ──
         {
-          label:'Ganancia',
-          data:isEmpty?[0]:keys.map((_,i)=>ingData[i]>gasData[i]?+(ingData[i]-gasData[i]).toFixed(2):0),
-          backgroundColor:'rgba(100,220,100,.75)',
-          hoverBackgroundColor:'rgba(100,220,100,.95)',
-          borderColor:'rgba(100,220,100,.9)',borderWidth:0,
-          borderRadius:{topLeft:5,topRight:5},borderSkipped:true,
-          stack:'ing',categoryPercentage:0.55,barPercentage:0.85,order:2,
+          label:'_neg',
+          data:isEmpty?[0]:ganData.map(v=>v<0?v:0),
+          backgroundColor:'rgba(224,80,60,.12)',
+          borderWidth:0,pointRadius:0,fill:true,
+          tension:0.35,order:4,
         },
-        // ── Base de Gastos (min entre ing y gas) ──
+        // ── Línea Gastos ──
         {
           label:'Gastos',
-          data:isEmpty?[0]:keys.map((_,i)=>Math.min(ingData[i],gasData[i])),
-          backgroundColor:'rgba(224,32,32,.6)',
-          hoverBackgroundColor:'rgba(224,32,32,.6)',
-          borderRadius:0,borderSkipped:true,borderWidth:0,
-          stack:'gas',categoryPercentage:0.55,barPercentage:0.85,order:3,
+          data:isEmpty?[0]:gasData,
+          borderColor:'#e86040',
+          backgroundColor:'transparent',
+          borderWidth:2.5,
+          pointRadius:keys.length<=8?5:3,
+          pointHoverRadius:7,
+          pointBackgroundColor:'#e86040',
+          pointBorderColor:'#111',
+          pointBorderWidth:1.5,
+          tension:0.35,fill:false,order:2,
         },
-        // ── Pérdida encima de Gastos (solo cuando gas > ing) ──
+        // ── Línea Ingresos ──
         {
-          label:'Pérdida',
-          data:isEmpty?[0]:keys.map((_,i)=>gasData[i]>ingData[i]?+(gasData[i]-ingData[i]).toFixed(2):0),
-          backgroundColor:'rgba(245,116,116,.75)',
-          hoverBackgroundColor:'rgba(245,116,116,.95)',
-          borderColor:'rgba(245,116,116,.9)',borderWidth:0,
-          borderRadius:{topLeft:5,topRight:5},borderSkipped:true,
-          stack:'gas',categoryPercentage:0.55,barPercentage:0.85,order:2,
+          label:'Ingresos',
+          data:isEmpty?[0]:ingData,
+          borderColor:'#2ab8b8',
+          backgroundColor:'transparent',
+          borderWidth:2.5,
+          pointRadius:keys.length<=8?5:3,
+          pointHoverRadius:7,
+          pointBackgroundColor:'#2ab8b8',
+          pointBorderColor:'#111',
+          pointBorderWidth:1.5,
+          tension:0.35,fill:false,order:1,
         },
       ]
     },
@@ -4445,67 +4438,70 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'rgba(12,12,12,.93)',
-          borderColor:'rgba(255,255,255,.07)',borderWidth:1,
-          titleColor:'#ccc',titleFont:{size:11,weight:'700'},
-          bodyColor:'#aaa',bodyFont:{size:12},
-          padding:12,cornerRadius:10,
+          backgroundColor:'rgba(10,10,16,.95)',
+          borderColor:'rgba(255,255,255,.08)',borderWidth:1,
+          titleColor:'#ddd',titleFont:{size:11,weight:'700'},
+          bodyColor:'#999',bodyFont:{size:12},
+          padding:14,cornerRadius:10,
           callbacks:{
             title:items=>items[0]?.label||'',
             label:c=>{
-              // Only show real values, skip base bars and zero-value ganancia/perdida
-              if(c.datasetIndex===0||c.datasetIndex===2) return null; // base bars hidden from tooltip
-              if((c.parsed.y||0)===0) return null;
-              if(c.datasetIndex===1) return `  ✅ Ganancia: $${(c.parsed.y||0).toFixed(2)}`;
-              if(c.datasetIndex===3) return `  ⚠️ Pérdida: $${(c.parsed.y||0).toFixed(2)}`;
-              return null;
+              if(c.dataset.label==='_pos'||c.dataset.label==='_neg') return null;
+              return '  '+c.dataset.label+': $'+c.parsed.y.toFixed(2);
             },
             afterBody:items=>{
               if(!items.length)return [];
               const idx=items[0].dataIndex;
               const ing=ingData[idx]||0, gas=gasData[idx]||0;
               if(!ing&&!gas)return [];
-              const lines=[];
-              lines.push(`  Ingresos: $${ing.toFixed(2)}`);
-              lines.push(`  Gastos: $${gas.toFixed(2)}`);
-              const pct=ing>0?Math.round((ing-gas)/ing*100):0;
-              lines.push(`  Margen: ${pct}%`);
-              return lines;
+              const gan=ing-gas;
+              const pct=ing>0?Math.round(gan/ing*100):0;
+              const sign=gan>=0?'✅':'⚠️';
+              return [
+                '',
+                '  '+sign+' Ganancia: $'+gan.toFixed(2),
+                '  Margen: '+pct+'%'
+              ];
             }
           }
         }
       },
       scales:{
         x:{
-          stacked:true,
-          ticks:{color:'#555',font:{size:10},maxRotation:0},
-          grid:{color:'rgba(255,255,255,.03)',drawTicks:false},
-          border:{color:'transparent'}
+          ticks:{color:'#555',font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:8},
+          grid:{color:'rgba(255,255,255,.05)',drawTicks:false},
+          border:{color:'rgba(255,255,255,.08)'}
         },
         y:{
-          stacked:true,
           min:0,
           ticks:{
-            color:'#555',font:{size:10},maxTicksLimit:5,
+            color:'#555',font:{size:10},maxTicksLimit:6,
             callback:v=>v>=1000?'$'+(v/1000).toFixed(1).replace('.0','')+'k':'$'+v
           },
-          grid:{color:'rgba(255,255,255,.05)',drawTicks:false},
+          grid:{color:'rgba(255,255,255,.07)',drawTicks:false},
           border:{color:'transparent'}
         }
       }
     }
   });
-  // Click disabled - stacked groups handle visual naturally
-  c1.onclick=null;
 
-  // ── Chart 2: Dona — gastos por categoría (dinámico) ──
+  // Toggle visibility of Ingresos/Gastos lines
+  window.gChartToggle=idx=>{
+    if(!gChartBalance)return;
+    // idx 0 = Ingresos (ds index 3), idx 1 = Gastos (ds index 2)
+    const dsIdx=idx===0?3:2;
+    const meta=gChartBalance.getDatasetMeta(dsIdx);
+    meta.hidden=!meta.hidden;
+    gChartBalance.update();
+  };
+
+  // ── Chart 2: Dona — gastos por categoría ──
   const c2=document.getElementById('g-chart-cat');
   if(!c2)return;
   const catTotalsMap={};
   gs.forEach(g=>{ catTotalsMap[g.cat]=(catTotalsMap[g.cat]||0)+g.monto; });
-  // Only show cats that have data
   const activeCats=gastoCats.filter(c=>catTotalsMap[c.id]>0);
-  const catLabels=activeCats.map(c=>`${c.icon} ${c.name}`);
+  const catLabels=activeCats.map(c=>c.icon+' '+c.name);
   const catValues=activeCats.map(c=>catTotalsMap[c.id]||0);
   const catColors=activeCats.map(c=>c.color+'cc');
   const catRawColors=activeCats.map(c=>c.color);
@@ -4522,12 +4518,11 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       responsive:true,maintainAspectRatio:false,cutout:'65%',
       plugins:{
         legend:{display:false},
-        tooltip:{callbacks:{label:c=>hasData?`$${c.parsed.toFixed(2)}`:''}}
+        tooltip:{callbacks:{label:c=>hasData?'$'+c.parsed.toFixed(2):''}}
       }
     }
   });
 
-  // Leyenda manual dinámica
   const leg=document.getElementById('g-cat-legend');if(!leg)return;
   if(!hasData){leg.innerHTML='<div style="color:var(--text4);font-size:12px">Sin gastos en este periodo</div>';return;}
   leg.innerHTML=catLabels.map((l,i)=>`
@@ -4537,6 +4532,7 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       <span style="color:var(--text);font-weight:700;margin-left:auto;font-size:12px">$${catValues[i].toFixed(0)}</span>
     </div>`).join('');
 }
+
 
 function exportarGastos(){
   const gs=getGastosFiltrados();
