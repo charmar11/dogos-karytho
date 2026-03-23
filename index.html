@@ -4327,55 +4327,61 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
   // Agrupación según periodo + sub-periodo
-  // hoy+hora → solo horas con datos | hoy+dia → 24h completas
-  // semana → por día | mes → por semana | todo → por mes
   const isHoy=gastosPeriod==='hoy';
   const isDiaCompleto=isHoy&&gastosSubPeriod==='dia';
+  // Hora: por minuto exacto (timestamp), sin huecos
+  // Día completo: 24 horas fijas
+  // Semana: por día | Mes: por semana | Todo: por mes
   const groupMode=gastosPeriod==='todo'?'month':
                   gastosPeriod==='mes'?'week':
-                  gastosPeriod==='semana'?'day':'hour';
+                  gastosPeriod==='semana'?'day':'minute'; // hoy → minuto
 
   function groupKey(isoOrTs, ts){
-    if(groupMode==='hour'){
-      // Use local hour so it matches the user's timezone
-      const d=new Date(ts);
-      const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0');
-      const dd=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0');
-      return yyyy+'-'+mm+'-'+dd+'T'+hh;
-    }
+    const d=new Date(ts);
+    const yyyy=d.getFullYear(),mm=String(d.getMonth()+1).padStart(2,'0'),dd2=String(d.getDate()).padStart(2,'0');
+    const hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
+    if(groupMode==='minute') return yyyy+'-'+mm+'-'+dd2+'T'+hh+':'+mi;
+    if(groupMode==='hour')   return yyyy+'-'+mm+'-'+dd2+'T'+hh;
     const iso=isoOrTs;
     const p=iso.split('-');
     if(groupMode==='day') return iso;
     if(groupMode==='month') return p[0]+'-'+p[1];
     // week: Monday
-    const d=new Date(iso+'T12:00:00');
-    const diff=(d.getDay()===0?-6:1-d.getDay());
-    d.setDate(d.getDate()+diff);
-    return d.toISOString().slice(0,10);
+    const dw=new Date(iso+'T12:00:00');
+    const diff=(dw.getDay()===0?-6:1-dw.getDay());
+    dw.setDate(dw.getDate()+diff);
+    return dw.toISOString().slice(0,10);
   }
   function displayKey(k){
-    if(groupMode==='hour'){
-      const h=parseInt(k.slice(11,13));
+    if(groupMode==='minute'||groupMode==='hour'){
+      const h=parseInt(k.slice(11,13)),mi=k.slice(14,16)||'00';
       const ampm=h<12?'am':'pm';
       const h12=h===0?12:h>12?h-12:h;
-      return h12+(h===0||h===12?'':'')+ampm;
+      return groupMode==='minute'?h12+':'+mi+ampm:h12+ampm;
     }
     const p=k.split('-');
     if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
+    // day: D/M
     return parseInt(p[2])+'/'+parseInt(p[1]);
   }
 
   const map={};
+  // Helper: get ISO date from a sale (handles both ISO and es-MX formats)
+  function saleISO(s){return toISODate(s.date)||'';}
+  function saleTS(s){return s.timestamp?new Date(s.timestamp).getTime():0;}
+  function gastoISO(g){return toISODate(g.fecha)||'';}
+  function gastoTS(g){return g.timestamp?new Date(g.timestamp).getTime():new Date((toISODate(g.fecha)||'2000-01-01')+'T12:00:00').getTime();}
+
   salesFilt.forEach(s=>{
-    const iso=toISODate(s.date);if(!iso)return;
-    const ts=s.timestamp?new Date(s.timestamp).getTime():new Date(iso+'T12:00:00').getTime();
+    const iso=saleISO(s); if(!iso)return;
+    const ts=saleTS(s)||new Date(iso+'T12:00:00').getTime();
     const k=groupKey(iso,ts);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].ing+=s.total;
   });
   gs.forEach(g=>{
-    const iso=toISODate(g.fecha);if(!iso)return;
-    const ts=g.timestamp||new Date(iso+'T12:00:00').getTime();
+    const iso=gastoISO(g); if(!iso)return;
+    const ts=gastoTS(g);
     const k=groupKey(iso,ts);
     if(!map[k])map[k]={ing:0,gas:0};
     map[k].gas+=g.monto;
@@ -4383,17 +4389,17 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
 
   let keys;
   if(isDiaCompleto){
-    // Día completo: generar las 24 horas de hoy, con 0 donde no hay datos
-    const today=new Date();
-    const yyyy=today.getFullYear(), mm=String(today.getMonth()+1).padStart(2,'0');
-    const dd=String(today.getDate()).padStart(2,'0');
-    const allHours=Array.from({length:24},(_,h)=>yyyy+'-'+mm+'-'+dd+'T'+String(h).padStart(2,'0'));
-    // Fill missing hours with 0
+    // 24 horas fijas de hoy, cero donde no hay datos
+    const t=new Date();
+    const yyyy=t.getFullYear(),mm=String(t.getMonth()+1).padStart(2,'0'),dd2=String(t.getDate()).padStart(2,'0');
+    const allHours=Array.from({length:24},(_,h)=>yyyy+'-'+mm+'-'+dd2+'T'+String(h).padStart(2,'0'));
     allHours.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
     keys=allHours;
   } else {
-    // Solo horas/días/semanas/meses con actividad real — sin huecos vacíos
-    keys=Object.keys(map).filter(k=>map[k].ing>0||map[k].gas>0).sort().slice(-14);
+    // Solo puntos con actividad real, sin huecos
+    // Para semana: si hay gastos pero sin venta en ese día, incluirlos igual
+    const allK=Object.keys(map).filter(k=>(map[k].ing||0)>0||(map[k].gas||0)>0).sort();
+    keys=allK.slice(-20); // max 20 puntos
   }
   const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
   const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
