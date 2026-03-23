@@ -2068,7 +2068,7 @@ body{
             <span style="font-size:10px;color:var(--text3)">Gastos</span>
           </div>
           <div style="display:flex;align-items:center;gap:5px">
-            <div style="width:10px;height:3px;border-radius:2px;background:#64dc64"></div>
+            <div style="width:10px;height:10px;border-radius:3px;background:rgba(100,220,100,.6);border:1.5px solid rgba(100,220,100,.9)"></div>
             <span style="font-size:10px;color:var(--text3)">Ganancia</span>
           </div>
         </div>
@@ -4083,70 +4083,103 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const c1=document.getElementById('g-chart-balance');
   if(!c1)return;
 
-  // Update period label
   const perLbl=document.getElementById('g-chart-period-lbl');
   if(perLbl) perLbl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // Aggregate by ISO date
-  const daysMap={};
+  // ── Aggregate based on period ──
+  // hoy/semana → by day | mes → by week | todo → by month
+  const groupMode = gastosPeriod==='todo'?'month': gastosPeriod==='mes'?'week':'day';
+
+  function groupKey(isoDate){
+    const p=isoDate.split('-'); // [yyyy,mm,dd]
+    if(groupMode==='day') return isoDate;
+    if(groupMode==='month') return p[0]+'-'+p[1];
+    // week: get Monday of that week
+    const d=new Date(isoDate+'T12:00:00');
+    const day=d.getDay(); const diff=(day===0?-6:1-day);
+    d.setDate(d.getDate()+diff);
+    return d.toISOString().slice(0,10);
+  }
+  function displayKey(k){
+    const p=k.split('-');
+    if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+' '+p[0].slice(2);
+    if(groupMode==='week'){
+      const end=new Date(k+'T12:00:00'); end.setDate(end.getDate()+6);
+      return parseInt(p[2])+'/'+ parseInt(p[1]);
+    }
+    return parseInt(p[2])+'/'+parseInt(p[1]);
+  }
+
+  const map={};
   salesFilt.forEach(s=>{
-    const k=toISODate(s.date);if(!k)return;
-    if(!daysMap[k]) daysMap[k]={ing:0,gas:0};
-    daysMap[k].ing+=s.total;
+    const iso=toISODate(s.date); if(!iso)return;
+    const k=groupKey(iso);
+    if(!map[k])map[k]={ing:0,gas:0};
+    map[k].ing+=s.total;
   });
   gs.forEach(g=>{
-    const k=toISODate(g.fecha);if(!k)return;
-    if(!daysMap[k]) daysMap[k]={ing:0,gas:0};
-    daysMap[k].gas+=g.monto;
+    const iso=toISODate(g.fecha); if(!iso)return;
+    const k=groupKey(iso);
+    if(!map[k])map[k]={ing:0,gas:0};
+    map[k].gas+=g.monto;
   });
 
-  const keys=Object.keys(daysMap).sort().slice(-10);
-  const ingData=keys.map(k=>+((daysMap[k].ing||0).toFixed(2)));
-  const gasData=keys.map(k=>+((daysMap[k].gas||0).toFixed(2)));
-  const ganData=keys.map((_,i)=>+((ingData[i]-gasData[i]).toFixed(2)));
-  const xLabels=keys.map(k=>{const p=k.split('-');return p.length===3?parseInt(p[2])+'/'+parseInt(p[1]):k;});
+  const keys=Object.keys(map).sort().slice(-12);
+  const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
+  const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
+  // Ganancia as floating bar: [min(ing,gas), max(ing,gas)] colored by sign
+  const ganFloat=keys.map((_,i)=>{
+    const ing=ingData[i], gas=gasData[i];
+    const lo=Math.min(ing,gas), hi=Math.max(ing,gas);
+    return [parseFloat(lo.toFixed(2)), parseFloat(hi.toFixed(2))];
+  });
+  const ganPositive=keys.map((_,i)=>ingData[i]>=gasData[i]);
+  const xLabels=keys.map(displayKey);
+  const isEmpty=!keys.length;
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
 
-  const isEmpty=!keys.length;
   gChartBalance=new Chart(c1,{
     type:'bar',
     data:{
       labels:isEmpty?['Sin datos']:xLabels,
       datasets:[
         {
-          type:'bar',label:'Ingresos',yAxisID:'y',order:3,
+          label:'Ingresos',
           data:isEmpty?[0]:ingData,
-          backgroundColor:'rgba(42,184,184,.65)',
-          hoverBackgroundColor:'rgba(42,184,184,.9)',
-          borderRadius:{topLeft:4,topRight:4},borderSkipped:false,
+          backgroundColor:'rgba(42,184,184,.7)',
+          hoverBackgroundColor:'rgba(42,184,184,.95)',
+          borderRadius:{topLeft:5,topRight:5},
+          borderSkipped:false,
           borderWidth:0,
+          categoryPercentage:0.6,
+          barPercentage:0.75,
+          order:2,
         },
         {
-          type:'bar',label:'Gastos',yAxisID:'y',order:4,
+          label:'Gastos',
           data:isEmpty?[0]:gasData,
-          backgroundColor:'rgba(224,32,32,.6)',
-          hoverBackgroundColor:'rgba(224,32,32,.85)',
-          borderRadius:{topLeft:4,topRight:4},borderSkipped:false,
+          backgroundColor:'rgba(224,32,32,.65)',
+          hoverBackgroundColor:'rgba(224,32,32,.9)',
+          borderRadius:{topLeft:5,topRight:5},
+          borderSkipped:false,
           borderWidth:0,
+          categoryPercentage:0.6,
+          barPercentage:0.75,
+          order:3,
         },
         {
-          type:'line',label:'Ganancia',yAxisID:'y',order:1,
-          data:isEmpty?[0]:ganData,
-          borderColor:'rgba(100,220,100,.95)',
-          backgroundColor:ctx=>{
-            const g2=ctx.chart.ctx.createLinearGradient(0,0,0,220);
-            g2.addColorStop(0,'rgba(100,220,100,.18)');
-            g2.addColorStop(1,'rgba(100,220,100,0)');
-            return g2;
-          },
-          borderWidth:2.5,
-          pointRadius:ganData.map(v=>v!==0?5:3),
-          pointHoverRadius:8,
-          pointBackgroundColor:ganData.map(v=>v>=0?'#64dc64':'#f57474'),
-          pointBorderColor:'#0f0f0f',pointBorderWidth:2,
-          tension:0.4,fill:true,
-          segment:{borderColor:ctx=>ctx.p0.parsed.y>=0&&ctx.p1.parsed.y>=0?'rgba(100,220,100,.95)':'rgba(245,116,116,.95)'}
+          label:'Ganancia',
+          data:isEmpty?[[0,0]]:ganFloat,
+          backgroundColor:isEmpty?['rgba(100,220,100,.45)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.55)':'rgba(245,116,116,.55)'),
+          hoverBackgroundColor:isEmpty?['rgba(100,220,100,.8)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.85)':'rgba(245,116,116,.85)'),
+          borderColor:isEmpty?['rgba(100,220,100,.9)']:ganPositive.map(pos=>pos?'rgba(100,220,100,.9)':'rgba(245,116,116,.9)'),
+          borderWidth:isEmpty?[0]:ganPositive.map(()=>1.5),
+          borderRadius:{topLeft:4,topRight:4},
+          borderSkipped:false,
+          categoryPercentage:0.6,
+          barPercentage:0.75,
+          order:1,
         }
       ]
     },
@@ -4154,30 +4187,32 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{display:false}, // using custom HTML legend
+        legend:{display:false},
         tooltip:{
-          backgroundColor:'rgba(15,15,15,.92)',
-          borderColor:'rgba(255,255,255,.08)',borderWidth:1,
-          titleColor:'#ccc',titleFont:{size:11,weight:'600'},
+          backgroundColor:'rgba(12,12,12,.93)',
+          borderColor:'rgba(255,255,255,.07)',borderWidth:1,
+          titleColor:'#ccc',titleFont:{size:11,weight:'700'},
           bodyColor:'#aaa',bodyFont:{size:12},
           padding:12,cornerRadius:10,
           callbacks:{
             title:items=>items[0]?.label||'',
             label:c=>{
               if(c.datasetIndex===2){
-                const v=c.parsed.y;
-                return v>=0?` ✅ Ganancia: $${v.toFixed(2)}`:`  ⚠️ Pérdida: $${Math.abs(v).toFixed(2)}`;
+                const raw=c.raw;
+                const val=parseFloat(((Array.isArray(raw)?raw[1]-raw[0]:raw)||0).toFixed(2));
+                const pos=val>=0;
+                return pos?`  ✅ Ganancia: $${val.toFixed(2)}`:`  ⚠️ Pérdida: $${Math.abs(val).toFixed(2)}`;
               }
-              if(c.parsed.y===0) return null;
-              return `  ${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;
+              if((c.parsed.y||0)===0) return null;
+              return `  ${c.dataset.label}: $${(c.parsed.y||0).toFixed(2)}`;
             },
             afterBody:items=>{
               if(!items.length)return [];
               const idx=items[0].dataIndex;
-              const ing=ingData[idx]||0,gas=gasData[idx]||0;
+              const ing=ingData[idx]||0, gas=gasData[idx]||0;
               if(!ing&&!gas)return [];
-              const margin=ing>0?Math.round((ing-gas)/ing*100):0;
-              return [`  Margen: ${margin}%`];
+              const pct=ing>0?Math.round((ing-gas)/ing*100):0;
+              return [`  Margen: ${pct}%`];
             }
           }
         }
@@ -4189,33 +4224,36 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
           border:{color:'transparent'}
         },
         y:{
-          ticks:{color:'#555',font:{size:10},callback:v=>v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v,maxTicksLimit:5},
+          min:0,
+          ticks:{
+            color:'#555',font:{size:10},maxTicksLimit:5,
+            callback:v=>v>=1000?'$'+(v/1000).toFixed(1).replace('.0','')+'k':'$'+v
+          },
           grid:{color:'rgba(255,255,255,.05)',drawTicks:false},
           border:{color:'transparent'}
         }
       }
     }
   });
-
-  // Click on bar → expand that dataset, hide the other
+  // Click on Ingresos or Gastos bar → solo esa; click de nuevo → reset
   c1.onclick=evt=>{
     if(!gChartBalance)return;
     const pts=gChartBalance.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
     if(!pts.length)return;
     const di=pts[0].datasetIndex;
-    if(di>1)return; // ignore line
+    if(di===2)return; // ganancia always visible
     const other=di===0?1:0;
     const ds=gChartBalance.data.datasets;
     if(ds[other]._barHidden){
-      // reset
-      ds[0]._barHidden=false; ds[1]._barHidden=false;
+      ds[0]._barHidden=false;ds[1]._barHidden=false;
       ds[0].data=ds[0]._orig||ds[0].data;
       ds[1].data=ds[1]._orig||ds[1].data;
-      ds[0].backgroundColor='rgba(42,184,184,.65)';
-      ds[1].backgroundColor='rgba(224,32,32,.6)';
+      ds[0].backgroundColor='rgba(42,184,184,.7)';
+      ds[1].backgroundColor='rgba(224,32,32,.65)';
     } else {
-      ds[0]._orig=[...ds[0].data]; ds[1]._orig=[...ds[1].data];
-      ds[di].backgroundColor=di===0?'rgba(42,184,184,.95)':'rgba(224,32,32,.9)';
+      ds[0]._orig=[...ds[0].data];ds[1]._orig=[...ds[1].data];
+      const clrs=['rgba(42,184,184,.95)','rgba(224,32,32,.9)'];
+      ds[di].backgroundColor=clrs[di];
       ds[other].data=ds[other].data.map(()=>0);
       ds[other].backgroundColor='transparent';
       ds[other]._barHidden=true;
