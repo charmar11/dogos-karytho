@@ -954,9 +954,11 @@ body{
 .login-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,200,0,.1)}
 .login-error{
   font-size:12px;color:#f57474;text-align:center;
-  margin-bottom:14px;min-height:18px;font-weight:600;
+  margin-bottom:0;min-height:0;font-weight:600;
   animation:fadeIn .2s ease;
+  transition:margin .2s;
 }
+.login-error:not(:empty){margin-bottom:14px;}
 .btn-login{
   width:100%;padding:16px;border-radius:var(--radius-sm);border:none;
   background:linear-gradient(135deg,var(--red),#c01818);
@@ -2590,13 +2592,22 @@ function doLogin(){
       safeStorage.removeItem(SK_SESSION);
       showPicker();
     } else {
+      // Block admin/inventario/eventos from online access
+      const role=data.role||'user';
+      const isRestricted=['admin','inventario','eventos'].includes(role);
+      const isLocal=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+      if(isRestricted&&!isLocal){
+        btn.textContent='Entrar';btn.disabled=false;
+        showLoginError('Este rol solo puede accederse desde la app local, no en línea.');
+        return;
+      }
       safeStorage.setItem(SK_SESSION,'1');
-      safeStorage.setItem(SK_ROLE,data.role||'user');
+      safeStorage.setItem(SK_ROLE,role);
       safeStorage.setItem(SK_DISPLAY,data.display||u);
       document.getElementById('login-screen').classList.add('hidden');
-      if(data.role==='admin') bootAdmin();
-      else if(data.role==='inventario') bootInventario();
-      else if(data.role==='eventos') bootEventos();
+      if(role==='admin') bootAdmin();
+      else if(role==='inventario') bootInventario();
+      else if(role==='eventos') bootEventos();
       else bootApp();
     }
   });
@@ -6501,7 +6512,13 @@ function descontarInventario(items){
 /* ─── Init ─── */
 const savedSession=safeStorage.getItem(SK_SESSION);
 const savedRole=safeStorage.getItem(SK_ROLE);
-if(savedSession==='1' && savedRole==='admin'){
+const _isLocal=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+const _isRestricted=['admin','inventario','eventos'].includes(savedRole);
+// If restricted role accessed online, kick back to login
+if(_isRestricted&&!_isLocal){
+  safeStorage.removeItem(SK_SESSION);
+  setTimeout(()=>document.getElementById('login-user').focus(),300);
+} else if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();
   initFirebase(FB_CONFIG);
