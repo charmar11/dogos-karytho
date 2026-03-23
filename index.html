@@ -3706,39 +3706,51 @@ let admChartInstance=null;
    GASTOS MANUALES — Admin
 ══════════════════════════════════════════ */
 let gastos=[];
-let gastosPeriod='todo';
+let gastosPeriod='hoy';
 
 // Tracks IDs currently being written so the listener won't wipe them
 const _gastosPending=new Set();
 
 function loadGastos(){
+  // 1. Always start from localStorage — never lose data on reload
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
-  if(!fbDb)return;
+  if(!fbDb){
+    const tab=document.getElementById('adm-tab-gastos');
+    if(tab&&tab.classList.contains('active')) renderGastos();
+    return;
+  }
 
-  // Step 1: read Firebase once, merge with local, push local-only items up
+  // 2. Read Firebase once — only to ADD items we don't have locally
+  //    Local ALWAYS wins: if it's in local, keep local version
   fbDb.ref('gastos').once('value',snap=>{
     const d=snap.val();
     const fbGastos=d?Object.values(d).filter(Boolean):[];
-    const fbIds=new Set(fbGastos.map(g=>g.id));
-    // Union: Firebase + local, Firebase wins on conflict (it has deletes from other devices)
-    const allById={};
-    fbGastos.forEach(g=>{if(g.id)allById[g.id]=g;});
-    // Local only wins if the ID is NOT in Firebase (i.e. pending upload)
-    gastos.forEach(g=>{if(g.id&&!fbIds.has(g.id))allById[g.id]=g;});
-    gastos=Object.values(allById).sort((a,b)=>b.timestamp-a.timestamp);
+    const localIds=new Set(gastos.map(g=>g.id));
+    // Add FB items not in local (came from another device)
+    fbGastos.forEach(g=>{
+      if(g.id&&!localIds.has(g.id)) gastos.push(g);
+    });
+    gastos.sort((a,b)=>b.timestamp-a.timestamp);
     safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-    // Push local-only gastos to Firebase
+    // Push local-only gastos to Firebase so other devices get them
+    const fbIds=new Set(fbGastos.map(g=>g.id));
     gastos.forEach(g=>{
       if(g.id&&!fbIds.has(g.id)) fbDb.ref('gastos/'+g.id).set(g).catch(()=>{});
     });
 
-    // Step 2: start realtime listener — skip snapshots while a write is in flight
+    // 3. Realtime listener — MERGE, never replace
+    //    Skip if a write is pending (avoid race condition)
     fbDb.ref('gastos').on('value',snap=>{
-      if(_gastosPending.size>0)return; // write in flight — ignore this snapshot
+      if(_gastosPending.size>0)return;
       const d=snap.val();
-      if(!d)return; // never wipe gastos if Firebase returns empty
-      const incoming=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
-      gastos=incoming;
+      if(!d||Object.keys(d).length===0)return; // never wipe on empty snapshot
+      const fbList=Object.values(d).filter(Boolean);
+      // Merge: add any FB item not already local, keep all local items
+      const localIds=new Set(gastos.map(g=>g.id));
+      fbList.forEach(g=>{
+        if(g.id&&!localIds.has(g.id)){gastos.push(g);localIds.add(g.id);}
+      });
+      gastos.sort((a,b)=>b.timestamp-a.timestamp);
       safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
       const tab=document.getElementById('adm-tab-gastos');
       if(tab&&tab.classList.contains('active')) renderGastos();
@@ -3912,7 +3924,23 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#aaa',font:{size:11}}},tooltip:{callbacks:{label:c=>`$${c.parsed.y.toFixed(2)}`}}},
+      plugins:{
+        legend:{
+          labels:{color:'#aaa',font:{size:11}},
+          onClick:(e,legendItem,legend)=>{
+            // Highlight clicked dataset, dim the other
+            const idx=legendItem.datasetIndex;
+            const chart=legend.chart;
+            chart.data.datasets.forEach((ds,i)=>{
+              ds.backgroundColor=i===idx
+                ?(i===0?'rgba(42,184,184,.95)':'rgba(224,32,32,.95)')
+                :(i===0?'rgba(42,184,184,.2)':'rgba(224,32,32,.2)');
+            });
+            chart.update();
+          }
+        },
+        tooltip:{callbacks:{label:c=>`$${c.parsed.y.toFixed(2)}`}}
+      },
       scales:{
         x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
         y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.04)'}}
