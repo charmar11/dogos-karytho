@@ -4072,6 +4072,18 @@ function confirmResolve(yes){
    EVENTOS — panel completo
 ══════════════════════════════════════════ */
 const SK_EVENTOS='dk_eventos_v1';
+const SK_EVLINES='dk_evlines_v1';
+
+function saveEvLines(){
+  try{safeStorage.setItem(SK_EVLINES,JSON.stringify(evLines));}catch{}
+}
+function loadEvLines(){
+  try{
+    const raw=safeStorage.getItem(SK_EVLINES);
+    if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed)&&parsed.length)return parsed;}
+  }catch{}
+  return null;
+}
 let evLines=[]; // [{productId, qty, ings:[{ingId,qty,mult,active}]}]
 
 function bootEventos(){
@@ -4105,7 +4117,15 @@ function bootEventos(){
 
   document.getElementById('eventos-screen').classList.add('active');
   evLines=[];
-  setTimeout(()=>{evLines=[];evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:100});renderEvLines();},600);
+  setTimeout(()=>{
+    const saved=loadEvLines();
+    if(saved){
+      evLines=saved;
+    } else {
+      evLines=[{productId:products[0]?.id||null,qty:1,ings:[],pct:100}];
+    }
+    renderEvLines();
+  },600);
 }
 
 function eventosLogout(){
@@ -4130,12 +4150,14 @@ function distribuirPct(){
 function addEvLine(){
   evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:0});
   distribuirPct();
+  saveEvLines();
   renderEvLines();
 }
 function removeEvLine(i){
   evLines.splice(i,1);
   if(!evLines.length) evLines.push({productId:products[0]?.id||null,qty:1,ings:[],pct:100});
   else distribuirPct();
+  saveEvLines();
   renderEvLines();
 }
 function totalPct(){return evLines.reduce((s,l)=>s+(parseFloat(l.pct)||0),0);}
@@ -4185,11 +4207,11 @@ function renderEvLines(){
     sel.onchange=()=>{
       evLines[li].productId=parseInt(sel.value)||sel.value;
       evLines[li].ings=buildLineIngs(evLines[li].productId,evLines[li].qty);
-      renderEvLines();updateEvMargen();
+      saveEvLines();renderEvLines();updateEvMargen();
     };
     qtyInput.oninput=()=>{
       evLines[li].qty=parseInt(qtyInput.value)||0;
-      renderEvLines();updateEvMargen();
+      saveEvLines();renderEvLines();updateEvMargen();
     };
     if(rmBtn) rmBtn.onclick=()=>removeEvLine(li);
     wrap.appendChild(top);
@@ -4260,7 +4282,7 @@ function renderEvLines(){
       rmIngBtn.textContent='✕';
       rmIngBtn.onmouseover=()=>rmIngBtn.style.color='var(--red)';
       rmIngBtn.onmouseout=()=>rmIngBtn.style.color='var(--text4)';
-      rmIngBtn.onclick=()=>{ evLines[li].ings.splice(ii,1); renderEvLines();updateEvMargen(); };
+      rmIngBtn.onclick=()=>{ evLines[li].ings.splice(ii,1); saveEvLines();renderEvLines();updateEvMargen(); };
 
       mainRow.appendChild(cb);
       mainRow.appendChild(nameSpan);
@@ -4304,18 +4326,19 @@ function renderEvLines(){
         evLines[li].ings[ii].active=cb.checked;
         qtyInp.disabled=!cb.checked;
         pctInp.disabled=!cb.checked;
-        renderEvLines();updateEvMargen();
+        saveEvLines();renderEvLines();updateEvMargen();
       };
       qtyInp.oninput=()=>{
         evLines[li].ings[ii].qtyPer=parseFloat(qtyInp.value)||0;
         const ef=(evLines[li].ings[ii].qtyPer*(line.qty||0)*((evLines[li].ings[ii].pct??100)/100));
         const efStr=ef%1===0?ef.toFixed(0):ef.toFixed(2);
         totalSpan.textContent=`= ${efStr} ${ingredient.unit}`;
-        updateEvMargen();
+        saveEvLines();updateEvMargen();
       };
       pctInp.oninput=()=>{
         const v=parseFloat(pctInp.value);
         evLines[li].ings[ii].pct=isNaN(v)?100:v;
+        saveEvLines();
         const ef=(evLines[li].ings[ii].qtyPer||0)*(line.qty||0)*((evLines[li].ings[ii].pct)/100);
         const efStr=ef%1===0?ef.toFixed(0):ef.toFixed(2);
         totalSpan.textContent=`= ${efStr} ${ingredient.unit}`;
@@ -4408,7 +4431,7 @@ function openAddIngModal(li){
         const v=parseFloat(qtyI.value)||0;
         evLines[_addIngTargetLine].ings.push({ingId:ing.id,qtyPer:v,active:true,isCustom:true,pct:100});
         overlay.remove();
-        renderEvLines();updateEvMargen();
+        saveEvLines();renderEvLines();updateEvMargen();
         showToast(`✦ ${ing.name} agregado`,'green');
       };
       addBtn.onclick=(e)=>{e.stopPropagation();doAdd();};
@@ -4500,6 +4523,7 @@ function registrarEvento(){
 
   // Reset
   evLines=[];
+  safeStorage.removeItem(SK_EVLINES);
   document.getElementById('ev-name').value='';
   document.getElementById('ev-price').value='';
   document.getElementById('ev-note').value='';
