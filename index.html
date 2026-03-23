@@ -4122,14 +4122,16 @@ function removeEvLine(i){
 function buildLineIngs(productId,qty){
   const p=products.find(x=>x.id===productId);if(!p)return[];
   const rec=recipes[productId]||[];
-  // General condiments for this product
   const genApply=generalRecipe.filter(r=>{
     const mults=r.productMultipliers||{};
     return Object.keys(mults).length===0||mults[String(productId)]!=null;
   });
-  const all=[...rec.map(r=>({ingId:r.ingId,baseQty:r.qty,mult:1,active:true,isGen:false})),
-             ...genApply.map(r=>({ingId:r.ingId,baseQty:r.qty,mult:r.productMultipliers?.[String(productId)]||1,active:true,isGen:true}))];
-  // Deduplicate by ingId
+  const all=[...rec.map(r=>({ingId:r.ingId,qtyPer:r.qty,active:true,isGen:false})),
+             ...genApply.map(r=>{
+               const mults=r.productMultipliers||{};
+               const m=mults[String(productId)]||1;
+               return {ingId:r.ingId,qtyPer:r.qty*m,active:true,isGen:true};
+             })];
   const seen=new Set();
   return all.filter(x=>{if(seen.has(x.ingId))return false;seen.add(x.ingId);return true;});
 }
@@ -4180,30 +4182,35 @@ function renderEvLines(){
 
     line.ings.forEach((ing,ii)=>{
       const ingredient=ingredients.find(x=>x.id===ing.ingId);if(!ingredient)return;
-      const totalQty=(ing.baseQty*(ing.mult||1)*(line.qty||0)).toFixed(2).replace(/\.?0+$/,'');
+      const total=((ing.qtyPer||0)*(line.qty||0));
+      const totalStr=total%1===0?total.toFixed(0):total.toFixed(2);
       const row=document.createElement('div');
       row.style.cssText=`display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:${ing.active?'rgba(42,184,184,.05)':'rgba(255,255,255,.02)'};border:1px solid ${ing.active?'rgba(42,184,184,.2)':'rgba(255,255,255,.05)'}`;
       row.innerHTML=`
         <input type="checkbox" ${ing.active?'checked':''} style="accent-color:#2ab8b8;flex-shrink:0"/>
         <span style="flex:1;font-size:12px;color:${ing.active?'var(--text2)':'var(--text4)'}">${ingredient.name}</span>
-        <span style="font-size:10px;color:var(--text4)">×</span>
-        <input type="number" inputmode="decimal" value="${ing.mult||1}" min="0" step="0.5"
-          style="width:48px;background:var(--bg3);color:${ing.active?'#2ab8b8':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none"
+        <input type="number" inputmode="decimal" value="${ing.qtyPer||''}" placeholder="0"
+          style="width:60px;background:var(--bg3);color:${ing.active?'var(--text)':'var(--text4)'};border:1px solid ${ing.active?'rgba(42,184,184,.3)':'var(--border2)'};border-radius:6px;padding:4px 6px;font-size:12px;text-align:center;outline:none"
           ${ing.active?'':'disabled'}/>
-        <span style="font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:56px;flex-shrink:0;text-align:right">
-          ${ing.active?`${totalQty} ${ingredient.unit}`:'—'}
+        <span style="font-size:11px;color:var(--text4);flex-shrink:0">${ingredient.unit}/pza</span>
+        <span style="font-size:11px;color:${ing.active?'#2ab8b8':'var(--text4)'};min-width:60px;flex-shrink:0;text-align:right">
+          ${ing.active&&line.qty?`= ${totalStr} ${ingredient.unit}`:'—'}
         </span>
       `;
       const cb=row.querySelector('input[type=checkbox]');
-      const multInp=row.querySelector('input[type=number]');
+      const qtyInp=row.querySelector('input[type=number]');
       cb.onchange=()=>{
         evLines[li].ings[ii].active=cb.checked;
-        multInp.disabled=!cb.checked;
+        qtyInp.disabled=!cb.checked;
         renderEvLines();updateEvMargen();
       };
-      multInp.oninput=()=>{
-        evLines[li].ings[ii].mult=parseFloat(multInp.value)||0;
-        renderEvLines();updateEvMargen();
+      qtyInp.oninput=()=>{
+        evLines[li].ings[ii].qtyPer=parseFloat(qtyInp.value)||0;
+        // Update total display inline without re-render
+        const t=(evLines[li].ings[ii].qtyPer*(line.qty||0));
+        const tStr=t%1===0?t.toFixed(0):t.toFixed(2);
+        row.querySelector('span:last-child').textContent=`= ${tStr} ${ingredient.unit}`;
+        updateEvMargen();
       };
       wrap.appendChild(row);
     });
@@ -4217,7 +4224,7 @@ function calcEvCosto(){
   evLines.forEach(line=>{
     line.ings.filter(x=>x.active).forEach(x=>{
       const ing=ingredients.find(i=>i.id===x.ingId);if(!ing||!ing.costPerUnit)return;
-      total+=ing.costPerUnit*x.baseQty*(x.mult||1)*(line.qty||0);
+      total+=ing.costPerUnit*(x.qtyPer||0)*(line.qty||0);
     });
   });
   return total;
@@ -4273,7 +4280,7 @@ function registrarEvento(){
     if(!line.productId||!line.qty)return;
     line.ings.filter(x=>x.active).forEach(x=>{
       const idx=ingredients.findIndex(i=>i.id===x.ingId);if(idx<0)return;
-      ingredients[idx].stock=parseFloat((ingredients[idx].stock-x.baseQty*(x.mult||1)*line.qty).toFixed(3));
+      ingredients[idx].stock=parseFloat((ingredients[idx].stock-(x.qtyPer||0)*line.qty).toFixed(3));
       changed=true;
     });
   });
