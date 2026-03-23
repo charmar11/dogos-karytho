@@ -1881,11 +1881,11 @@ body{
   <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
   <div class="admin-tab-view" id="adm-tab-ventas">
     <!-- Period selector -->
-    <div class="admin-range-row" style="margin-bottom:10px">
-      <button class="admin-range-btn active" onclick="setAdminRange('hoy')">Hoy</button>
-      <button class="admin-range-btn" onclick="setAdminRange('semana')">Semana</button>
-      <button class="admin-range-btn" onclick="setAdminRange('mes')">Mes</button>
-      <button class="admin-range-btn" onclick="setAdminRange('todo')">Todo</button>
+    <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
+      <button class="admin-range-btn adm-ventas-btn active" onclick="setAdminRange('hoy')">Hoy</button>
+      <button class="admin-range-btn adm-ventas-btn" onclick="setAdminRange('semana')">Semana</button>
+      <button class="admin-range-btn adm-ventas-btn" onclick="setAdminRange('mes')">Mes</button>
+      <button class="admin-range-btn adm-ventas-btn" onclick="setAdminRange('todo')">Todo</button>
     </div>
 
     <!-- Date picker (specific day) -->
@@ -3453,7 +3453,7 @@ function renderAdmin(){
 
   // Top products
   const counts={},totals={};
-  sales.forEach(s=>s.items.forEach(it=>{
+  sales.forEach(s=>(s.items||[]).forEach(it=>{
     const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
     counts[k]=(counts[k]||0)+it.qty;
     totals[k]=(totals[k]||0)+(it.price*it.qty);
@@ -3704,12 +3704,22 @@ let gastosPeriod='todo';
 
 function loadGastos(){
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
-  // Sync from Firebase
   if(fbDb){
+    // First push any local gastos that aren't in Firebase yet
+    gastos.forEach(g=>{
+      if(g.id) fbDb.ref('gastos/'+g.id).once('value',snap=>{
+        if(!snap.val()) fbDb.ref('gastos/'+g.id).set(g).catch(()=>{});
+      });
+    });
+    // Then listen for updates
     fbDb.ref('gastos').on('value',snap=>{
       const d=snap.val();
-      gastos=d?Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp):[];
-      safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      const fbGastos=d?Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp):[];
+      // Merge: prefer Firebase data if it has more or equal entries, else keep local
+      if(fbGastos.length>=gastos.length){
+        gastos=fbGastos;
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      }
       const tab=document.getElementById('adm-tab-gastos');
       if(tab&&tab.classList.contains('active')) renderGastos();
     });
@@ -3903,19 +3913,21 @@ function exportarGastos(){
 }
 
 function setAdminTab(tab){
-  document.querySelectorAll('.admin-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['resumen','ventas','usuarios','actividad'][i]===tab);
+  // Match each button by its onclick attribute, not by index
+  document.querySelectorAll('.admin-tab').forEach(b=>{
+    const match=b.getAttribute('onclick')||'';
+    b.classList.toggle('active',match.includes("'"+tab+"'"));
   });
   document.querySelectorAll('.admin-tab-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('adm-tab-'+tab).classList.add('active');
   if(tab==='ventas'){
     setAdminRange(adminRange);
-    // Ensure date picker visibility matches current range
     const dateRow=document.querySelector('.date-picker-row');
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
   if(tab==='usuarios')renderAdminUsers();
   if(tab==='actividad')renderActivityLog();
+  if(tab==='gastos'){renderGastos();}
 }
 
 function setAdminRange(r){
@@ -3927,7 +3939,7 @@ function setAdminRange(r){
   if(picker)picker.value='';
   if(badge)badge.style.display='none';
   if(clearBtn)clearBtn.style.display='none';
-  document.querySelectorAll('.admin-range-btn').forEach((b,i)=>{
+  document.querySelectorAll('.adm-ventas-btn').forEach((b,i)=>{
     b.classList.toggle('active',['hoy','semana','mes','todo'][i]===r);
   });
   const hints={
@@ -4010,8 +4022,13 @@ function renderAdminVentas(ps){
   const list=document.getElementById('adm-ventas-list');if(!list)return;
   if(!ps||!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
   list.innerHTML=ps.map((s,i)=>{
-    const its=s.items.map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
-    return `<div class="sale-card" style="animation-delay:${Math.min(i,.2)*0.04}s"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}</div></div><div class="sale-total-amt">$${s.total.toFixed(2)}</div></div><div class="sale-items-txt">${its}</div>${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}</div>`;
+    let its='';
+    if(s.isEvento){
+      its=`<span style="color:var(--red);font-weight:700">🎪 Evento</span>${s.productosDesc?' — '+s.productosDesc:s.eventoName?' — '+s.eventoName:''}`;
+    } else {
+      its=(s.items||[]).map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
+    }
+    return `<div class="sale-card" style="animation-delay:${Math.min(i,.2)*0.04}s"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}${s.isEvento?' · <span style="color:var(--red)">Evento</span>':''}</div></div><div class="sale-total-amt">$${s.total.toFixed(2)}</div></div><div class="sale-items-txt">${its}</div>${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}</div>`;
   }).join('');
 }
 
