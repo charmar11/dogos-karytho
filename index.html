@@ -2852,6 +2852,9 @@ function startFbListeners(){
     const adminScreen=document.getElementById('admin-screen');
     if(adminScreen&&adminScreen.classList.contains('active')){
       renderAdmin();
+      // Also refresh gastos chart if that tab is open (ingresos changed)
+      const gastosTab=document.getElementById('adm-tab-gastos');
+      if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
     }
   });
 }
@@ -3368,7 +3371,11 @@ function confirmarCobro(){
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
   clearOrder();closeCash();
   logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
-  descontarInventario(orderSnapshot);  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
+  descontarInventario(orderSnapshot);
+  // Refresh gastos chart if admin gastos tab is open (ingresos changed)
+  const _gastosTab=document.getElementById('adm-tab-gastos');
+  if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
+  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
   showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
   setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
 }
