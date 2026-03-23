@@ -1733,11 +1733,48 @@ body{
     <label class="form-lbl">Alerta cuando quede menos de</label>
     <input class="form-input" id="ing-m-alert" type="number" inputmode="decimal" placeholder="5" style="margin-bottom:10px"/>
 
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:#2ab8b8;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Clasificación</div>
+      <label class="form-lbl">Categoría</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <select class="form-input" id="ing-m-category" style="background:var(--bg);color:var(--text);flex:1">
+          <option value="">Sin categoría</option>
+        </select>
+        <button onclick="openCatModal()" style="flex-shrink:0;padding:9px 10px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-size:12px">+ Nueva</button>
+      </div>
+      <label class="form-lbl">Tipo de descuento en recetas</label>
+      <div style="display:flex;gap:8px">
+        <button id="btn-deduct-exacto" onclick="setDeductType('exacto')" class="btn-ing teal" style="flex:1;padding:9px;font-size:12px;text-align:center">
+          🎯 Exacto
+        </button>
+        <button id="btn-deduct-estimado" onclick="setDeductType('estimado')" class="btn-ing" style="flex:1;padding:9px;font-size:12px;text-align:center">
+          📊 Estimado
+        </button>
+      </div>
+      <div id="deduct-type-note" style="font-size:11px;color:var(--text4);margin-top:6px;line-height:1.5">
+        🎯 Exacto — se descuenta preciso por venta (ingredientes fijos)
+      </div>
+    </div>
+
     <!-- Cost correction — only shown when editing -->
     <div style="display:flex;gap:10px">
       <button class="btn-secondary" onclick="closeIngModal()" style="flex:1">Cancelar</button>
       <button class="btn-primary" onclick="saveIngredient()" style="flex:2;background:linear-gradient(135deg,#0e4a4a,#0a3838)">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== CATEGORIES MODAL ===== -->
+<div class="inv-modal hidden" id="cat-modal">
+  <div class="inv-modal-box" style="max-width:340px;max-height:80vh;overflow-y:auto">
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;color:var(--text)">🏷️ Categorías</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Organiza tus ingredientes por tipo</div>
+    <div id="cat-list" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input class="form-input" id="cat-new-name" placeholder="Nombre de categoría" style="flex:1"/>
+      <button onclick="addCategory()" style="flex-shrink:0;padding:9px 14px;border-radius:8px;border:1px solid rgba(42,184,184,.4);background:rgba(42,184,184,.08);color:#2ab8b8;font-size:13px;font-weight:700;cursor:pointer">+ Agregar</button>
+    </div>
+    <button class="btn-secondary" onclick="closeCatModal()" style="width:100%">Listo</button>
   </div>
 </div>
 
@@ -2009,6 +2046,7 @@ body{
         </select>
       </div>
       <button class="btn-ing teal" onclick="openAddIngredient()" style="font-size:13px;padding:9px 14px;white-space:nowrap">+ Agregar</button>
+      <button onclick="openCatModal()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(42,184,184,.3);background:rgba(42,184,184,.07);color:#2ab8b8;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🏷️ Categorías</button>
       <button onclick="resetInventarioCompleto()" style="flex-shrink:0;padding:9px 12px;border-radius:8px;border:1px solid rgba(224,32,32,.4);background:rgba(224,32,32,.07);color:#f57474;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 Reset</button>
     </div>
 
@@ -3974,10 +4012,10 @@ function confirmResolve(yes){
 /* ══════════════════════════════════════════
    INVENTARIO — sistema completo
 ══════════════════════════════════════════ */
-let ingredients=[];   // [{id,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit}]
-let recipes={};       // {productId: [{ingId, qty}]}
-let generalRecipe=[]; // [{ingId, qty}] — consumed on every item sold
-let invHistory=[];    // movimientos
+let ingredients=[];   // [{id,name,unit,buyUnit,conversion,stock,alertAt,costPerUnit,categoryId,deductType}]
+let recipes={};
+let generalRecipe=[];
+let invHistory=[];
 let invHistFilter='todo';
 let invHistPeriod='todo';
 let invCostoPeriod='hoy';
@@ -3985,11 +4023,14 @@ let editIngId=null;
 let recipeProductId=null;
 let recipeRows=[];
 let generalRecipeRows=[];
+let ingCategories=[]; // [{id,name}]
+let currentDeductType='exacto';
 
 const SK_ING='dk_ingredients_v1';
 const SK_REC='dk_recipes_v1';
 const SK_GEN_REC='dk_gen_recipe_v1';
 const SK_INV_HIST='dk_inv_history_v1';
+const SK_CATS='dk_ing_cats_v1';
 
 function invLogout(){
   if(fbDb&&presenceSessionId)fbDb.ref('presence/'+presenceSessionId).remove().catch(()=>{});
@@ -4050,6 +4091,12 @@ function startInvListeners(){
     safeStorage.setItem(SK_INV_HIST,JSON.stringify(invHistory));
     if(document.getElementById('inv-tab-historial')?.classList.contains('active'))renderInvHistory();
   });
+  fbDb.ref('ing_categories').on('value',snap=>{
+    const d=snap.val();
+    ingCategories=d?Object.values(d).filter(Boolean):[];
+    safeStorage.setItem(SK_CATS,JSON.stringify(ingCategories));
+    populateCategorySelects();
+  });
 }
 
 function loadInvData(){
@@ -4057,6 +4104,7 @@ function loadInvData(){
   try{recipes=JSON.parse(safeStorage.getItem(SK_REC))||{};}catch{recipes={};}
   try{generalRecipe=JSON.parse(safeStorage.getItem(SK_GEN_REC))||[];}catch{generalRecipe=[];}
   try{invHistory=JSON.parse(safeStorage.getItem(SK_INV_HIST))||[];}catch{invHistory=[];}
+  try{ingCategories=JSON.parse(safeStorage.getItem(SK_CATS))||[];}catch{ingCategories=[];}
 }
 
 function fbSaveIngredients(){
@@ -4071,6 +4119,11 @@ function fbSaveGeneralRecipe(){
   if(!fbDb)return;
   fbDb.ref('general_recipe').set(generalRecipe).catch(()=>{});
   safeStorage.setItem(SK_GEN_REC,JSON.stringify(generalRecipe));
+}
+function fbSaveCategories(){
+  if(!fbDb)return;
+  fbDb.ref('ing_categories').set(ingCategories).catch(()=>{});
+  safeStorage.setItem(SK_CATS,JSON.stringify(ingCategories));
 }
 function logInvHistory(type,desc,data={}){
   if(!fbDb)return;
@@ -4099,7 +4152,65 @@ function setInvTab(tab){
   if(tab==='historial')renderInvHistory();
 }
 
-/* ── STOCK ── */
+/* ── CATEGORIES ── */
+function populateCategorySelects(){
+  const sel=document.getElementById('ing-m-category');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">Sin categoría</option>'+
+    ingCategories.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(cur)sel.value=cur;
+}
+function openCatModal(){
+  renderCatList();
+  document.getElementById('cat-modal').classList.remove('hidden');
+  setTimeout(()=>populateCategorySelects(),50);
+}
+function closeCatModal(){
+  document.getElementById('cat-modal').classList.add('hidden');
+  populateCategorySelects();
+}
+function renderCatList(){
+  const el=document.getElementById('cat-list');if(!el)return;
+  if(!ingCategories.length){el.innerHTML='<div style="color:var(--text4);font-size:12px;padding:8px 0">Sin categorías. Agrega una abajo.</div>';return;}
+  el.innerHTML=ingCategories.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;margin-bottom:6px">
+      <span style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${c.name}</span>
+      <span style="font-size:11px;color:var(--text4)">${ingredients.filter(x=>x.categoryId===c.id).length} ing.</span>
+      <button onclick="deleteCategory('${c.id}')" style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+function addCategory(){
+  const name=document.getElementById('cat-new-name').value.trim();
+  if(!name){showToast('Escribe el nombre','red');return;}
+  if(ingCategories.find(c=>c.name.toLowerCase()===name.toLowerCase())){showToast('Ya existe','red');return;}
+  ingCategories.push({id:'cat_'+Date.now(),name});
+  fbSaveCategories();
+  document.getElementById('cat-new-name').value='';
+  renderCatList();
+  populateCategorySelects();
+}
+function deleteCategory(id){
+  // Unassign from ingredients
+  ingredients=ingredients.map(i=>i.categoryId===id?{...i,categoryId:''}:i);
+  fbSaveIngredients();
+  ingCategories=ingCategories.filter(c=>c.id!==id);
+  fbSaveCategories();
+  renderCatList();
+  populateCategorySelects();
+}
+
+/* ── DEDUCT TYPE ── */
+function setDeductType(t){
+  currentDeductType=t;
+  const btnEx=document.getElementById('btn-deduct-exacto');
+  const btnEst=document.getElementById('btn-deduct-estimado');
+  if(btnEx) btnEx.className='btn-ing'+(t==='exacto'?' teal':'');
+  if(btnEst) btnEst.className='btn-ing'+(t==='estimado'?' teal':'');
+  const note=document.getElementById('deduct-type-note');
+  if(note) note.textContent=t==='exacto'
+    ?'🎯 Exacto — se descuenta preciso por venta (ingredientes fijos como salchicha, pan)'
+    :'📊 Estimado — descuento aproximado (condimentos que varían por persona)';
+}
 function renderInvStock(){
   const list=document.getElementById('inv-ingredients-list');
   const alerts=document.getElementById('inv-alerts');
@@ -4136,24 +4247,53 @@ function renderInvStock(){
 
   if(!filtered.length){list.innerHTML=`<div class="admin-empty">Sin ingredientes con unidad "${unitFilter}"</div>`;return;}
 
-  list.innerHTML=filtered.map((ing,idx)=>{
+  // Group by category
+  const grouped={};
+  const uncategorized=[];
+  filtered.forEach(ing=>{
+    if(ing.categoryId){
+      if(!grouped[ing.categoryId])grouped[ing.categoryId]=[];
+      grouped[ing.categoryId].push(ing);
+    } else {
+      uncategorized.push(ing);
+    }
+  });
+
+  function ingCard(ing,idx){
     const cls=ing.stock<=0?'out':ing.stock<=ing.alertAt?'low':'ok';
-    const convStr=ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1?` &nbsp;·&nbsp; 1 ${ing.buyUnit} = ${ing.conversion} ${ing.unit}`:'';
-    const costStr=ing.costPerUnit>0?`$${ing.costPerUnit.toFixed(2)}/${ing.unit}`:'Sin costo aun';
-    return `<div class="ing-card" style="animation-delay:${idx*.03}s">
+    const convStr=ing.buyUnit&&ing.buyUnit!==ing.unit&&ing.conversion>1?` · 1 ${ing.buyUnit} = ${ing.conversion} ${ing.unit}`:'';
+    const costStr=ing.costPerUnit>0?`$${ing.costPerUnit.toFixed(2)}/${ing.unit}`:'Sin costo';
+    const deductBadge=ing.deductType==='estimado'
+      ?`<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(167,139,250,.15);color:#a78bfa;font-weight:700;margin-left:4px">~estimado</span>`:'';
+    return `<div class="ing-card" style="animation-delay:${idx*.02}s">
       <div class="ing-icon">${ingEmoji(ing.name)}</div>
       <div class="ing-info">
-        <div class="ing-name">${ing.name}</div>
-        <div class="ing-meta">Uso: ${ing.unit}${convStr} &nbsp;·&nbsp; Costo: ${costStr} &nbsp;·&nbsp; Alerta: &lt;${ing.alertAt}</div>
+        <div class="ing-name">${ing.name}${deductBadge}</div>
+        <div class="ing-meta">Uso: ${ing.unit}${convStr} · ${costStr} · Alerta: &lt;${ing.alertAt}</div>
       </div>
       <div class="ing-stock ${cls}">${ing.stock}<div style="font-size:10px;font-weight:600;opacity:.7">${ing.unit}</div></div>
       <div class="ing-actions">
         <button class="btn-ing teal" onclick="openEditIngredient('${ing.id}')">✏️</button>
-        <button class="btn-ing" onclick="openIngResetModal('${ing.id}')" style="border-color:rgba(245,200,0,.3);color:#F5C800" title="Resetear">🔄</button>
+        <button class="btn-ing" onclick="openIngResetModal('${ing.id}')" style="border-color:rgba(245,200,0,.3);color:#F5C800">🔄</button>
         <button class="btn-ing danger" onclick="deleteIngredient('${ing.id}')">✕</button>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  let html='';
+  // Render by category
+  ingCategories.forEach(cat=>{
+    const items=grouped[cat.id]||[];
+    if(!items.length)return;
+    html+=`<div style="font-size:11px;font-weight:800;color:#2ab8b8;letter-spacing:.08em;text-transform:uppercase;margin:12px 0 6px;padding:0 2px">${cat.name}</div>`;
+    html+=items.map((ing,i)=>ingCard(ing,i)).join('');
+  });
+  // Uncategorized at bottom
+  if(uncategorized.length){
+    if(html) html+=`<div style="font-size:11px;font-weight:800;color:var(--text4);letter-spacing:.08em;text-transform:uppercase;margin:12px 0 6px;padding:0 2px">Sin categoría</div>`;
+    html+=uncategorized.map((ing,i)=>ingCard(ing,i)).join('');
+  }
+  list.innerHTML=html;
 }
 
 function ingEmoji(name){
@@ -4205,11 +4345,10 @@ function openAddIngredient(){
   document.getElementById('ing-m-stock').value='';
   document.getElementById('ing-m-alert').value='5';
   document.getElementById('conversion-field').style.display='none';
-  // Hide cost correction for new ingredients
-  const costSection=document.getElementById('ing-cost-section');
-  if(costSection)costSection.style.display='none';
+  populateCategorySelects();
+  document.getElementById('ing-m-category').value='';
+  setDeductType('exacto');
   document.getElementById('ing-modal').classList.remove('hidden');
-  if(document.getElementById('ing-m-reset-cost'))document.getElementById('ing-m-reset-cost').value='';
   setTimeout(()=>document.getElementById('ing-m-name').focus(),100);
 }
 function openEditIngredient(id){
@@ -4222,58 +4361,13 @@ function openEditIngredient(id){
   document.getElementById('ing-m-conversion').value=ing.conversion||'';
   document.getElementById('ing-m-stock').value=ing.stock;
   document.getElementById('ing-m-alert').value=ing.alertAt;
+  populateCategorySelects();
+  document.getElementById('ing-m-category').value=ing.categoryId||'';
+  setDeductType(ing.deductType||'exacto');
   toggleConversionField();
   document.getElementById('ing-modal').classList.remove('hidden');
 }
 function closeIngModal(){document.getElementById('ing-modal').classList.add('hidden');}
-/* ── INDIVIDUAL INGREDIENT RESET ── */
-let resetIngId=null;
-function openIngResetModal(id){
-  const ing=ingredients.find(i=>i.id===id);if(!ing)return;
-  resetIngId=id;
-  document.getElementById('ing-reset-title').textContent=`🔄 ${ing.name}`;
-  document.getElementById('ing-reset-sub').textContent=
-    `Stock: ${ing.stock} ${ing.unit}  ·  Costo: ${ing.costPerUnit>0?'$'+ing.costPerUnit.toFixed(2)+'/'+ing.unit:'sin costo'}  ·  Gasto acumulado: $${(ing.totalCostPaid||0).toFixed(2)}`;
-  document.getElementById('ing-reset-modal').classList.remove('hidden');
-}
-function doIngReset(type){
-  const idx=ingredients.findIndex(i=>i.id===resetIngId);if(idx<0)return;
-  const ing={...ingredients[idx]};
-  document.getElementById('ing-reset-modal').classList.add('hidden');
-
-  if(type==='stock'){
-    ingredients[idx]={...ing,stock:0};
-    logInvHistory('ajuste',`Reset stock → 0 — ${ing.name}`);
-    fbSaveIngredients();
-  } else {
-    // For precio/gasto/todo: reset fields AND purge old history entries for this ingredient
-    if(type==='precio') ingredients[idx]={...ing,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
-    if(type==='gasto')  ingredients[idx]={...ing,totalCostPaid:0};
-    if(type==='todo')   ingredients[idx]={...ing,stock:0,costPerUnit:0,totalCostPaid:0,totalQtyBought:0};
-    fbSaveIngredients();
-    // Remove all real purchase history entries for this ingredient so they don't double-count
-    if(fbDb){
-      fbDb.ref('inv_history').once('value',snap=>{
-        const d=snap.val();if(!d)return;
-        Object.entries(d).forEach(([key,h])=>{
-          if(h.type==='entrada'&&h.data?.ingId===ing.id&&(h.data?.entryType==='real'||!h.data?.entryType)){
-            fbDb.ref('inv_history/'+key).remove().catch(()=>{});
-          }
-        });
-        // Update local cache after purge
-        invHistory=invHistory.filter(h=>!(h.type==='entrada'&&h.data?.ingId===ing.id&&(h.data?.entryType==='real'||!h.data?.entryType)));
-        safeStorage.setItem(SK_INV_HIST,JSON.stringify(invHistory));
-        if(document.getElementById('inv-tab-historial')?.classList.contains('active'))renderInvHistory();
-      });
-    }
-    logInvHistory('ajuste',`Reset (${type}) — ${ing.name}`);
-  }
-
-  renderInvStock();
-  renderInvCostos();
-  const labels={stock:'Stock → 0',precio:'Precio reseteado',gasto:'Quitado de gastos',todo:'Reset completo'};
-  showToast(`${ing.name} — ${labels[type]||type}`,'green');
-}
 
 function saveIngredient(){
   const name=document.getElementById('ing-m-name').value.trim();
@@ -4282,17 +4376,20 @@ function saveIngredient(){
   const conversion=parseFloat(document.getElementById('ing-m-conversion').value)||1;
   const stock=parseFloat(document.getElementById('ing-m-stock').value)||0;
   const alertAt=parseFloat(document.getElementById('ing-m-alert').value)||5;
+  const categoryId=document.getElementById('ing-m-category').value||'';
+  const deductType=currentDeductType||'exacto';
   if(!name){showToast('Escribe el nombre','red');return;}
   if(editIngId){
     const idx=ingredients.findIndex(i=>i.id===editIngId);
     if(idx>=0){
       const old=ingredients[idx];
-      ingredients[idx]={...old,name,unit,buyUnit,conversion,stock,alertAt};
+      ingredients[idx]={...old,name,unit,buyUnit,conversion,stock,alertAt,categoryId,deductType};
     }
     logInvHistory('ajuste',`${name} editado`);
   } else {
-    ingredients.push({id:'ing_'+Date.now(),name,unit,buyUnit,conversion,stock,alertAt,costPerUnit:0,totalCostPaid:0,totalQtyBought:0});
-    logInvHistory('ajuste',`Ingrediente "${name}" creado — stock inicial: ${stock} ${unit}`);
+    ingredients.push({id:'ing_'+Date.now(),name,unit,buyUnit,conversion,stock,alertAt,
+      categoryId,deductType,costPerUnit:0,totalCostPaid:0,totalQtyBought:0});
+    logInvHistory('ajuste',`Ingrediente "${name}" creado`);
   }
   fbSaveIngredients();
   closeIngModal();
@@ -4540,15 +4637,37 @@ function mergeRecipe(baseRec, overrides){
 
 function recipeIngHTML(rec){
   if(!rec.length) return '<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin ingredientes definidos</div>';
-  return rec.map(r=>{
-    const ing=ingredients.find(i=>i.id===r.ingId);if(!ing)return '';
+
+  // Group by category
+  const catGroups={};
+  const noCat=[];
+  rec.forEach(r=>{
+    const ing=ingredients.find(i=>i.id===r.ingId);if(!ing)return;
+    const catId=ing.categoryId||'';
+    if(catId){if(!catGroups[catId])catGroups[catId]=[];catGroups[catId].push({r,ing});}
+    else noCat.push({r,ing});
+  });
+
+  function rowHTML({r,ing}){
+    const estimadoBadge=ing.deductType==='estimado'
+      ?`<span style="font-size:9px;padding:1px 4px;border-radius:4px;background:rgba(167,139,250,.15);color:#a78bfa;margin-left:4px">~est</span>`:'';
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
       <span>${ingEmoji(ing.name)}</span>
-      <span style="font-size:12px;color:var(--text2);flex:1">${ing.name}</span>
+      <span style="font-size:12px;color:var(--text2);flex:1">${ing.name}${estimadoBadge}</span>
       <span style="font-size:12px;font-weight:700;color:#2ab8b8">${r.qty} ${ing.unit}</span>
       ${ing.costPerUnit>0?`<span style="font-size:10px;color:var(--text3)">≈$${(ing.costPerUnit*r.qty).toFixed(2)}</span>`:''}
     </div>`;
-  }).filter(Boolean).join('');
+  }
+
+  let html='';
+  ingCategories.forEach(cat=>{
+    const items=catGroups[cat.id];
+    if(!items||!items.length)return;
+    html+=`<div style="font-size:10px;font-weight:800;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 4px">${cat.name}</div>`;
+    html+=items.map(rowHTML).join('');
+  });
+  if(noCat.length) html+=noCat.map(rowHTML).join('');
+  return html||'<div style="font-size:11px;color:var(--text4);padding:4px 0">Sin ingredientes</div>';
 }
 
 function renderInvRecipes(){
@@ -5323,6 +5442,7 @@ function descontarInventario(items){
 
     rec.forEach(r=>{
       const idx=ingredients.findIndex(i=>i.id===r.ingId);if(idx<0)return;
+      if(ingredients[idx].deductType==='estimado')return; // estimado = no auto-deduct
       ingredients[idx].stock=parseFloat((ingredients[idx].stock-r.qty*it.qty).toFixed(3));
       changed=true;
     });
