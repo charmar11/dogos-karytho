@@ -3407,24 +3407,27 @@ let cidopGastosDiaOffset=0;   // 0=hoy, -1=ayer, etc.
 let cidopGastosSemOffset=0;   // 0=esta semana, -1=anterior, etc.
 let cidopGastosMesOffset=0;   // 0=este mes, -1=anterior, etc.
 
+// ── helper: fecha local como YYYY-MM-DD (sin desfase UTC) ──
+function localISODate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
 // ── helpers de fecha con offset ──
 function getCidopDiaISO(){
   const d=new Date(); d.setDate(d.getDate()+cidopGastosDiaOffset);
-  return d.toISOString().slice(0,10);
+  return localISODate(d);
 }
 function getCidopSemRange(){
   const now=new Date(); now.setDate(now.getDate()+cidopGastosSemOffset*7);
   const dow=(now.getDay()+6)%7;
   const mon=new Date(now); mon.setDate(now.getDate()-dow);
   const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-  return{mon:mon.toISOString().slice(0,10),sun:sun.toISOString().slice(0,10)};
+  return{mon:localISODate(mon),sun:localISODate(sun)};
 }
 function getCidopMesRange(){
   const now=new Date();
   const y=now.getFullYear(), m=now.getMonth()+cidopGastosMesOffset;
   const d=new Date(y, m, 1);
-  const first=new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
-  const last=new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+  const first=localISODate(new Date(d.getFullYear(), d.getMonth(), 1));
+  const last=localISODate(new Date(d.getFullYear(), d.getMonth()+1, 0));
   const label=new Date(d.getFullYear(), d.getMonth(), 1)
     .toLocaleDateString('es-MX',{month:'long',year:'numeric'});
   return{first,last,label};
@@ -3434,7 +3437,7 @@ function getCidopMesRange(){
 function cidopGastoNavPrev(){ cidopGastosDiaOffset--; _syncDiaInput(); renderCidopGastosList(); }
 function cidopGastoNavNext(){ if(cidopGastosDiaOffset<0){ cidopGastosDiaOffset++; _syncDiaInput(); renderCidopGastosList(); } }
 function cidopGastoNavHoy(){ cidopGastosDiaOffset=0; _syncDiaInput(); renderCidopGastosList(); }
-function cidopGastoNavDia(val){ if(!val)return; const diff=Math.round((new Date(val+'T12:00:00')-new Date(new Date().toISOString().slice(0,10)+'T12:00:00'))/(86400000)); cidopGastosDiaOffset=diff; renderCidopGastosList(); }
+function cidopGastoNavDia(val){ if(!val)return; const diff=Math.round((new Date(val+'T12:00:00')-new Date(todayISO()+'T12:00:00'))/(86400000)); cidopGastosDiaOffset=diff; renderCidopGastosList(); }
 function _syncDiaInput(){ const el=document.getElementById('cidop-gastos-fecha-dia'); if(el) el.value=getCidopDiaISO(); }
 
 // ── navegación Semana ──
@@ -3492,7 +3495,7 @@ function agregarGastoCidop(){
   const desc=document.getElementById('cidop-gasto-desc').value.trim();
   const monto=parseFloat(document.getElementById('cidop-gasto-monto').value)||0;
   const cat=document.getElementById('cidop-gasto-cat').value||'otro';
-  const fechaRaw=document.getElementById('cidop-gasto-fecha').value||new Date().toISOString().slice(0,10);
+  const fechaRaw=document.getElementById('cidop-gasto-fecha').value||todayISO();
   const fecha=normFecha(fechaRaw)||todayISO(); // always YYYY-MM-DD
   if(!desc){showToast('Escribe una descripción','red');return;}
   if(!monto){showToast('Escribe el monto','red');return;}
@@ -3625,8 +3628,8 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
   // ── MES: un card por semana calendario colapsable ──
   if(period==='mes'){
     const now=new Date();
-    const first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
-    const last=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+    const first=localISODate(new Date(now.getFullYear(),now.getMonth(),1));
+    const last=localISODate(new Date(now.getFullYear(),now.getMonth()+1,0));
     const total=gs.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
@@ -3634,11 +3637,11 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
     el.appendChild(hdr);
     // Generar semanas calendario del mes (Lun–Dom)
     const semanas=[];let cur=new Date(first+'T12:00:00');let numSem=1;
-    while(cur.toISOString().slice(0,10)<=last){
+    while(localISODate(cur)<=last){
       const dow=(cur.getDay()+6)%7;
       const lun=new Date(cur);lun.setDate(cur.getDate()-dow);
       const dom=new Date(lun);dom.setDate(lun.getDate()+6);
-      const wm=lun.toISOString().slice(0,10);const ws=dom.toISOString().slice(0,10);
+      const wm=localISODate(lun);const ws=localISODate(dom);
       const rm=wm<first?first:wm;const rs=ws>last?last:ws;
       if(!semanas.find(s=>s.mon===rm))semanas.push({mon:rm,sun:rs,num:numSem++});
       cur.setDate(cur.getDate()+(7-dow));
@@ -4113,7 +4116,7 @@ function renderAdmin(){
   screen.classList.add('active');
   // Set default date for gasto form
   const gf=document.getElementById('gasto-fecha');
-  if(gf&&!gf.value) gf.value=new Date().toISOString().slice(0,10);
+  if(gf&&!gf.value) gf.value=todayISO();
 
   // Global stats
   const total=sales.reduce((s,v)=>s+v.total,0);
@@ -4464,8 +4467,8 @@ function getGastosFiltrados(){
   if(gastosPeriod==='hoy') return gastos.filter(gastoEsHoy).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   if(gastosPeriod==='semana'){
     const dow=(new Date().getDay()+6)%7;
-    const lun=new Date(); lun.setDate(lun.getDate()-dow); const lunISO=lun.toISOString().slice(0,10);
-    const dom=new Date(lun); dom.setDate(lun.getDate()+6); const domISO=dom.toISOString().slice(0,10);
+    const lun=new Date(); lun.setDate(lun.getDate()-dow); const lunISO=localISODate(lun);
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6); const domISO=localISODate(dom);
     return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   }
   if(gastosPeriod==='mes') return gastos.filter(gastoEsMes).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
@@ -7374,7 +7377,7 @@ function renderInvHistory(){
     data.forEach(h=>{
       const d=new Date(h.ts);
       const ws=new Date(d);ws.setDate(d.getDate()-d.getDay());
-      const wk=ws.toISOString().slice(0,10);
+      const wk=localISODate(ws);
       if(!byWeek[wk]){
         const we=new Date(ws);we.setDate(ws.getDate()+6);
         byWeek[wk]={label:`${toDateKey(ws)} – ${toDateKey(we)}`,items:[]};
@@ -7717,5 +7720,5 @@ if(savedSession==='1' && savedRole==='admin'){
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
-</body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="b34b1213-ee50-4d8a-ae77-1fda116b5ebd"></script></body>
 </html>
