@@ -2086,17 +2086,12 @@ body{
           <div class="admin-stat-val" id="adm-g-ganancia" style="font-size:18px">$0</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button class="admin-range-btn active" id="gp-btn-hoy" onclick="setGastosPeriod('hoy')">Hoy</button>
-        <button class="admin-range-btn" id="gp-btn-semana" onclick="setGastosPeriod('semana')">Semana</button>
-        <button class="admin-range-btn" id="gp-btn-mes" onclick="setGastosPeriod('mes')">Mes</button>
-        <button class="admin-range-btn" id="gp-btn-todo" onclick="setGastosPeriod('todo')">Todo</button>
-      </div>
-      <!-- Sub-selector: solo visible en Hoy -->
-      <div id="gp-sub-hoy" style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;background:var(--bg3);border-radius:9px">
-        <span style="font-size:10px;color:var(--text4);font-weight:700;align-self:center;margin-right:2px">Ver por:</span>
-        <button class="admin-range-btn active" id="gps-btn-hora" onclick="setGastosSubPeriod('hora')">Hora</button>
-        <button class="admin-range-btn" id="gps-btn-dia" onclick="setGastosSubPeriod('dia')">Día completo</button>
+      <!-- Selector de día -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="date" id="adm-gastos-dia-input"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+          onchange="admGastosSetDay(this.value)"/>
+        <button onclick="admGastosNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">Hoy</button>
       </div>
     </div>
 
@@ -3570,13 +3565,13 @@ function getCidopGastosFiltrados(){
 }
 
 /* ── Helper compartido: construye el HTML del historial en cualquier contenedor ── */
-function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
+function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
   el.innerHTML='';
   if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
 
   function getCat(cid){return(gastoCats&&gastoCats.find(c=>c.id===cid))||{icon:'📝',name:cid&&cid!=='__otros'?cid:'Sin categoría',color:'#888'};}
 
-  // ── HOY: individuales ──
+  // ── HOY: individuales con edición inline ──
   if(period==='hoy'||period==='dia'){
     const sorted=[...gs].sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
     const total=sorted.reduce((s,g)=>s+g.monto,0);
@@ -3587,25 +3582,72 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
     sorted.forEach(g=>{
       const c=getCat(g.cat);
       const t=g.registradoEn?new Date(g.registradoEn).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):g.timestamp?new Date(g.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
-      const card=document.createElement('div');
-      card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
-      card.innerHTML=`
+      const wrapper=document.createElement('div');
+      wrapper.style.cssText='border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px;overflow:hidden';
+
+      // ── Vista normal ──
+      const viewRow=document.createElement('div');
+      viewRow.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px';
+      viewRow.innerHTML=`
         <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
-            ${onDateChange?`<input type="date" class="_g-date" value="${g.fecha}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 6px;font-size:11px;color:var(--text3);outline:none;cursor:pointer;color-scheme:dark"/>`:`<span style="font-size:11px;color:var(--text4)">${g.fecha}</span>`}
+            <span style="font-size:11px;color:var(--text4)">${g.fecha}</span>
             <span style="font-size:11px;color:${c.color}">${c.name}</span>
             <span style="font-size:11px;color:var(--text4)">${g.user}${t?' · '+t:''}</span>
           </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           <div style="font-size:15px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
-          <button class="_g-del" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
+          <div style="display:flex;gap:6px">
+            <button class="_g-edit" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:6px;color:var(--gold);font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">✏️ Editar</button>
+            <button class="_g-del" style="background:rgba(224,32,32,.08);border:1px solid rgba(224,32,32,.25);border-radius:6px;color:var(--red);font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">✕</button>
+          </div>
         </div>`;
-      if(onDateChange) card.querySelector('._g-date').onchange=function(){onDateChange(g,this.value);};
-      card.querySelector('._g-del').onclick=()=>onDelete(g);
-      el.appendChild(card);
+
+      // ── Formulario de edición inline (oculto) ──
+      const catOptions=(gastoCats||[]).map(cat=>`<option value="${cat.id}"${cat.id===g.cat?' selected':''}>${cat.icon} ${cat.name}</option>`).join('');
+      const editForm=document.createElement('div');
+      editForm.style.cssText='display:none;padding:12px 12px 14px;border-top:1px solid var(--border);background:var(--bg3)';
+      editForm.innerHTML=`
+        <div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Editar gasto</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input class="_ef-desc" type="text" value="${g.desc.replace(/"/g,'&quot;')}" placeholder="Descripción"
+            style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%"/>
+          <div style="display:flex;gap:8px">
+            <input class="_ef-monto" type="number" inputmode="decimal" value="${g.monto}" placeholder="Monto"
+              style="flex:1;background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none"/>
+            <input class="_ef-fecha" type="date" value="${g.fecha}"
+              style="flex:1;background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"/>
+          </div>
+          <select class="_ef-cat" style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none">
+            ${catOptions}
+          </select>
+          <div style="display:flex;gap:8px;margin-top:2px">
+            <button class="_ef-save" style="flex:1;background:linear-gradient(135deg,var(--green),#1e6e1e);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;padding:10px;cursor:pointer">💾 Guardar</button>
+            <button class="_ef-cancel" style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-size:13px;font-weight:700;padding:10px;cursor:pointer">Cancelar</button>
+          </div>
+        </div>`;
+
+      viewRow.querySelector('._g-edit').onclick=()=>{
+        editForm.style.display=editForm.style.display==='none'?'block':'none';
+      };
+      viewRow.querySelector('._g-del').onclick=()=>onDelete(g);
+      editForm.querySelector('._ef-cancel').onclick=()=>{editForm.style.display='none';};
+      editForm.querySelector('._ef-save').onclick=()=>{
+        const nd=editForm.querySelector('._ef-desc').value.trim();
+        const nm=parseFloat(editForm.querySelector('._ef-monto').value)||0;
+        const nf=editForm.querySelector('._ef-fecha').value||g.fecha;
+        const nc=editForm.querySelector('._ef-cat').value||g.cat;
+        if(!nd){showToast('Escribe una descripción','red');return;}
+        if(!nm){showToast('Escribe el monto','red');return;}
+        if(typeof onEdit==='function') onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc});
+      };
+
+      wrapper.appendChild(viewRow);
+      wrapper.appendChild(editForm);
+      el.appendChild(wrapper);
     });
     return;
   }
@@ -4390,8 +4432,9 @@ let admChartInstance=null;
    GASTOS MANUALES — Admin
 ══════════════════════════════════════════ */
 let gastos=[];
-let gastosPeriod='hoy';
-let gastosSubPeriod='hora'; // 'hora' or 'dia' — only used when gastosPeriod==='hoy'
+let gastosPeriod='hoy'; // kept for export functions compatibility
+let gastosSubPeriod='hora';
+let admGastosDiaISO=''; // YYYY-MM-DD seleccionado en el admin panel
 
 function loadGastos(){
   if(!fbDb){return;}
@@ -4444,47 +4487,42 @@ function eliminarGasto(id){
   });
 }
 
-function setGastosPeriod(p){
-  gastosPeriod=p;
-  ['hoy','semana','mes','todo'].forEach(k=>{
-    const b=document.getElementById('gp-btn-'+k);
-    if(b) b.classList.toggle('active',k===p);
-  });
-  const sub=document.getElementById('gp-sub-hoy');
-  if(sub) sub.style.display=p==='hoy'?'flex':'none';
-  // Always do a fresh FB read to ensure gastos are current before rendering
-  if(fbDb){
-    fbDb.ref('gastos').once('value',snap=>{
-      const d=snap.val();
-      if(d&&Object.keys(d).length>0){
-        gastos=Object.values(d).filter(Boolean).map(g=>({...g,fecha:normFecha(g.fecha||'')})).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-      }
-      renderGastos();
-    });
-  } else {
-    renderGastos();
-  }
-}
-function setGastosSubPeriod(sp){
-  gastosSubPeriod=sp;
-  ['hora','dia'].forEach(k=>{
-    const b=document.getElementById('gps-btn-'+k);
-    if(b) b.classList.toggle('active',k===sp);
-  });
+// ── Admin gastos: navegación por día ──
+function admGastosSetDay(iso){
+  if(!iso)return;
+  admGastosDiaISO=iso;
   renderGastos();
 }
+function admGastosNavHoy(){
+  admGastosDiaISO=todayISO();
+  const inp=document.getElementById('adm-gastos-dia-input');
+  if(inp) inp.value=admGastosDiaISO;
+  renderGastos();
+}
+function _initAdmGastosDia(){
+  if(!admGastosDiaISO) admGastosDiaISO=todayISO();
+  const inp=document.getElementById('adm-gastos-dia-input');
+  if(inp&&!inp.value) inp.value=admGastosDiaISO;
+}
+
+// kept for backward compat (export functions still call gastosPeriod)
+function setGastosPeriod(p){ gastosPeriod=p; renderGastos(); }
+function setGastosSubPeriod(sp){ gastosSubPeriod=sp; renderGastos(); }
 
 function getGastosFiltrados(){
-  if(gastosPeriod==='hoy') return gastos.filter(gastoEsHoy).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  if(gastosPeriod==='semana'){
-    const dow=(new Date().getDay()+6)%7;
-    const lun=new Date(); lun.setDate(lun.getDate()-dow); const lunISO=localISODate(lun);
-    const dom=new Date(lun); dom.setDate(lun.getDate()+6); const domISO=localISODate(dom);
-    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  }
-  if(gastosPeriod==='mes') return gastos.filter(gastoEsMes).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  const iso=admGastosDiaISO||todayISO();
+  return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+}
+
+function guardarEdicionGasto(g, cambios){
+  const idx=gastos.findIndex(x=>x.id===g.id);
+  if(idx<0)return;
+  Object.assign(gastos[idx],cambios);
+  safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+  if(fbDb) fbDb.ref('gastos/'+g.id).update(cambios).catch(()=>{});
+  showToast('✅ Gasto actualizado','green');
+  renderGastos();
+  renderCidopGastosList();
 }
 
 function renderGastoCatSelect(){
@@ -4581,18 +4619,18 @@ function addGastoCat(){
 }
 
 function renderGastos(){
+  _initAdmGastosDia();
+  const iso=admGastosDiaISO||todayISO();
   const gs=getGastosFiltrados();
   const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
 
-  // Balance
-  const today=toDateKey(new Date());
-  let salesFilt=sales;
-  if(gastosPeriod==='hoy') salesFilt=sales.filter(s=>s.date===today);
-  else if(gastosPeriod==='semana') salesFilt=sales.filter(s=>isSameWeek(s.timestamp));
-  else if(gastosPeriod==='mes') salesFilt=sales.filter(s=>isSameMonth(s.timestamp));
+  // Balance: ingresos del día seleccionado
+  const dayKey=toDateKey(new Date(iso+'T12:00:00'));
+  const salesFilt=sales.filter(s=>s.date===dayKey);
   const ingresos=salesFilt.reduce((s,v)=>s+v.total,0);
   const ganancia=ingresos-totalGasto;
-  const perLbl={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod];
+  const isToday=iso===todayISO();
+  const perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
 
   const gI=document.getElementById('adm-g-ingresos');
   const gG=document.getElementById('adm-g-gastos');
@@ -4606,13 +4644,13 @@ function renderGastos(){
   // ── Gráfica ──
   renderGastosCharts(gs, ingresos, totalGasto, salesFilt);
 
-  // ── Lista en Admin ──
+  // ── Lista con edición ──
   const el=document.getElementById('adm-gastos-list');
   if(!el)return;
-  const periodMap={hoy:'hoy',semana:'semana',mes:'mes',todo:'todo'};
-  _buildGastosHTML(el, gs, periodMap[gastosPeriod]||gastosPeriod,
+  _buildGastosHTML(el, gs, 'hoy',
     (g)=>eliminarGasto(g.id),
-    (g,nf)=>{const idx=gastos.findIndex(x=>x.id===g.id);if(idx<0)return;gastos[idx].fecha=nf;safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbDb.ref('gastos/'+g.id).update({fecha:nf}).catch(()=>{});showToast('Fecha actualizada','green');renderGastos();}
+    null,
+    (g,cambios)=>guardarEdicionGasto(g,cambios)
   );
 }
 
