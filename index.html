@@ -3456,9 +3456,10 @@ function _syncMesLabel(){
 }
 
 function initCidopGastos(){
-  // Set default date
+  // Set default date (use local date to avoid UTC offset shifting to next day)
   const fi=document.getElementById('cidop-gasto-fecha');
-  if(fi&&!fi.value) fi.value=new Date().toISOString().slice(0,10);
+  if(fi&&!fi.value){const n=new Date();fi.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
+
   // Sync search controls
   _syncDiaInput();
   _syncSemLabel();
@@ -3548,176 +3549,154 @@ function getCidopGastosFiltrados(){
     const{first,last}=getCidopMesRange();
     return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=first&&f<=last;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
-  return [...gastos];
+  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
 }
 
-function renderCidopGastosList(){
-  const el=document.getElementById('cidop-gastos-list');if(!el)return;
-  const gs=getCidopGastosFiltrados();
-  if(!gs.length){
-    el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';
-    return;
-  }
+/* ── Helper compartido: construye el HTML del historial en cualquier contenedor ── */
+function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
   el.innerHTML='';
+  if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
 
-  // ── DÍA: igual que antes — gastos individuales por hora ──
-  if(cidopGastosPeriod==='dia'){
-    const iso=getCidopDiaISO();
-    // label de fecha
-    const fechaLbl=cidopGastosDiaOffset===0?'Hoy':
-      new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-    const totalDia=gs.reduce((s,g)=>s+g.monto,0);
+  function getCat(cid){return(gastoCats&&gastoCats.find(c=>c.id===cid))||{icon:'📝',name:cid&&cid!=='__otros'?cid:'Sin categoría',color:'#888'};}
+
+  // ── HOY: individuales ──
+  if(period==='hoy'||period==='dia'){
+    const sorted=[...gs].sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    const total=sorted.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:capitalize">${fechaLbl}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalDia.toFixed(2)}</span>`;
+    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Gastos del día</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${total.toFixed(2)}</span>`;
     el.appendChild(hdr);
-    gs.forEach(g=>{
-      const catObj=(gastoCats&&gastoCats.find(c=>c.id===g.cat))||{icon:'📝',name:g.cat||'Otro',color:'#888'};
+    sorted.forEach(g=>{
+      const c=getCat(g.cat);
+      const t=g.registradoEn?new Date(g.registradoEn).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):g.timestamp?new Date(g.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
       const card=document.createElement('div');
       card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
       card.innerHTML=`
-        <div style="width:34px;height:34px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catObj.icon}</div>
+        <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
-          <div style="font-size:11px;color:var(--text4);margin-top:2px">${catObj.name} · ${g.fecha} · ${g.user}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
+            ${onDateChange?`<input type="date" class="_g-date" value="${g.fecha}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 6px;font-size:11px;color:var(--text3);outline:none;cursor:pointer;color-scheme:dark"/>`:`<span style="font-size:11px;color:var(--text4)">${g.fecha}</span>`}
+            <span style="font-size:11px;color:${c.color}">${c.name}</span>
+            <span style="font-size:11px;color:var(--text4)">${g.user}${t?' · '+t:''}</span>
+          </div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:15px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
-          <button style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
-            onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
+          <button class="_g-del" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
         </div>`;
-      card.querySelector('button').onclick=()=>{
-        customConfirm('¿Eliminar este gasto?','Eliminar',()=>{
-          gastos=gastos.filter(x=>x.id!==g.id);
-          safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-          if(fbDb) fbDb.ref('gastos/'+g.id).remove().catch(()=>{});
-          showToast('Gasto eliminado','green');
-          renderCidopGastosList();
-        });
-      };
+      if(onDateChange) card.querySelector('._g-date').onchange=function(){onDateChange(g,this.value);};
+      card.querySelector('._g-del').onclick=()=>onDelete(g);
       el.appendChild(card);
     });
     return;
   }
 
-  // ── SEMANA: agrupar por día, mostrar totales por categoría ──
-  if(cidopGastosPeriod==='semana'){
-    const{mon,sun}=getCidopSemRange();
-    // Agrupar por fecha
+  // ── SEMANA: un card por día colapsable, totales por categoría ──
+  if(period==='semana'){
     const byDay={};
     gs.forEach(g=>{const f=normFecha(g.fecha);if(!byDay[f])byDay[f]=[];byDay[f].push(g);});
-    const dias=Object.keys(byDay).sort((a,b)=>b.localeCompare(a));
-    const totalSem=gs.reduce((s,g)=>s+g.monto,0);
-    // header semana
+    const total=gs.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 2px';
-    hdr.innerHTML=`<span style="font-size:11px;font-weight:700;color:var(--text3)">${mon} → ${sun}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span>`;
+    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Esta semana</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${total.toFixed(2)}</span>`;
     el.appendChild(hdr);
-    dias.forEach(fecha=>{
+    Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(fecha=>{
       const lista=byDay[fecha];
       const totalDia=lista.reduce((s,g)=>s+g.monto,0);
-      // Agrupar por categoría dentro del día
-      const byCat={};
-      lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
-      const dayCard=document.createElement('div');
-      dayCard.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
+      const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
       const dayLabel=new Date(fecha+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-      let catsHTML=Object.entries(byCat).map(([cid,monto])=>{
-        const c=(gastoCats&&gastoCats.find(x=>x.id===cid))||{icon:'📝',name:cid==='__otros'?'Sin categoría':'Otro',color:'#888'};
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)">
-          <span style="font-size:14px">${c.icon}</span>
-          <span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span>
-          <span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span>
-        </div>`;
-      }).join('');
-      dayCard.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px">
-          <span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${dayLabel}</span>
-          <span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalDia.toFixed(2)}</span>
-        </div>${catsHTML}`;
-      el.appendChild(dayCard);
+      const wrap=document.createElement('div');
+      wrap.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
+      const body=document.createElement('div');
+      body.style.display='none';
+      body.innerHTML=Object.entries(byCat).map(([cid,monto])=>{const c=getCat(cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
+      const head=document.createElement('div');
+      head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;user-select:none';
+      head.innerHTML=`<span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${dayLabel}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalDia.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`;
+      head.onclick=()=>{const open=body.style.display!=='none';body.style.display=open?'none':'block';head.querySelector('._chev').style.transform=open?'':'rotate(90deg)';};
+      wrap.appendChild(head);wrap.appendChild(body);
+      el.appendChild(wrap);
     });
     return;
   }
 
-  // ── MES: agrupar por semana, mostrar totales por categoría ──
-  if(cidopGastosPeriod==='mes'){
-    const{first,last,label}=getCidopMesRange();
-    const totalMes=gs.reduce((s,g)=>s+g.monto,0);
+  // ── MES: un card por semana calendario colapsable ──
+  if(period==='mes'){
+    const now=new Date();
+    const first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const last=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+    const total=gs.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 2px';
-    hdr.innerHTML=`<span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:capitalize">${label}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalMes.toFixed(2)}</span>`;
+    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Este mes</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${total.toFixed(2)}</span>`;
     el.appendChild(hdr);
-    // Calcular semanas del mes
-    const semanas=[];
-    let cur=new Date(first+'T12:00:00');
+    // Generar semanas calendario del mes (Lun–Dom)
+    const semanas=[];let cur=new Date(first+'T12:00:00');let numSem=1;
     while(cur.toISOString().slice(0,10)<=last){
       const dow=(cur.getDay()+6)%7;
-      const lun=new Date(cur); lun.setDate(cur.getDate()-dow);
-      const dom=new Date(lun); dom.setDate(lun.getDate()+6);
-      const wMon=lun.toISOString().slice(0,10);
-      const wSun=dom.toISOString().slice(0,10);
-      // clip to month
-      const rMon=wMon<first?first:wMon;
-      const rSun=wSun>last?last:wSun;
-      if(!semanas.find(s=>s.mon===rMon)) semanas.push({mon:rMon,sun:rSun});
+      const lun=new Date(cur);lun.setDate(cur.getDate()-dow);
+      const dom=new Date(lun);dom.setDate(lun.getDate()+6);
+      const wm=lun.toISOString().slice(0,10);const ws=dom.toISOString().slice(0,10);
+      const rm=wm<first?first:wm;const rs=ws>last?last:ws;
+      if(!semanas.find(s=>s.mon===rm))semanas.push({mon:rm,sun:rs,num:numSem++});
       cur.setDate(cur.getDate()+(7-dow));
     }
-    semanas.sort((a,b)=>b.mon.localeCompare(a.mon));
-    semanas.forEach(({mon:wm,sun:ws})=>{
+    semanas.sort((a,b)=>a.mon.localeCompare(b.mon)).forEach(({mon:wm,sun:ws,num})=>{
       const lista=gs.filter(g=>{const f=normFecha(g.fecha);return f>=wm&&f<=ws;});
       if(!lista.length)return;
       const totalSem=lista.reduce((s,g)=>s+g.monto,0);
-      const byCat={};
-      lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
-      const weekCard=document.createElement('div');
-      weekCard.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
-      let catsHTML=Object.entries(byCat).map(([cid,monto])=>{
-        const c=(gastoCats&&gastoCats.find(x=>x.id===cid))||{icon:'📝',name:cid==='__otros'?'Sin categoría':'Otro',color:'#888'};
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)">
-          <span style="font-size:14px">${c.icon}</span>
-          <span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span>
-          <span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span>
-        </div>`;
-      }).join('');
-      weekCard.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px">
-          <span style="font-size:12px;font-weight:800;color:var(--text)">${wm} → ${ws}</span>
-          <span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span>
-        </div>${catsHTML}`;
-      el.appendChild(weekCard);
+      const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
+      const wrap=document.createElement('div');
+      wrap.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
+      const body=document.createElement('div');
+      body.style.display='none';
+      body.innerHTML=Object.entries(byCat).map(([cid,monto])=>{const c=getCat(cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
+      const head=document.createElement('div');
+      head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;user-select:none';
+      head.innerHTML=`<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${num}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wm} → ${ws}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`;
+      head.onclick=()=>{const open=body.style.display!=='none';body.style.display=open?'none':'block';head.querySelector('._chev').style.transform=open?'':'rotate(90deg)';};
+      wrap.appendChild(head);wrap.appendChild(body);
+      el.appendChild(wrap);
     });
     return;
   }
 
-  // ── TODO: lista completa individual ──
-  const gsSorted=[...gs].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  gsSorted.forEach(g=>{
-    const catObj=(gastoCats&&gastoCats.find(c=>c.id===g.cat))||{icon:'📝',name:g.cat||'Otro',color:'#888'};
-    const card=document.createElement('div');
-    card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
-    card.innerHTML=`
-      <div style="width:34px;height:34px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catObj.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
-        <div style="font-size:11px;color:var(--text4);margin-top:2px">${catObj.name} · ${g.fecha} · ${g.user}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:15px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
-        <button style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s"
-          onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
-      </div>`;
-    card.querySelector('button').onclick=()=>{
-      customConfirm('¿Eliminar este gasto?','Eliminar',()=>{
-        gastos=gastos.filter(x=>x.id!==g.id);
-        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-        if(fbDb) fbDb.ref('gastos/'+g.id).remove().catch(()=>{});
-        showToast('Gasto eliminado','green');
-        renderCidopGastosList();
-      });
-    };
-    el.appendChild(card);
+  // ── TODO: un card por mes colapsable, totales por categoría ──
+  const byMes={};
+  gs.forEach(g=>{const m=normFecha(g.fecha).slice(0,7);if(!byMes[m])byMes[m]=[];byMes[m].push(g);});
+  const totalAll=gs.reduce((s,g)=>s+g.monto,0);
+  const hdrA=document.createElement('div');
+  hdrA.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+  hdrA.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Todos los gastos</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalAll.toFixed(2)}</span>`;
+  el.appendChild(hdrA);
+  Object.keys(byMes).sort((a,b)=>b.localeCompare(a)).forEach(mes=>{
+    const lista=byMes[mes];
+    const totalM=lista.reduce((s,g)=>s+g.monto,0);
+    const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
+    const label=new Date(mes+'-15').toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+    const wrap=document.createElement('div');
+    wrap.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
+    const body=document.createElement('div');
+    body.style.display='none';
+    body.innerHTML=Object.entries(byCat).map(([cid,monto])=>{const c=getCat(cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;user-select:none';
+    head.innerHTML=`<span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${label}</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalM.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`;
+    head.onclick=()=>{const open=body.style.display!=='none';body.style.display=open?'none':'block';head.querySelector('._chev').style.transform=open?'':'rotate(90deg)';};
+    wrap.appendChild(head);wrap.appendChild(body);
+    el.appendChild(wrap);
   });
+}
+
+function renderCidopGastosList(){
+  const el=document.getElementById('cidop-gastos-list');if(!el)return;
+  const gs=getCidopGastosFiltrados();
+  _buildGastosHTML(el, gs, cidopGastosPeriod,
+    (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbDb.ref('gastos/'+g.id).remove().catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
+    null // CIDOP no tiene edición de fecha
+  );
 }
 
 function confirmarCobro(){
@@ -4615,112 +4594,11 @@ function renderGastos(){
   // ── Lista en Admin ──
   const el=document.getElementById('adm-gastos-list');
   if(!el)return;
-  if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
-  el.innerHTML='';
-
-  // HOY — individuales por hora
-  if(gastosPeriod==='hoy'){
-    const gsSorted=[...gs].sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-    gsSorted.forEach(g=>{
-      const catObj=getCatById(g.cat);
-      const card=document.createElement('div');
-      card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:7px';
-      const regTime=g.registradoEn?new Date(g.registradoEn).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):g.timestamp?new Date(g.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'';
-      card.innerHTML=`
-        <div style="width:32px;height:32px;border-radius:8px;background:${catObj.color}22;border:1.5px solid ${catObj.color}55;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${catObj.icon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${g.desc}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap">
-            <input type="date" class="adm-g-date-inp" value="${g.fecha}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 6px;font-size:11px;color:var(--text3);outline:none;cursor:pointer;color-scheme:dark"/>
-            <span style="font-size:11px;color:${catObj.color}">${catObj.name}</span>
-            <span style="font-size:11px;color:var(--text4)">${g.user}${regTime?' · '+regTime:''}</span>
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:14px;font-weight:800;color:var(--red)">-$${g.monto.toFixed(2)}</div>
-          <button class="adm-g-del" style="background:transparent;border:none;color:var(--text4);font-size:11px;cursor:pointer;margin-top:2px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕ quitar</button>
-        </div>`;
-      card.querySelector('.adm-g-date-inp').onchange=function(){const nf=this.value;if(!nf)return;const idx=gastos.findIndex(x=>x.id===g.id);if(idx<0)return;gastos[idx].fecha=nf;safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbDb.ref('gastos/'+g.id).update({fecha:nf}).catch(()=>{});showToast('Fecha actualizada','green');renderGastos();};
-      card.querySelector('.adm-g-del').onclick=()=>eliminarGasto(g.id);
-      el.appendChild(card);
-    });
-    return;
-  }
-
-  // SEMANA — un card por día, totales por categoría
-  if(gastosPeriod==='semana'){
-    const byDay={};
-    gs.forEach(g=>{const f=normFecha(g.fecha);if(!byDay[f])byDay[f]=[];byDay[f].push(g);});
-    const totalSem=gs.reduce((s,g)=>s+g.monto,0);
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
-    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Esta semana</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span>`;
-    el.appendChild(hdr);
-    Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(fecha=>{
-      const lista=byDay[fecha];
-      const totalDia=lista.reduce((s,g)=>s+g.monto,0);
-      const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
-      const dayLabel=new Date(fecha+'T12:00:00').toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-      const card=document.createElement('div');
-      card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
-      card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px"><span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${dayLabel}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalDia.toFixed(2)}</span></div>`
-        +Object.entries(byCat).map(([cid,monto])=>{const c=getCatById(cid==='__otros'?'':cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
-      el.appendChild(card);
-    });
-    return;
-  }
-
-  // MES — un card por semana, totales por categoría
-  if(gastosPeriod==='mes'){
-    const{first,last}=getMonthRangeISO();
-    const totalMes=gs.reduce((s,g)=>s+g.monto,0);
-    const hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
-    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Este mes</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalMes.toFixed(2)}</span>`;
-    el.appendChild(hdr);
-    const semanas=[];let cur=new Date(first+'T12:00:00');
-    while(cur.toISOString().slice(0,10)<=last){
-      const dow=(cur.getDay()+6)%7;
-      const lun=new Date(cur);lun.setDate(cur.getDate()-dow);
-      const dom=new Date(lun);dom.setDate(lun.getDate()+6);
-      const wm=lun.toISOString().slice(0,10);const ws=dom.toISOString().slice(0,10);
-      const rm=wm<first?first:wm;const rs=ws>last?last:ws;
-      if(!semanas.find(s=>s.mon===rm))semanas.push({mon:rm,sun:rs});
-      cur.setDate(cur.getDate()+(7-dow));
-    }
-    semanas.sort((a,b)=>b.mon.localeCompare(a.mon)).forEach(({mon:wm,sun:ws})=>{
-      const lista=gs.filter(g=>{const f=normFecha(g.fecha);return f>=wm&&f<=ws;});
-      if(!lista.length)return;
-      const totalSem=lista.reduce((s,g)=>s+g.monto,0);
-      const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
-      const card=document.createElement('div');
-      card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
-      card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px"><span style="font-size:12px;font-weight:800;color:var(--text)">${wm} → ${ws}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span></div>`
-        +Object.entries(byCat).map(([cid,monto])=>{const c=getCatById(cid==='__otros'?'':cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
-      el.appendChild(card);
-    });
-    return;
-  }
-
-  // TODO — un card por mes, totales por categoría
-  const byMes={};
-  gs.forEach(g=>{const m=normFecha(g.fecha).slice(0,7);if(!byMes[m])byMes[m]=[];byMes[m].push(g);});
-  const totalAll=gs.reduce((s,g)=>s+g.monto,0);
-  const hdrA=document.createElement('div');
-  hdrA.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
-  hdrA.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Todos los gastos</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalAll.toFixed(2)}</span>`;
-  el.appendChild(hdrA);
-  Object.keys(byMes).sort((a,b)=>b.localeCompare(a)).forEach(mes=>{
-    const lista=byMes[mes];
-    const totalM=lista.reduce((s,g)=>s+g.monto,0);
-    const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
-    const label=new Date(mes+'-15').toLocaleDateString('es-MX',{month:'long',year:'numeric'});
-    const card=document.createElement('div');
-    card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
-    card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px"><span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${label}</span><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalM.toFixed(2)}</span></div>`
-      +Object.entries(byCat).map(([cid,monto])=>{const c=getCatById(cid==='__otros'?'':cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
-    el.appendChild(card);
-  });
+  const periodMap={hoy:'hoy',semana:'semana',mes:'mes',todo:'todo'};
+  _buildGastosHTML(el, gs, periodMap[gastosPeriod]||gastosPeriod,
+    (g)=>eliminarGasto(g.id),
+    (g,nf)=>{const idx=gastos.findIndex(x=>x.id===g.id);if(idx<0)return;gastos[idx].fecha=nf;safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbDb.ref('gastos/'+g.id).update({fecha:nf}).catch(()=>{});showToast('Fecha actualizada','green');renderGastos();}
+  );
 }
 
 /* ════════════════════════════════
