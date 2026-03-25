@@ -1554,13 +1554,33 @@ body{
     <button class="period-tab" onclick="setPeriod('mes')">Mes</button>
     <button class="period-tab" onclick="setPeriod('todo')">Todo</button>
   </div>
-  <!-- Navigator: date picker for dia, week nav for semana, month nav for mes -->
-  <div id="hist-nav" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 0 2px">
-    <button id="hist-nav-prev" onclick="histNavPrev()"
-      style="background:var(--bg3);border:1px solid var(--border2);color:var(--text3);border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer">‹</button>
-    <div id="hist-nav-label" style="font-size:13px;font-weight:700;color:var(--text);min-width:140px;text-align:center"></div>
-    <button id="hist-nav-next" onclick="histNavNext()"
-      style="background:var(--bg3);border:1px solid var(--border2);color:var(--text3);border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer">›</button>
+  <!-- Selectores directos por periodo (sin flechas) -->
+  <div id="hist-nav-dia" style="display:flex;align-items:center;gap:8px;padding:6px 0 2px">
+    <input type="date" id="hist-dia-input"
+      style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+      onchange="histSetDia(this.value)"/>
+    <button onclick="histNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Hoy</button>
+  </div>
+  <div id="hist-nav-semana" style="display:none;padding:6px 0 2px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Desde</span>
+      <input type="date" id="hist-sem-desde"
+        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 8px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
+        onchange="histSetSemManual()"/>
+      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Hasta</span>
+      <input type="date" id="hist-sem-hasta"
+        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 8px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
+        onchange="histSetSemManual()"/>
+      <button onclick="histSemHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 8px;cursor:pointer;white-space:nowrap">Esta sem.</button>
+    </div>
+  </div>
+  <div id="hist-nav-mes" style="display:none;padding:6px 0 2px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="month" id="hist-mes-input"
+        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+        onchange="histSetMes(this.value)"/>
+      <button onclick="histMesHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Este mes</button>
+    </div>
   </div>
   <div class="stat-grid">
     <div class="stat-card"><div class="stat-lbl">Ventas</div><div class="stat-val" id="stat-count">0</div><div class="stat-sub" id="stat-period-lbl">Hoy</div></div>
@@ -3179,46 +3199,103 @@ function setTab(tab){
   if(tab==='gastos')    initCidopGastos();
 }
 // ── Historial navigation state ──
-let histNavOffset=0; // 0 = current, -1 = previous, etc.
+let histNavOffset=0; // kept for compat (unused after refactor)
+let histDiaISO='';       // YYYY-MM-DD seleccionado en Historial
+let histSemDesde='';     // YYYY-MM-DD inicio rango semana
+let histSemHasta='';     // YYYY-MM-DD fin rango semana
+let histMesYM='';        // YYYY-MM seleccionado
+
+function _histThisWeek(){
+  const now=new Date();
+  const dow=(now.getDay()+6)%7;
+  const mon=new Date(now); mon.setDate(now.getDate()-dow);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return{desde:fmt(mon),hasta:fmt(sun)};
+}
+function _histThisMesYM(){
+  const now=new Date();
+  return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+}
+function _syncHistDiaInput(){
+  const el=document.getElementById('hist-dia-input'); if(el) el.value=histDiaISO||todayISO();
+}
+function _syncHistSemInputs(){
+  const d=document.getElementById('hist-sem-desde'); if(d) d.value=histSemDesde;
+  const h=document.getElementById('hist-sem-hasta'); if(h) h.value=histSemHasta;
+}
+function _syncHistMesInput(){
+  const el=document.getElementById('hist-mes-input'); if(el) el.value=histMesYM||_histThisMesYM();
+}
+
+function histSetDia(iso){ if(!iso)return; histDiaISO=iso; renderHistorial(); }
+function histNavHoy(){ histDiaISO=todayISO(); _syncHistDiaInput(); renderHistorial(); }
+function histSetSemManual(){
+  const d=document.getElementById('hist-sem-desde');
+  const h=document.getElementById('hist-sem-hasta');
+  if(d) histSemDesde=d.value;
+  if(h) histSemHasta=h.value;
+  renderHistorial();
+}
+function histSemHoy(){
+  const{desde,hasta}=_histThisWeek();
+  histSemDesde=desde; histSemHasta=hasta;
+  _syncHistSemInputs(); renderHistorial();
+}
+function histSetMes(val){ if(!val)return; histMesYM=val; renderHistorial(); }
+function histMesHoy(){ histMesYM=_histThisMesYM(); _syncHistMesInput(); renderHistorial(); }
+
+function _initHistNav(){
+  if(!histDiaISO) histDiaISO=todayISO();
+  if(!histSemDesde){ const{desde,hasta}=_histThisWeek(); histSemDesde=desde; histSemHasta=hasta; }
+  if(!histMesYM) histMesYM=_histThisMesYM();
+  _syncHistDiaInput(); _syncHistSemInputs(); _syncHistMesInput();
+}
 
 function setPeriod(p){
   currentPeriod=p;
-  histNavOffset=0;
   document.querySelectorAll('.period-tab').forEach((b,i)=>b.classList.toggle('active',['dia','semana','mes','todo'][i]===p));
   document.getElementById('corte-section').style.display=p==='dia'?'block':'none';
+  // show/hide nav panels
+  const nd=document.getElementById('hist-nav-dia');
+  const ns=document.getElementById('hist-nav-semana');
+  const nm=document.getElementById('hist-nav-mes');
+  if(nd) nd.style.display=p==='dia'?'flex':'none';
+  if(ns) ns.style.display=p==='semana'?'block':'none';
+  if(nm) nm.style.display=p==='mes'?'block':'none';
   renderHistorial();
 }
 
-function histNavPrev(){ histNavOffset--; renderHistorial(); }
-function histNavNext(){ if(histNavOffset<0){histNavOffset++;renderHistorial();} }
+function histNavPrev(){ /* no-op — replaced by date pickers */ }
+function histNavNext(){ /* no-op — replaced by date pickers */ }
 
-// Returns {sales, label, dateRange} for current nav state
+// Returns {filtered, label, ...} for current historial period
 function getNavSales(){
-  const now=new Date();
+  _initHistNav();
   if(currentPeriod==='dia'){
-    const d=new Date(now); d.setDate(d.getDate()+histNavOffset);
-    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    const label=histNavOffset===0?'Hoy':d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+    const iso=histDiaISO||todayISO();
+    const isToday=iso===todayISO();
+    const label=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
     const filtered=sales.filter(s=>toISODate(s.date)===iso);
     return{filtered,label,iso,mode:'dia'};
   }
   if(currentPeriod==='semana'){
-    const mon=new Date(now);
-    mon.setDate(now.getDate()-((now.getDay()+6)%7)+histNavOffset*7);
-    mon.setHours(0,0,0,0);
-    const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-    const fmtISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    const monISO=fmtISO(mon), sunISO=fmtISO(sun);
-    const label=(histNavOffset===0?'Esta semana':'')+' '+mon.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' – '+sun.toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+    const{desde,hasta}=_histThisWeek();
+    const monISO=histSemDesde||desde;
+    const sunISO=histSemHasta||hasta;
+    const monD=new Date(monISO+'T12:00:00');
+    const sunD=new Date(sunISO+'T12:00:00');
+    const label=monD.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' – '+sunD.toLocaleDateString('es-MX',{day:'numeric',month:'short'});
     const filtered=sales.filter(s=>{const iso=toISODate(s.date);return iso>=monISO&&iso<=sunISO;});
     return{filtered,label,monISO,sunISO,mode:'semana'};
   }
   if(currentPeriod==='mes'){
-    const d=new Date(now.getFullYear(),now.getMonth()+histNavOffset,1);
-    const y=d.getFullYear(),m=d.getMonth();
+    const ym=histMesYM||_histThisMesYM();
+    const[y,m]=[parseInt(ym.slice(0,4)),parseInt(ym.slice(5,7))-1];
+    const d=new Date(y,m,1);
     const label=d.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
-    const firstISO=y+'-'+String(m+1).padStart(2,'0')+'-01';
-    const lastISO=y+'-'+String(m+1).padStart(2,'0')+'-31';
+    const firstISO=ym+'-01';
+    const lastISO=ym+'-31';
     const filtered=sales.filter(s=>{const iso=toISODate(s.date);return iso>=firstISO&&iso<=lastISO;});
     return{filtered,label,y,m,mode:'mes'};
   }
@@ -3228,27 +3305,22 @@ function getNavSales(){
 }
 
 function getNavGastos(){
-  const now=new Date();
+  _initHistNav();
   if(currentPeriod==='dia'){
-    const d=new Date(now); d.setDate(d.getDate()+histNavOffset);
-    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    return gastos.filter(g=>g.fecha===iso);
+    const iso=histDiaISO||todayISO();
+    return gastos.filter(g=>normFecha(g.fecha)===iso);
   }
   if(currentPeriod==='semana'){
-    const mon=new Date(now);
-    mon.setDate(now.getDate()-((now.getDay()+6)%7)+histNavOffset*7);
-    mon.setHours(0,0,0,0);
-    const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-    const fmtISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    const monISO=fmtISO(mon),sunISO=fmtISO(sun);
-    return gastos.filter(g=>g.fecha>=monISO&&g.fecha<=sunISO);
+    const{desde,hasta}=_histThisWeek();
+    const monISO=histSemDesde||desde;
+    const sunISO=histSemHasta||hasta;
+    return gastos.filter(g=>normFecha(g.fecha)>=monISO&&normFecha(g.fecha)<=sunISO);
   }
   if(currentPeriod==='mes'){
-    const d=new Date(now.getFullYear(),now.getMonth()+histNavOffset,1);
-    const y=d.getFullYear(),m=d.getMonth();
-    const firstISO=y+'-'+String(m+1).padStart(2,'0')+'-01';
-    const lastISO=y+'-'+String(m+1).padStart(2,'0')+'-31';
-    return gastos.filter(g=>g.fecha>=firstISO&&g.fecha<=lastISO);
+    const ym=histMesYM||_histThisMesYM();
+    const firstISO=ym+'-01';
+    const lastISO=ym+'-31';
+    return gastos.filter(g=>normFecha(g.fecha)>=firstISO&&normFecha(g.fecha)<=lastISO);
   }
   return [...gastos];
 }
@@ -3843,13 +3915,12 @@ function renderHistorial(){
   document.getElementById('stat-avg').textContent='Promedio: $'+avg.toFixed(2);
   document.getElementById('stat-period-lbl').textContent=nav.label;
 
-  // Navigator
-  const navEl=document.getElementById('hist-nav');
-  const navLabel=document.getElementById('hist-nav-label');
-  const navNext=document.getElementById('hist-nav-next');
-  if(navEl) navEl.style.display=currentPeriod==='todo'?'none':'flex';
-  if(navLabel) navLabel.textContent=nav.label;
-  if(navNext) navNext.style.opacity=histNavOffset<0?'1':'0.3';
+  // Nav panels visibility (todo hides all selectors)
+  if(currentPeriod==='todo'){
+    ['hist-nav-dia','hist-nav-semana','hist-nav-mes'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='none';
+    });
+  }
 
   renderChart(ps);
 
