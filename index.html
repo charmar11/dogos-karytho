@@ -1636,28 +1636,35 @@ body{
     <!-- Buscador Día -->
     <div id="cidop-gastos-search-dia" style="margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="cidopGastoNavPrev()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">‹</button>
         <input type="date" id="cidop-gastos-fecha-dia"
-          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
-          oninput="cidopGastoNavDia(this.value)"/>
-        <button onclick="cidopGastoNavNext()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">›</button>
-        <button onclick="cidopGastoNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer">Hoy</button>
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+          onchange="cidopGastoNavDia(this.value)"/>
+        <button onclick="cidopGastoNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Hoy</button>
       </div>
     </div>
     <!-- Buscador Semana -->
     <div id="cidop-gastos-search-semana" style="display:none;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="cidopGastoSemNavPrev()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">‹</button>
-        <div id="cidop-gastos-semana-label" style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--gold)">Esta semana</div>
-        <button onclick="cidopGastoSemNavNext()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">›</button>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Desde</span>
+          <input type="date" id="cidop-gastos-sem-desde"
+            style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
+            onchange="cidopGastoSemManual()"/>
+          <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Hasta</span>
+          <input type="date" id="cidop-gastos-sem-hasta"
+            style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
+            onchange="cidopGastoSemManual()"/>
+          <button onclick="cidopGastoSemHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 10px;cursor:pointer;white-space:nowrap">Esta semana</button>
+        </div>
       </div>
     </div>
     <!-- Buscador Mes -->
     <div id="cidop-gastos-search-mes" style="display:none;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px">
-        <button onclick="cidopGastoMesNavPrev()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">‹</button>
-        <div id="cidop-gastos-mes-label" style="flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--gold)">Este mes</div>
-        <button onclick="cidopGastoMesNavNext()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:16px;padding:5px 10px;cursor:pointer">›</button>
+        <input type="month" id="cidop-gastos-mes-input"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+          onchange="cidopGastoMesManual(this.value)"/>
+        <button onclick="cidopGastoMesHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Este mes</button>
       </div>
     </div>
     <div id="cidop-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
@@ -3403,70 +3410,77 @@ function updateCambio(){
 }
 /* ── CIPOD Gastos ── */
 let cidopGastosPeriod='dia';
-let cidopGastosDiaOffset=0;   // 0=hoy, -1=ayer, etc.
-let cidopGastosSemOffset=0;   // 0=esta semana, -1=anterior, etc.
-let cidopGastosMesOffset=0;   // 0=este mes, -1=anterior, etc.
+let cidopGastosDiaISO='';       // YYYY-MM-DD seleccionado para Día
+let cidopGastosSemDesde='';     // YYYY-MM-DD inicio de semana
+let cidopGastosSemHasta='';     // YYYY-MM-DD fin de semana
+let cidopGastosMesYM='';        // YYYY-MM para el mes
 
 // ── helper: fecha local como YYYY-MM-DD (sin desfase UTC) ──
 function localISODate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
-// ── helpers de fecha con offset ──
-function getCidopDiaISO(){
-  const d=new Date(); d.setDate(d.getDate()+cidopGastosDiaOffset);
-  return localISODate(d);
-}
-function getCidopSemRange(){
-  const now=new Date(); now.setDate(now.getDate()+cidopGastosSemOffset*7);
-  const dow=(now.getDay()+6)%7;
-  const mon=new Date(now); mon.setDate(now.getDate()-dow);
-  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-  return{mon:localISODate(mon),sun:localISODate(sun)};
-}
-function getCidopMesRange(){
-  const now=new Date();
-  const y=now.getFullYear(), m=now.getMonth()+cidopGastosMesOffset;
-  const d=new Date(y, m, 1);
-  const first=localISODate(new Date(d.getFullYear(), d.getMonth(), 1));
-  const last=localISODate(new Date(d.getFullYear(), d.getMonth()+1, 0));
-  const label=new Date(d.getFullYear(), d.getMonth(), 1)
-    .toLocaleDateString('es-MX',{month:'long',year:'numeric'});
-  return{first,last,label};
-}
-
-// ── navegación Día ──
-function cidopGastoNavPrev(){ cidopGastosDiaOffset--; _syncDiaInput(); renderCidopGastosList(); }
-function cidopGastoNavNext(){ if(cidopGastosDiaOffset<0){ cidopGastosDiaOffset++; _syncDiaInput(); renderCidopGastosList(); } }
-function cidopGastoNavHoy(){ cidopGastosDiaOffset=0; _syncDiaInput(); renderCidopGastosList(); }
-function cidopGastoNavDia(val){ if(!val)return; const diff=Math.round((new Date(val+'T12:00:00')-new Date(todayISO()+'T12:00:00'))/(86400000)); cidopGastosDiaOffset=diff; renderCidopGastosList(); }
+// ── Día ──
+function getCidopDiaISO(){ return cidopGastosDiaISO||todayISO(); }
+function cidopGastoNavDia(val){ if(!val)return; cidopGastosDiaISO=val; renderCidopGastosList(); }
+function cidopGastoNavHoy(){ cidopGastosDiaISO=todayISO(); _syncDiaInput(); renderCidopGastosList(); }
 function _syncDiaInput(){ const el=document.getElementById('cidop-gastos-fecha-dia'); if(el) el.value=getCidopDiaISO(); }
 
-// ── navegación Semana ──
-function cidopGastoSemNavPrev(){ cidopGastosSemOffset--; _syncSemLabel(); renderCidopGastosList(); }
-function cidopGastoSemNavNext(){ if(cidopGastosSemOffset<0){ cidopGastosSemOffset++; _syncSemLabel(); renderCidopGastosList(); } }
-function _syncSemLabel(){
-  const el=document.getElementById('cidop-gastos-semana-label'); if(!el)return;
-  const{mon,sun}=getCidopSemRange();
-  el.textContent=cidopGastosSemOffset===0?'Esta semana':`${mon} → ${sun}`;
+// ── Semana: rango libre Desde / Hasta ──
+function _thisWeekRange(){
+  const now=new Date(); const dow=(now.getDay()+6)%7;
+  const mon=new Date(now); mon.setDate(now.getDate()-dow);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  return{desde:localISODate(mon),hasta:localISODate(sun)};
+}
+function getCidopSemRange(){ return{mon:cidopGastosSemDesde,sun:cidopGastosSemHasta}; }
+function cidopGastoSemManual(){
+  const d=document.getElementById('cidop-gastos-sem-desde');
+  const h=document.getElementById('cidop-gastos-sem-hasta');
+  if(!d||!h)return;
+  cidopGastosSemDesde=d.value;
+  cidopGastosSemHasta=h.value;
+  renderCidopGastosList();
+}
+function cidopGastoSemHoy(){
+  const{desde,hasta}=_thisWeekRange();
+  cidopGastosSemDesde=desde; cidopGastosSemHasta=hasta;
+  _syncSemInputs(); renderCidopGastosList();
+}
+function _syncSemInputs(){
+  const d=document.getElementById('cidop-gastos-sem-desde');
+  const h=document.getElementById('cidop-gastos-sem-hasta');
+  if(d) d.value=cidopGastosSemDesde;
+  if(h) h.value=cidopGastosSemHasta;
 }
 
-// ── navegación Mes ──
-function cidopGastoMesNavPrev(){ cidopGastosMesOffset--; _syncMesLabel(); renderCidopGastosList(); }
-function cidopGastoMesNavNext(){ if(cidopGastosMesOffset<0){ cidopGastosMesOffset++; _syncMesLabel(); renderCidopGastosList(); } }
-function _syncMesLabel(){
-  const el=document.getElementById('cidop-gastos-mes-label'); if(!el)return;
-  const{label}=getCidopMesRange();
-  el.textContent=cidopGastosMesOffset===0?'Este mes':label;
+// ── Mes: input type=month ──
+function _thisMesYM(){ const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
+function getCidopMesRange(){
+  const ym=cidopGastosMesYM||_thisMesYM();
+  const[y,m]=ym.split('-').map(Number);
+  const first=localISODate(new Date(y,m-1,1));
+  const last=localISODate(new Date(y,m,0));
+  return{first,last};
 }
+function cidopGastoMesManual(val){ if(!val)return; cidopGastosMesYM=val; renderCidopGastosList(); }
+function cidopGastoMesHoy(){ cidopGastosMesYM=_thisMesYM(); _syncMesInput(); renderCidopGastosList(); }
+function _syncMesInput(){ const el=document.getElementById('cidop-gastos-mes-input'); if(el) el.value=cidopGastosMesYM||_thisMesYM(); }
 
 function initCidopGastos(){
-  // Set default date (use local date to avoid UTC offset shifting to next day)
+  // Set default date (use local date to avoid UTC offset)
   const fi=document.getElementById('cidop-gasto-fecha');
-  if(fi&&!fi.value){const n=new Date();fi.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;}
+  if(fi&&!fi.value) fi.value=todayISO();
 
-  // Sync search controls
+  // Init state defaults
+  cidopGastosDiaISO=todayISO();
+  const{desde,hasta}=_thisWeekRange();
+  cidopGastosSemDesde=desde; cidopGastosSemHasta=hasta;
+  cidopGastosMesYM=_thisMesYM();
+
+  // Sync all controls
   _syncDiaInput();
-  _syncSemLabel();
-  _syncMesLabel();
+  _syncSemInputs();
+  _syncMesInput();
+
   // Show the correct search bar for current period
   const sd=document.getElementById('cidop-gastos-search-dia');
   const ss=document.getElementById('cidop-gastos-search-semana');
@@ -3531,10 +3545,10 @@ function setCidopGastosPeriod(p){
   if(sd) sd.style.display=p==='dia'?'block':'none';
   if(ss) ss.style.display=p==='semana'?'block':'none';
   if(sm) sm.style.display=p==='mes'?'block':'none';
-  // sync labels/inputs
+  // sync inputs
   if(p==='dia') _syncDiaInput();
-  if(p==='semana') _syncSemLabel();
-  if(p==='mes') _syncMesLabel();
+  if(p==='semana') _syncSemInputs();
+  if(p==='mes') _syncMesInput();
   renderCidopGastosList();
 }
 
@@ -3627,9 +3641,7 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
 
   // ── MES: un card por semana calendario colapsable ──
   if(period==='mes'){
-    const now=new Date();
-    const first=localISODate(new Date(now.getFullYear(),now.getMonth(),1));
-    const last=localISODate(new Date(now.getFullYear(),now.getMonth()+1,0));
+    const{first,last}=getCidopMesRange();
     const total=gs.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
