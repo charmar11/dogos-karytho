@@ -3407,60 +3407,34 @@ let cidopGastosDiaOffset=0;   // 0=hoy, -1=ayer, etc.
 let cidopGastosSemOffset=0;   // 0=esta semana, -1=anterior, etc.
 let cidopGastosMesOffset=0;   // 0=este mes, -1=anterior, etc.
 
-// ── HELPERS DE FECHA (CORREGIDOS SIN BUG DE UTC) ──
-
-function toLocalISO(date = new Date()){
-  return date.getFullYear() + '-' +
-    String(date.getMonth()+1).padStart(2,'0') + '-' +
-    String(date.getDate()).padStart(2,'0');
-}
-
-// Día actual con offset
+// ── helpers de fecha con offset ──
 function getCidopDiaISO(){
-  const d = new Date();
-  d.setDate(d.getDate() + cidopGastosDiaOffset);
-  return toLocalISO(d);
+  const d=new Date(); d.setDate(d.getDate()+cidopGastosDiaOffset);
+  return d.toISOString().slice(0,10);
 }
-
-// Semana actual (lunes a domingo)
-function getWeekRange(offset = 0){
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-
-  const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1 - day);
-
-  const mon = new Date(d);
-  mon.setDate(d.getDate() + diff);
-
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-
-  return {
-  mon: toLocalISO(mon),
-  sun: toLocalISO(sun)
-};
+function getCidopSemRange(){
+  const now=new Date(); now.setDate(now.getDate()+cidopGastosSemOffset*7);
+  const dow=(now.getDay()+6)%7;
+  const mon=new Date(now); mon.setDate(now.getDate()-dow);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  return{mon:mon.toISOString().slice(0,10),sun:sun.toISOString().slice(0,10)};
 }
-
-// Mes actual
-function getMonthRange(offset = 0){
-  const d = new Date();
-  d.setMonth(d.getMonth() + offset);
-
-  const firstDate = new Date(d.getFullYear(), d.getMonth(), 1);
-  const lastDate  = new Date(d.getFullYear(), d.getMonth()+1, 0);
-
-  return {
-    first: toLocalISO(firstDate),
-    last: toLocalISO(lastDate)
-  };
+function getCidopMesRange(){
+  const now=new Date();
+  const y=now.getFullYear(), m=now.getMonth()+cidopGastosMesOffset;
+  const d=new Date(y, m, 1);
+  const first=new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+  const last=new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
+  const label=new Date(d.getFullYear(), d.getMonth(), 1)
+    .toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+  return{first,last,label};
 }
 
 // ── navegación Día ──
 function cidopGastoNavPrev(){ cidopGastosDiaOffset--; _syncDiaInput(); renderCidopGastosList(); }
 function cidopGastoNavNext(){ if(cidopGastosDiaOffset<0){ cidopGastosDiaOffset++; _syncDiaInput(); renderCidopGastosList(); } }
 function cidopGastoNavHoy(){ cidopGastosDiaOffset=0; _syncDiaInput(); renderCidopGastosList(); }
-function cidopGastoNavDia(val){ if(!val)return; const diff=Math.round((new Date(val+'T12:00:00')-new Date(toLocalISO()+'T12:00:00'))/(86400000)); cidopGastosDiaOffset=diff; renderCidopGastosList(); }
+function cidopGastoNavDia(val){ if(!val)return; const diff=Math.round((new Date(val+'T12:00:00')-new Date(new Date().toISOString().slice(0,10)+'T12:00:00'))/(86400000)); cidopGastosDiaOffset=diff; renderCidopGastosList(); }
 function _syncDiaInput(){ const el=document.getElementById('cidop-gastos-fecha-dia'); if(el) el.value=getCidopDiaISO(); }
 
 // ── navegación Semana ──
@@ -3518,7 +3492,7 @@ function agregarGastoCidop(){
   const desc=document.getElementById('cidop-gasto-desc').value.trim();
   const monto=parseFloat(document.getElementById('cidop-gasto-monto').value)||0;
   const cat=document.getElementById('cidop-gasto-cat').value||'otro';
-  const fechaRaw=document.getElementById('cidop-gasto-fecha').value||toLocalISO();
+  const fechaRaw=document.getElementById('cidop-gasto-fecha').value||new Date().toISOString().slice(0,10);
   const fecha=normFecha(fechaRaw)||todayISO(); // always YYYY-MM-DD
   if(!desc){showToast('Escribe una descripción','red');return;}
   if(!monto){showToast('Escribe el monto','red');return;}
@@ -3651,8 +3625,8 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
   // ── MES: un card por semana calendario colapsable ──
   if(period==='mes'){
     const now=new Date();
-    const first = toLocalISO(new Date(now.getFullYear(), now.getMonth(), 1));
-    const last  = toLocalISO(new Date(now.getFullYear(), now.getMonth()+1, 0));
+    const first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+    const last=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
     const total=gs.reduce((s,g)=>s+g.monto,0);
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
@@ -3660,12 +3634,11 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange){
     el.appendChild(hdr);
     // Generar semanas calendario del mes (Lun–Dom)
     const semanas=[];let cur=new Date(first+'T12:00:00');let numSem=1;
-    while(toLocalISO(cur) <= last)
+    while(cur.toISOString().slice(0,10)<=last){
       const dow=(cur.getDay()+6)%7;
       const lun=new Date(cur);lun.setDate(cur.getDate()-dow);
       const dom=new Date(lun);dom.setDate(lun.getDate()+6);
-      const wm = toLocalISO(lun);
-      const ws = toLocalISO(dom);
+      const wm=lun.toISOString().slice(0,10);const ws=dom.toISOString().slice(0,10);
       const rm=wm<first?first:wm;const rs=ws>last?last:ws;
       if(!semanas.find(s=>s.mon===rm))semanas.push({mon:rm,sun:rs,num:numSem++});
       cur.setDate(cur.getDate()+(7-dow));
@@ -4140,7 +4113,7 @@ function renderAdmin(){
   screen.classList.add('active');
   // Set default date for gasto form
   const gf=document.getElementById('gasto-fecha');
-  if(gf&&!gf.value) gf.value=toLocalISO();
+  if(gf&&!gf.value) gf.value=new Date().toISOString().slice(0,10);
 
   // Global stats
   const total=sales.reduce((s,v)=>s+v.total,0);
@@ -5158,7 +5131,7 @@ function exportarGastos(){
   const csv=rows.map(r=>r.map(c=>String(c).replace(/,/g,';')).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='gastos_'+toLocalISO()+'.csv';
+  a.download='gastos_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
 
