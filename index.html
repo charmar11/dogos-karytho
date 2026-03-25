@@ -2086,8 +2086,15 @@ body{
           <div class="admin-stat-val" id="adm-g-ganancia" style="font-size:18px">$0</div>
         </div>
       </div>
-      <!-- Selector de día -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <!-- Botones de periodo -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="gp-btn-hoy"    onclick="setGastosPeriod('hoy')"    class="active" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:12px;font-weight:700;padding:8px 4px;cursor:pointer;transition:all .18s">📅 Día</button>
+        <button id="gp-btn-semana" onclick="setGastosPeriod('semana')" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:12px;font-weight:700;padding:8px 4px;cursor:pointer;transition:all .18s">Semana</button>
+        <button id="gp-btn-mes"    onclick="setGastosPeriod('mes')"    style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:12px;font-weight:700;padding:8px 4px;cursor:pointer;transition:all .18s">Mes</button>
+        <button id="gp-btn-todo"   onclick="setGastosPeriod('todo')"   style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:12px;font-weight:700;padding:8px 4px;cursor:pointer;transition:all .18s">Todo</button>
+      </div>
+      <!-- Selector de día (solo visible en periodo Día) -->
+      <div id="gp-sub-hoy" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <input type="date" id="adm-gastos-dia-input"
           style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
           onchange="admGastosSetDay(this.value)"/>
@@ -4505,13 +4512,34 @@ function _initAdmGastosDia(){
   if(inp&&!inp.value) inp.value=admGastosDiaISO;
 }
 
-// kept for backward compat (export functions still call gastosPeriod)
-function setGastosPeriod(p){ gastosPeriod=p; renderGastos(); }
+function setGastosPeriod(p){
+  gastosPeriod=p;
+  ['hoy','semana','mes','todo'].forEach(k=>{
+    const b=document.getElementById('gp-btn-'+k);
+    if(b) b.classList.toggle('active',k===p);
+  });
+  const sub=document.getElementById('gp-sub-hoy');
+  if(sub) sub.style.display=p==='hoy'?'flex':'none';
+  renderGastos();
+}
 function setGastosSubPeriod(sp){ gastosSubPeriod=sp; renderGastos(); }
 
 function getGastosFiltrados(){
-  const iso=admGastosDiaISO||todayISO();
-  return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  if(gastosPeriod==='hoy'){
+    const iso=admGastosDiaISO||todayISO();
+    return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  }
+  if(gastosPeriod==='semana'){
+    const dow=(new Date().getDay()+6)%7;
+    const lun=new Date(); lun.setDate(lun.getDate()-dow); const lunISO=localISODate(lun);
+    const dom=new Date(lun); dom.setDate(lun.getDate()+6); const domISO=localISODate(dom);
+    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  }
+  if(gastosPeriod==='mes'){
+    const ym=todayISO().slice(0,7);
+    return gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  }
+  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
 }
 
 function guardarEdicionGasto(g, cambios){
@@ -4624,13 +4652,23 @@ function renderGastos(){
   const gs=getGastosFiltrados();
   const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
 
-  // Balance: ingresos del día seleccionado
-  const dayKey=toDateKey(new Date(iso+'T12:00:00'));
-  const salesFilt=sales.filter(s=>s.date===dayKey);
+  // Balance: ingresos según periodo activo
+  let salesFilt=sales;
+  let perLbl='Histórico';
+  if(gastosPeriod==='hoy'){
+    const dayKey=toDateKey(new Date(iso+'T12:00:00'));
+    salesFilt=sales.filter(s=>s.date===dayKey);
+    const isToday=iso===todayISO();
+    perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+  } else if(gastosPeriod==='semana'){
+    salesFilt=sales.filter(s=>isSameWeek(s.timestamp));
+    perLbl='Esta semana';
+  } else if(gastosPeriod==='mes'){
+    salesFilt=sales.filter(s=>isSameMonth(s.timestamp));
+    perLbl='Este mes';
+  }
   const ingresos=salesFilt.reduce((s,v)=>s+v.total,0);
   const ganancia=ingresos-totalGasto;
-  const isToday=iso===todayISO();
-  const perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
 
   const gI=document.getElementById('adm-g-ingresos');
   const gG=document.getElementById('adm-g-gastos');
@@ -4644,13 +4682,14 @@ function renderGastos(){
   // ── Gráfica ──
   renderGastosCharts(gs, ingresos, totalGasto, salesFilt);
 
-  // ── Lista con edición ──
+  // ── Lista: con edición inline en modo día, sin ella en otros periodos ──
   const el=document.getElementById('adm-gastos-list');
   if(!el)return;
-  _buildGastosHTML(el, gs, 'hoy',
+  const onEdit=gastosPeriod==='hoy'?(g,cambios)=>guardarEdicionGasto(g,cambios):null;
+  _buildGastosHTML(el, gs, gastosPeriod,
     (g)=>eliminarGasto(g.id),
     null,
-    (g,cambios)=>guardarEdicionGasto(g,cambios)
+    onEdit
   );
 }
 
