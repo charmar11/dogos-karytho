@@ -3077,7 +3077,30 @@ function updateDate(){
   const n=new Date();document.getElementById('header-date').textContent=n.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
 }
 const toDateKey=d=>new Date(d).toLocaleDateString('es-MX');
-function isSameWeek(ts){const d=new Date(ts),now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);return d>=mon&&d<=now;}
+
+// ── Date helpers using YYYY-MM-DD strings (no timezone issues) ──
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function getWeekRangeISO(){
+  const now=new Date();
+  const mon=new Date(now);
+  mon.setDate(now.getDate()-((now.getDay()+6)%7));
+  mon.setHours(0,0,0,0);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);
+  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return{mon:fmt(mon),sun:fmt(sun)};
+}
+function getMonthRangeISO(){
+  const now=new Date();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0');
+  return{first:y+'-'+m+'-01',last:y+'-'+m+'-31'};
+}
+// Filter gasto by fecha string (YYYY-MM-DD)
+function gastoEsHoy(g){return(g.fecha||'')===todayISO();}
+function gastoEsSemana(g){const f=g.fecha||'';const{mon,sun}=getWeekRangeISO();return f>=mon&&f<=sun;}
+function gastoEsMes(g){const f=g.fecha||'';const{first,last}=getMonthRangeISO();return f>=first&&f<=last;}
+
+// Keep isSameWeek/isSameMonth for SALES (which use timestamps correctly)
+function isSameWeek(ts){const d=new Date(ts),now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);const eow=new Date(mon);eow.setDate(mon.getDate()+7);return d>=mon&&d<eow;}
 function isSameMonth(ts){const d=new Date(ts),now=new Date();return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}
 function getPeriodSales(){
   const today=toDateKey(new Date());
@@ -3321,10 +3344,9 @@ function setCidopGastosPeriod(p){
 
 function getCidopGastosFiltrados(){
   if(!gastos) return [];
-  const today=toDateKey(new Date());
-  if(cidopGastosPeriod==='dia') return gastos.filter(g=>toDateKey(new Date(g.timestamp))===today);
-  if(cidopGastosPeriod==='semana') return gastos.filter(g=>isSameWeek(g.timestamp));
-  if(cidopGastosPeriod==='mes') return gastos.filter(g=>isSameMonth(g.timestamp));
+  if(cidopGastosPeriod==='dia') return gastos.filter(gastoEsHoy).sort((a,b)=>b.timestamp-a.timestamp);
+  if(cidopGastosPeriod==='semana') return gastos.filter(gastoEsSemana).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
+  if(cidopGastosPeriod==='mes') return gastos.filter(gastoEsMes).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
   return [...gastos];
 }
 
@@ -3335,8 +3357,9 @@ function renderCidopGastosList(){
     el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';
     return;
   }
+  const gsSorted2=[...gs].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
   el.innerHTML='';
-  gs.forEach(g=>{
+  gsSorted2.forEach(g=>{
     const catObj=(gastoCats&&gastoCats.find(c=>c.id===g.cat))||{icon:'📝',name:g.cat||'Otro',color:'#888'};
     const card=document.createElement('div');
     card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:8px';
@@ -3964,10 +3987,21 @@ function setGastosPeriod(p){
     const b=document.getElementById('gp-btn-'+k);
     if(b) b.classList.toggle('active',k===p);
   });
-  // Show/hide sub-selector
   const sub=document.getElementById('gp-sub-hoy');
   if(sub) sub.style.display=p==='hoy'?'flex':'none';
-  renderGastos();
+  // Always do a fresh FB read to ensure gastos are current before rendering
+  if(fbDb){
+    fbDb.ref('gastos').once('value',snap=>{
+      const d=snap.val();
+      if(d&&Object.keys(d).length>0){
+        gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      }
+      renderGastos();
+    });
+  } else {
+    renderGastos();
+  }
 }
 function setGastosSubPeriod(sp){
   gastosSubPeriod=sp;
@@ -3979,11 +4013,10 @@ function setGastosSubPeriod(sp){
 }
 
 function getGastosFiltrados(){
-  const today=toDateKey(new Date());
-  if(gastosPeriod==='hoy') return gastos.filter(g=>toDateKey(new Date(g.timestamp))===today);
-  if(gastosPeriod==='semana') return gastos.filter(g=>isSameWeek(g.timestamp));
-  if(gastosPeriod==='mes') return gastos.filter(g=>isSameMonth(g.timestamp));
-  return [...gastos];
+  if(gastosPeriod==='hoy') return gastos.filter(gastoEsHoy).sort((a,b)=>b.timestamp-a.timestamp);
+  if(gastosPeriod==='semana') return gastos.filter(gastoEsSemana).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
+  if(gastosPeriod==='mes') return gastos.filter(gastoEsMes).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
+  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
 }
 
 function renderGastoCatSelect(){
@@ -4109,8 +4142,10 @@ function renderGastos(){
   const el=document.getElementById('adm-gastos-list');
   if(!el)return;
   if(!gs.length){el.innerHTML='<div class="admin-empty">Sin gastos en este periodo</div>';return;}
+  // Sort: newest fecha first, then newest timestamp within same day
+  const gsSorted=[...gs].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||b.timestamp-a.timestamp);
   el.innerHTML='';
-  gs.forEach(g=>{
+  gsSorted.forEach(g=>{
     const catObj=getCatById(g.cat);
     const card=document.createElement('div');
     card.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:7px';
@@ -4326,91 +4361,160 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
   const perEl=document.getElementById('g-chart-period-lbl');
   if(perEl) perEl.textContent={hoy:'Hoy',semana:'Esta semana',mes:'Este mes',todo:'Histórico'}[gastosPeriod]||'';
 
-  // Agrupación según periodo + sub-periodo
-  // hoy+hora → solo horas con datos | hoy+dia → 24h completas
-  // semana → por día | mes → por semana | todo → por mes
   const isHoy=gastosPeriod==='hoy';
   const isDiaCompleto=isHoy&&gastosSubPeriod==='dia';
-  const groupMode=gastosPeriod==='todo'?'month':
-                  gastosPeriod==='mes'?'week':
-                  gastosPeriod==='semana'?'day':'hour';
 
-  function groupKey(isoOrTs, ts){
-    if(groupMode==='hour'){
-      // Use local hour so it matches the user's timezone
-      const d=new Date(ts);
-      const yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0');
-      const dd=String(d.getDate()).padStart(2,'0'), hh=String(d.getHours()).padStart(2,'0');
-      return yyyy+'-'+mm+'-'+dd+'T'+hh;
+  // ── Helpers: always use local time ──
+  function localKey(ts, mode){
+    const d=new Date(ts);
+    const Y=d.getFullYear(), M=String(d.getMonth()+1).padStart(2,'0');
+    const D=String(d.getDate()).padStart(2,'0');
+    const H=String(d.getHours()).padStart(2,'0'), Mi=String(d.getMinutes()).padStart(2,'0');
+    if(mode==='minute') return Y+'-'+M+'-'+D+'T'+H+':'+Mi;
+    if(mode==='hour')   return Y+'-'+M+'-'+D+'T'+H;
+    if(mode==='day')    return Y+'-'+M+'-'+D;
+    if(mode==='week'){
+      // Monday of that week
+      const dw=new Date(d); dw.setHours(12,0,0,0);
+      const diff=(dw.getDay()===0?-6:1-dw.getDay());
+      dw.setDate(dw.getDate()+diff);
+      return dw.getFullYear()+'-'+String(dw.getMonth()+1).padStart(2,'0')+'-'+String(dw.getDate()).padStart(2,'0');
     }
-    const iso=isoOrTs;
-    const p=iso.split('-');
-    if(groupMode==='day') return iso;
-    if(groupMode==='month') return p[0]+'-'+p[1];
-    // week: Monday
-    const d=new Date(iso+'T12:00:00');
-    const diff=(d.getDay()===0?-6:1-d.getDay());
-    d.setDate(d.getDate()+diff);
-    return d.toISOString().slice(0,10);
+    if(mode==='month') return Y+'-'+M;
+    return Y+'-'+M+'-'+D;
   }
-  function displayKey(k){
-    if(groupMode==='hour'){
-      const h=parseInt(k.slice(11,13));
-      const ampm=h<12?'am':'pm';
-      const h12=h===0?12:h>12?h-12:h;
-      return h12+(h===0||h===12?'':'')+ampm;
+  function displayKey(k, mode){
+    if(mode==='minute'||mode==='hour'){
+      const h=parseInt(k.slice(11,13)), mi=(k.slice(14,16)||'00');
+      const ampm=h<12?'am':'pm', h12=h===0?12:h>12?h-12:h;
+      return mode==='minute'?h12+':'+mi+ampm:h12+ampm;
     }
     const p=k.split('-');
-    if(groupMode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
+    if(mode==='month') return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+" '"+p[0].slice(2);
+    // day or week: D/M
     return parseInt(p[2])+'/'+parseInt(p[1]);
   }
 
+  // ── Choose groupMode ──
+  const mode=gastosPeriod==='todo'?'month':
+             gastosPeriod==='mes'?'week':
+             gastosPeriod==='semana'?'day':'minute';
+
+  // ── Aggregate ──
+  // Sales: use timestamp (stored correctly as ISO string from confirmarCobro)
+  // Gastos: use g.fecha (YYYY-MM-DD) — no timestamps, no timezone issues
   const map={};
+  function addToMap(k,ing,gas){if(!map[k])map[k]={ing:0,gas:0};map[k].ing+=ing;map[k].gas+=gas;}
+
   salesFilt.forEach(s=>{
-    const iso=toISODate(s.date);if(!iso)return;
-    const ts=s.timestamp?new Date(s.timestamp).getTime():new Date(iso+'T12:00:00').getTime();
-    const k=groupKey(iso,ts);
-    if(!map[k])map[k]={ing:0,gas:0};
-    map[k].ing+=s.total;
-  });
-  gs.forEach(g=>{
-    const iso=toISODate(g.fecha);if(!iso)return;
-    const ts=g.timestamp||new Date(iso+'T12:00:00').getTime();
-    const k=groupKey(iso,ts);
-    if(!map[k])map[k]={ing:0,gas:0};
-    map[k].gas+=g.monto;
+    if(!s.timestamp)return;
+    const ts=new Date(s.timestamp).getTime();
+    if(isNaN(ts))return;
+    const k=localKey(ts,isDiaCompleto?'hour':mode);
+    addToMap(k,s.total,0);
   });
 
+  gs.forEach(g=>{
+    const fecha=g.fecha||''; if(!fecha)return;
+    let k;
+    if(isDiaCompleto||mode==='minute'){
+      // For hour/minute modes, use timestamp to get the exact time
+      const ts=g.timestamp?new Date(g.timestamp).getTime():new Date(fecha+'T12:00:00').getTime();
+      k=localKey(ts,isDiaCompleto?'hour':'minute');
+    } else if(mode==='day'){
+      k=fecha; // YYYY-MM-DD directly
+    } else if(mode==='week'){
+      // Monday of the week containing g.fecha
+      const d=new Date(fecha+'T12:00:00');
+      const diff=(d.getDay()===0?-6:1-d.getDay());
+      d.setDate(d.getDate()+diff);
+      k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    } else if(mode==='month'){
+      k=fecha.slice(0,7); // YYYY-MM
+    }
+    if(k)addToMap(k,0,g.monto);
+  });
+
+  // ── Build keys list ──
   let keys;
   if(isDiaCompleto){
-    // Día completo: generar las 24 horas de hoy, con 0 donde no hay datos
-    const today=new Date();
-    const yyyy=today.getFullYear(), mm=String(today.getMonth()+1).padStart(2,'0');
-    const dd=String(today.getDate()).padStart(2,'0');
-    const allHours=Array.from({length:24},(_,h)=>yyyy+'-'+mm+'-'+dd+'T'+String(h).padStart(2,'0'));
-    // Fill missing hours with 0
-    allHours.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
-    keys=allHours;
+    // Día completo: 12am hasta hora actual inclusive, solo horas con datos (sin huecos al inicio/fin)
+    const d=new Date();
+    const Y=d.getFullYear(),M=String(d.getMonth()+1).padStart(2,'0'),D=String(d.getDate()).padStart(2,'0');
+    const currentHour=d.getHours();
+    // Generate slots from 0 to current hour only (no future hours)
+    const slots=Array.from({length:currentHour+1},(_,h)=>Y+'-'+M+'-'+D+'T'+String(h).padStart(2,'0'));
+    slots.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+    // Trim leading/trailing empty hours — only show range with actual data
+    const first=slots.findIndex(k=>(map[k].ing||0)>0||(map[k].gas||0)>0);
+    if(first<0){keys=slots;}else{
+      let last=first;
+      for(let i=slots.length-1;i>first;i--){if((map[slots[i]].ing||0)>0||(map[slots[i]].gas||0)>0){last=i;break;}}
+      keys=slots.slice(first,last+1);
+    }
+  } else if(gastosPeriod==='semana'){
+    // Lunes a hoy — claves YYYY-MM-DD igual que g.fecha
+    const now=new Date();
+    const mon=new Date(now);
+    mon.setDate(now.getDate()-((now.getDay()+6)%7));
+    const slots=[];
+    for(let i=0;i<=6;i++){
+      const d=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i);
+      if(d>now) break;
+      slots.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+    slots.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+    // Show from first day with data to today
+    const first=slots.findIndex(k=>(map[k].ing||0)>0||(map[k].gas||0)>0);
+    keys=first<0?[slots[slots.length-1]]:slots.slice(first);
+  } else if(gastosPeriod==='mes'){
+    // Semanas del mes (Lunes de cada semana) hasta hoy
+    const now=new Date();
+    const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
+    const mon=new Date(firstDay);
+    mon.setDate(firstDay.getDate()-((firstDay.getDay()+6)%7));
+    const slots=[];
+    const cur=new Date(mon);
+    while(cur<=now){
+      slots.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
+      cur.setDate(cur.getDate()+7);
+    }
+    slots.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+    const first=slots.findIndex(k=>(map[k].ing||0)>0||(map[k].gas||0)>0);
+    keys=first<0?[slots[slots.length-1]]:slots.slice(first);
+  } else if(gastosPeriod==='todo'){
+    // Un punto por mes (YYYY-MM) desde el más antiguo hasta hoy
+    const allK=Object.keys(map).filter(k=>(map[k].ing||0)>0||(map[k].gas||0)>0).sort();
+    if(!allK.length){keys=[];}else{
+      const now=new Date();
+      const nowM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+      const slots=[];
+      let cur=allK[0].slice(0,7);
+      while(cur<=nowM){
+        slots.push(cur);
+        const[y,m]=cur.split('-').map(Number);
+        cur=m===12?(y+1)+'-01':y+'-'+String(m+1).padStart(2,'0');
+      }
+      slots.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
+      keys=slots;
+    }
   } else {
-    // Solo horas/días/semanas/meses con actividad real — sin huecos vacíos
-    keys=Object.keys(map).filter(k=>map[k].ing>0||map[k].gas>0).sort().slice(-14);
+    keys=Object.keys(map).filter(k=>map[k].ing>0||map[k].gas>0).sort().slice(-20);
   }
-  const ingData=keys.map(k=>+((map[k].ing||0).toFixed(2)));
-  const gasData=keys.map(k=>+((map[k].gas||0).toFixed(2)));
 
-  // Ganancia acumulada (running total) — refleja la ganancia REAL hasta ese momento
-  // No per-interval, sino suma progresiva de ing - gas
-  let runIng=0, runGas=0;
-  const ganData=keys.map((_,i)=>{
-    runIng+=ingData[i]; runGas+=gasData[i];
-    return +((runIng-runGas).toFixed(2));
-  });
-  // Also compute cumulative ing/gas for display (so line shows growth, not just that hour)
-  const ingCum=keys.map((_,i)=>+(ingData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
-  const gasCum=keys.map((_,i)=>+(gasData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
+  const dispMode=isDiaCompleto?'hour':mode;
+  const xLabels=keys.map(k=>displayKey(k,dispMode));
+  const ingData=keys.map(k=>+((map[k]?.ing||0).toFixed(2)));
+  const gasData=keys.map(k=>+((map[k]?.gas||0).toFixed(2)));
 
-  const xLabels=keys.map(displayKey);
-  // Show chart if there are any sales OR gastos
+  // For hoy: cumulative lines show growth through the day
+  // For semana/mes/todo: per-period bars make more sense
+  const usePerPoint=gastosPeriod!=='hoy';
+  let rI=0,rG=0;
+  const ganData=keys.map((_,i)=>{rI+=ingData[i];rG+=gasData[i];return +((rI-rG).toFixed(2));});
+  const ingCum=usePerPoint?ingData:keys.map((_,i)=>+(ingData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
+  const gasCum=usePerPoint?gasData:keys.map((_,i)=>+(gasData.slice(0,i+1).reduce((a,b)=>a+b,0).toFixed(2)));
+
   const isEmpty=!keys.length;
 
   if(gChartBalance){gChartBalance.destroy();gChartBalance=null;}
