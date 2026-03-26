@@ -5727,14 +5727,102 @@ function renderAdminVTop(ps){
 function renderAdminVentas(ps){
   const list=document.getElementById('adm-ventas-list');if(!list)return;
   if(!ps||!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
-  list.innerHTML=ps.map((s,i)=>{
-    let its='';
-    if(s.isEvento){
-      its=`<span style="color:var(--red);font-weight:700">🎪 Evento</span>${s.productosDesc?' — '+s.productosDesc:s.eventoName?' — '+s.eventoName:''}`;
-    } else {
-      its=(s.items||[]).map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
-    }
-    return `<div class="sale-card" style="animation-delay:${Math.min(i,.2)*0.04}s"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">${s.date} · ${s.time}${s.isEvento?' · <span style="color:var(--red)">Evento</span>':''}</div></div><div class="sale-total-amt">$${s.total.toFixed(2)}</div></div><div class="sale-items-txt">${its}</div>${s.cambio!=null?'<div class="sale-footer"><span class="sale-cambio-badge">Cambio $'+s.cambio.toFixed(2)+'</span></div>':''}</div>`;
+
+  const effectiveRange=adminSpecificDate?'hoy':adminRange;
+
+  // ── HOY: agrupar por hora ──
+  if(effectiveRange==='hoy'){
+    const byH={};
+    ps.forEach(s=>{
+      const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();
+      const key=String(h).padStart(2,'0')+':00';
+      if(!byH[key])byH[key]={sales:[],total:0};
+      byH[key].sales.push(s);
+      byH[key].total+=s.total;
+    });
+    const hours=Object.entries(byH).sort((a,b)=>a[0].localeCompare(b[0]));
+    list.innerHTML=hours.map(([hora,g])=>{
+      const rows=g.sales.map(s=>{
+        let its='';
+        if(s.isEvento){
+          its=`<span style="color:var(--red);font-weight:700">🎪 Evento</span>${s.productosDesc?' — '+s.productosDesc:s.eventoName?' — '+s.eventoName:''}`;
+        } else {
+          its=(s.items||[]).map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
+        }
+        return `<div style="border-bottom:1px solid var(--border);padding:8px 0;last-child:border:none"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">${s.time}</span><span style="font-weight:700;color:var(--gold);font-size:12px">$${s.total.toFixed(2)}</span></div><div style="font-size:11px;color:var(--text3);margin-top:2px">${its}</div>${s.cambio!=null?`<div style="margin-top:2px"><span style="font-size:10px;background:rgba(245,200,0,.1);color:var(--gold);padding:1px 6px;border-radius:4px">Cambio $${s.cambio.toFixed(2)}</span></div>`:''}</div>`;
+      }).join('');
+      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">🕐 ${hora}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.sales.length} venta${g.sales.length!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:6px">${rows}</div></div>`;
+    }).join('');
+    return;
+  }
+
+  // ── SEMANA: productos totales por día ──
+  if(effectiveRange==='semana'){
+    const dayNames=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const byD={};
+    ps.forEach(s=>{
+      const d=new Date(s.timestamp);
+      const key=s.date;
+      if(!byD[key])byD[key]={dayName:dayNames[d.getDay()],total:0,prods:{},count:0};
+      byD[key].total+=s.total;
+      byD[key].count++;
+      (s.items||[]).forEach(it=>{
+        const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+        byD[key].prods[k]=(byD[key].prods[k]||0)+it.qty;
+      });
+    });
+    const days=Object.entries(byD).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    list.innerHTML=days.map(([date,g])=>{
+      const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
+      const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
+      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">📅 ${g.dayName} ${date}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
+    }).join('');
+    return;
+  }
+
+  // ── MES: productos totales por semana ──
+  if(effectiveRange==='mes'){
+    const byW={};
+    ps.forEach(s=>{
+      const d=new Date(s.timestamp);
+      const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);
+      const key=toDateKey(mon);
+      if(!byW[key])byW[key]={start:mon,total:0,prods:{},count:0};
+      byW[key].total+=s.total;
+      byW[key].count++;
+      (s.items||[]).forEach(it=>{
+        const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+        byW[key].prods[k]=(byW[key].prods[k]||0)+it.qty;
+      });
+    });
+    const weeks=Object.entries(byW).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    list.innerHTML=weeks.map(([,g],i)=>{
+      const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
+      const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
+      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">📆 Semana ${i+1}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''} · $${g.total.toFixed(2)}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
+    }).join('');
+    return;
+  }
+
+  // ── TODO: productos totales por mes ──
+  const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const byM={};
+  ps.forEach(s=>{
+    const d=new Date(s.timestamp);
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(!byM[key])byM[key]={label:monthNames[d.getMonth()]+' '+d.getFullYear(),total:0,prods:{},count:0};
+    byM[key].total+=s.total;
+    byM[key].count++;
+    (s.items||[]).forEach(it=>{
+      const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
+      byM[key].prods[k]=(byM[key].prods[k]||0)+it.qty;
+    });
+  });
+  const months=Object.entries(byM).sort((a,b)=>a[0].localeCompare(b[0]));
+  list.innerHTML=months.map(([,g])=>{
+    const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
+    const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
+    return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">🗓️ ${g.label}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
   }).join('');
 }
 
