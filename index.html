@@ -2038,6 +2038,13 @@ body{
       </div>
     </div>
 
+    <!-- ── Mejores días de la semana ── -->
+    <div class="form-card" style="margin-top:12px;padding:16px 18px 14px">
+      <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">📅 Mejores días de la semana</div>
+      <div id="adm-best-days-msg" style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:10px">—</div>
+      <div id="adm-best-days-bars" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
+
     <div class="sec-label">🏆 Productos mas vendidos</div>
     <div class="form-card" style="padding:12px 15px">
       <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
@@ -2223,6 +2230,20 @@ body{
   </div>
 
   <div class="admin-tab-view" id="adm-tab-actividad">
+    <!-- ── En línea ahora ── -->
+    <div class="form-card" style="margin-bottom:12px;padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="log-live-dot"></span>
+          <span style="font-size:13px;font-weight:800;color:var(--text)">En línea ahora</span>
+        </div>
+        <span id="adm-online-count" style="font-size:11px;font-weight:700;color:var(--text4)">0 usuarios</span>
+      </div>
+      <div id="adm-online-list">
+        <div class="admin-empty" style="padding:6px 0">Nadie conectado</div>
+      </div>
+    </div>
+    <!-- ── Log de actividad ── -->
     <div class="log-filters">
       <button class="log-filter-btn active" onclick="setLogFilter('todo')">Todo</button>
       <button class="log-filter-btn f-conectar" onclick="setLogFilter('sesion')">Sesiones</button>
@@ -2234,7 +2255,7 @@ body{
       <span class="log-live-dot"></span>
       <span style="font-size:11px;color:var(--text3)">En tiempo real — <span id="log-count">0</span> eventos</span>
     </div>
-    <div class="form-card" style="padding:10px 14px;max-height:calc(100vh - 280px);overflow-y:auto">
+    <div class="form-card" style="padding:10px 14px;max-height:calc(100vh - 380px);overflow-y:auto">
       <div id="adm-activity-log"><div class="admin-empty">Sin actividad registrada aun</div></div>
     </div>
   </div>
@@ -2857,11 +2878,20 @@ function startPresence(userName){
     });
     // session login not logged
   });
+  // Listen for force-logout signal from admin
+  sessRef.child('forceLogout').on('value',snap=>{
+    if(snap.val()===true){
+      sessRef.remove().catch(()=>{});
+      showToast('El admin cerró tu sesión','red');
+      setTimeout(()=>doLogout(),1200);
+    }
+  });
   // Listen to all presence
   fbDb.ref('presence').on('value',snap=>{
     const data=snap.val()||{};
-    const users=Object.values(data);
-    renderPresenceBadge(users);
+    const sessions=Object.entries(data).map(([sid,u])=>({...u,_sid:sid}));
+    renderPresenceBadge(sessions);
+    renderAdminOnlineList(sessions);
   });
 }
 
@@ -2894,6 +2924,105 @@ function renderPresenceBadge(users){
       });
     });
   }
+}
+
+/* ─── Admin: panel de usuarios en línea con botón de kick ─── */
+function renderAdminOnlineList(sessions){
+  const el=document.getElementById('adm-online-list');
+  const cnt=document.getElementById('adm-online-count');
+  if(!el)return;
+  const myRole=safeStorage.getItem(SK_ROLE)||'user';
+  const myId=presenceSessionId;
+  // Excluir admin, inventario, eventos, y la propia sesión del admin que está viendo
+  const users=sessions.filter(u=>u.role==='user'||!u.role);
+  if(cnt) cnt.textContent=users.length===0?'Nadie conectado':users.length===1?'1 usuario':users.length+' usuarios';
+  if(!users.length){el.innerHTML='<div class="admin-empty" style="padding:6px 0">Nadie conectado en este momento</div>';return;}
+  el.innerHTML='';
+  users.sort((a,b)=>a.ts-b.ts).forEach(u=>{
+    const card=document.createElement('div');
+    card.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:6px';
+    card.innerHTML=`
+      <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2ab8b8,#1e8888);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0">${(u.name||'?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${u.name||'Desconocido'}</div>
+        <div style="font-size:11px;color:var(--text4)">Conectado desde ${u.since||'—'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:7px;height:7px;border-radius:50%;background:#64dc64;display:inline-block"></span>
+        <button onclick="adminKickUser('${u._sid}','${u.name||''}')"
+          style="background:rgba(224,32,32,.1);border:1px solid rgba(224,32,32,.3);border-radius:7px;color:var(--red);font-size:10px;font-weight:800;padding:5px 10px;cursor:pointer">
+          Cerrar sesión
+        </button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+function adminKickUser(sessionId, name){
+  if(!sessionId||!fbDb)return;
+  customConfirm(`¿Cerrar la sesión de ${name||'este usuario'}?`,'Cerrar sesión',()=>{
+    fbDb.ref('presence/'+sessionId+'/forceLogout').set(true)
+      .then(()=>{
+        showToast('✅ Sesión cerrada — '+name,'green');
+        // Clean up after a moment
+        setTimeout(()=>fbDb.ref('presence/'+sessionId).remove().catch(()=>{}),3000);
+      })
+      .catch(()=>showToast('Error al cerrar sesión','red'));
+  });
+}
+
+/* ─── Mejores días de la semana ─── */
+function renderBestDays(){
+  const DAYS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const counts=Array(7).fill(0);   // number of occurrences of each weekday
+  const totals=Array(7).fill(0);   // total revenue per weekday
+  // Count unique dates per weekday to compute average
+  const datesByDay={0:new Set(),1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set(),6:new Set()};
+  (sales||[]).forEach(s=>{
+    const d=new Date(s.timestamp);
+    const dow=d.getDay(); // 0=Sun
+    totals[dow]+=s.total;
+    const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    datesByDay[dow].add(iso);
+  });
+  const avgs=totals.map((t,i)=>{const occ=datesByDay[i].size;return occ>0?t/occ:0;});
+  const maxAvg=Math.max(...avgs,1);
+
+  const el=document.getElementById('adm-best-days-bars');
+  const msg=document.getElementById('adm-best-days-msg');
+  if(!el)return;
+
+  if(!(sales||[]).length){
+    el.innerHTML='<div class="admin-empty">Sin ventas para analizar</div>';
+    if(msg) msg.textContent='—';
+    return;
+  }
+
+  // Sort by average to find top days
+  const ranked=[...avgs.map((a,i)=>({day:i,avg:a,label:DAYS[i],occ:datesByDay[i].size}))].sort((a,b)=>b.avg-a.avg);
+  const top=ranked.filter(d=>d.avg>0).slice(0,3);
+  if(msg){
+    if(top.length>=2) msg.textContent=`✨ Tus mejores días son ${top[0].label} y ${top[1].label}`;
+    else if(top.length===1) msg.textContent=`✨ Tu mejor día es ${top[0].label}`;
+    else msg.textContent='Sin suficientes datos aún';
+  }
+
+  // Render bars Mon→Sun (start Monday = index 1)
+  const order=[1,2,3,4,5,6,0]; // Mon..Sun
+  el.innerHTML=order.map(i=>{
+    const avg=avgs[i];
+    const pct=maxAvg>0?Math.round(avg/maxAvg*100):0;
+    const isTop=top.length>0&&top[0].day===i;
+    const isSecond=top.length>1&&top[1].day===i;
+    const color=isTop?'#2ab8b8':isSecond?'var(--gold)':'rgba(42,184,184,.4)';
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;font-weight:${isTop||isSecond?800:600};color:${isTop?'#2ab8b8':isSecond?'var(--gold)':'var(--text3)'};min-width:72px">${isTop?'🥇 ':isSecond?'🥈 ':''}${DAYS[i]}</span>
+      <div style="flex:1;height:12px;border-radius:4px;background:var(--bg3);overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .4s"></div>
+      </div>
+      <span style="font-size:10px;color:var(--text3);min-width:42px;text-align:right">${avg>0?'$'+avg.toFixed(0):'-'}</span>
+    </div>`;
+  }).join('');
 }
 
 let tooltipOpen=false;
@@ -4347,6 +4476,7 @@ function renderAdmin(){
 
   renderPuntoEquilibrio();
   renderHeatMap();
+  renderBestDays();
   setAdminRange('hoy');
 }
 
@@ -5494,7 +5624,15 @@ function setAdminTab(tab){
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
   if(tab==='usuarios')renderAdminUsers();
-  if(tab==='actividad')renderActivityLog();
+  if(tab==='actividad'){
+    renderActivityLog();
+    // Refresh online list from Firebase
+    if(fbDb) fbDb.ref('presence').once('value',snap=>{
+      const data=snap.val()||{};
+      const sessions=Object.entries(data).map(([sid,u])=>({...u,_sid:sid}));
+      renderAdminOnlineList(sessions);
+    });
+  }
   if(tab==='gastos'){renderGastos();}
 }
 
