@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 /* ── KEYFRAMES ── */
 @keyframes fadeIn         {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -2821,6 +2822,11 @@ function openFbSetup(){showToast('Sincronizacion ya configurada','green');}
   try{
     if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
     fbDb=firebase.database();
+    // Autenticacion anonima silenciosa — requerida por reglas de seguridad
+    // Firebase incluye el token auth en todas las peticiones una vez completada
+    firebase.auth().signInAnonymously()
+      .then(()=>console.log('[Firebase] Auth anonima OK'))
+      .catch(e=>console.warn('[Firebase] Auth anonima no habilitada aun:',e.code));
   }catch(e){console.error('Firebase init error:',e);}
 })();
 
@@ -2910,6 +2916,7 @@ function initFirebase(cfg){
     if(!fbDb){
       if(!firebase.apps.length)firebase.initializeApp(cfg);
       fbDb=firebase.database();
+      firebase.auth().signInAnonymously().catch(e=>console.warn('[Firebase] Auth:',e.code));
     }
     setFbStatus('connecting');
     fbDb.ref('.info/connected').on('value',snap=>{
