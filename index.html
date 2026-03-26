@@ -1990,6 +1990,53 @@ body{
       <div class="admin-stat"><div class="admin-stat-lbl">Primera venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-first-date">—</div><div class="admin-stat-sub">fecha</div></div>
       <div class="admin-stat"><div class="admin-stat-lbl">Ultima venta</div><div class="admin-stat-val" style="font-size:16px" id="adm-last-date">—</div><div class="admin-stat-sub">fecha</div></div>
     </div>
+    <!-- ── Punto de Equilibrio ── -->
+    <div class="form-card" style="margin-top:12px;padding:16px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">⚖️ Punto de equilibrio <span style="font-size:10px;font-weight:500;color:var(--text4)">HOY</span></div>
+        <div id="adm-pe-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(42,184,184,.12);color:#2ab8b8">cargando…</div>
+      </div>
+      <!-- Barra de progreso -->
+      <div style="background:var(--bg3);border-radius:8px;height:10px;overflow:hidden;margin-bottom:10px">
+        <div id="adm-pe-bar" style="height:100%;border-radius:8px;background:linear-gradient(90deg,var(--red),#f5a623);width:0%;transition:width .5s ease"></div>
+      </div>
+      <!-- Mensaje principal -->
+      <div id="adm-pe-msg" style="font-size:14px;font-weight:700;color:var(--text);line-height:1.4;min-height:36px">—</div>
+      <!-- Sub stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text4);font-weight:600">Gastos hoy</div>
+          <div id="adm-pe-gastos" style="font-size:14px;font-weight:800;color:var(--red)">$0</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text4);font-weight:600">Vendido hoy</div>
+          <div id="adm-pe-vendido" style="font-size:14px;font-weight:800;color:#2ab8b8">$0</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--text4);font-weight:600">Precio prom.</div>
+          <div id="adm-pe-avg" style="font-size:14px;font-weight:800;color:var(--gold)">$0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Mapa de Calor por Horas ── -->
+    <div class="form-card" style="margin-top:12px;padding:16px 18px 14px">
+      <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px">🔥 Horarios pico</div>
+      <div style="font-size:11px;color:var(--text4);margin-bottom:12px">Pedidos históricos por hora del día</div>
+      <div id="adm-heat-map" style="display:flex;flex-direction:column;gap:4px"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;padding:0 2px">
+        <span style="font-size:10px;color:var(--text4)">Poca actividad</span>
+        <div style="display:flex;gap:3px;align-items:center">
+          <div style="width:10px;height:10px;border-radius:2px;background:rgba(42,184,184,.15)"></div>
+          <div style="width:10px;height:10px;border-radius:2px;background:rgba(42,184,184,.35)"></div>
+          <div style="width:10px;height:10px;border-radius:2px;background:rgba(42,184,184,.60)"></div>
+          <div style="width:10px;height:10px;border-radius:2px;background:rgba(42,184,184,.85)"></div>
+          <div style="width:10px;height:10px;border-radius:2px;background:#2ab8b8"></div>
+        </div>
+        <span style="font-size:10px;color:var(--text4)">Hora pico</span>
+      </div>
+    </div>
+
     <div class="sec-label">🏆 Productos mas vendidos</div>
     <div class="form-card" style="padding:12px 15px">
       <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
@@ -2086,10 +2133,6 @@ body{
     <div class="form-card" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="sec-label" style="margin:0">💰 Balance: Ingresos vs Gastos</div>
-        <button onclick="openGastoCatsModal()" type="button"
-          style="font-size:11px;font-weight:700;color:#2ab8b8;background:rgba(42,184,184,.08);border:1px solid rgba(42,184,184,.3);border-radius:8px;padding:6px 12px;cursor:pointer">
-          🏷️ Categorías
-        </button>
       </div>
       <div class="admin-stat-grid" style="margin-bottom:12px">
         <div class="admin-stat">
@@ -2734,7 +2777,7 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 function doLogout(){
   customConfirm('Cerrar sesion?','Salir',()=>{
     const name=safeStorage.getItem(SK_DISPLAY)||'Usuario';
-    logActivity('desconectar',name+' cerro sesion');
+    // session logout not logged
     if(fbDb&&presenceSessionId){
       fbDb.ref('presence/'+presenceSessionId).remove().catch(()=>{});
     }
@@ -2806,8 +2849,7 @@ function startPresence(userName){
       ts:Date.now(),
       role:safeStorage.getItem(SK_ROLE)||'user'
     });
-    // Log connect
-    logActivity('conectar', userName+' inicio sesion');
+    // session login not logged
   });
   // Listen to all presence
   fbDb.ref('presence').on('value',snap=>{
@@ -3865,9 +3907,25 @@ function buildChartData(ps){
     const vals=Array(7).fill(0);ps.forEach(s=>{vals[(new Date(s.timestamp).getDay()+6)%7]+=s.total;});
     return{labels:['Lun','Mar','Mie','Jue','Vie','Sab','Dom'],data:vals,title:'Ventas por dia',badge:'Esta semana'};
   }
-  const now=new Date(),days=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  const vals=Array(days).fill(0);ps.forEach(s=>{const d=new Date(s.timestamp).getDate()-1;if(d>=0&&d<days)vals[d]+=s.total;});
-  return{labels:Array.from({length:days},(_,i)=>i+1),data:vals,title:'Ventas por dia del mes',badge:'Este mes'};
+  if(currentPeriod==='mes'){
+    const ym=histMesYM||_histThisMesYM();
+    const[y,m]=[parseInt(ym.slice(0,4)),parseInt(ym.slice(5,7))-1];
+    const days=new Date(y,m+1,0).getDate();
+    const vals=Array(days).fill(0);
+    ps.forEach(s=>{const d=new Date(s.timestamp).getDate()-1;if(d>=0&&d<days)vals[d]+=s.total;});
+    const badge=new Date(y,m,1).toLocaleDateString('es-MX',{month:'short',year:'numeric'});
+    return{labels:Array.from({length:days},(_,i)=>i+1),data:vals,title:'Ventas por día',badge};
+  }
+  // todo — agrupar por mes
+  const byMonth={};
+  ps.forEach(s=>{
+    const d=new Date(s.timestamp);
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    byMonth[key]=(byMonth[key]||0)+s.total;
+  });
+  const months=Object.keys(byMonth).sort();
+  const labels=months.map(k=>{const[y,m]=k.split('-');return new Date(parseInt(y),parseInt(m)-1,1).toLocaleDateString('es-MX',{month:'short',year:'2-digit'});});
+  return{labels:labels.length?labels:['—'],data:months.map(k=>byMonth[k]),title:'Ventas por mes',badge:'Histórico'};
 }
 function renderChart(ps){
   const wrap=document.getElementById('chart-wrap');
@@ -4280,7 +4338,121 @@ function renderAdmin(){
       </div>`).join('');
   }
 
+  renderPuntoEquilibrio();
+  renderHeatMap();
   setAdminRange('hoy');
+}
+
+/* ─── Punto de Equilibrio Diario ─── */
+function renderPuntoEquilibrio(){
+  const today=todayISO();
+  const todayKey=toDateKey(new Date());
+
+  // Gastos del día
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===today);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+
+  // Ventas del día
+  const ventasHoy=(sales||[]).filter(s=>s.date===todayKey);
+  const totalVendido=ventasHoy.reduce((s,v)=>s+v.total,0);
+
+  // Items individuales vendidos hoy
+  let itemsVendidos=0;
+  ventasHoy.forEach(s=>(s.items||[]).forEach(it=>{itemsVendidos+=it.qty||1;}));
+
+  // Precio promedio por item (usa histórico si no hay ventas hoy)
+  let precioPromedio=0;
+  if(itemsVendidos>0){
+    precioPromedio=totalVendido/itemsVendidos;
+  } else {
+    let allItems=0,allRevenue=0;
+    (sales||[]).forEach(s=>{
+      s.items&&s.items.forEach(it=>{allItems+=it.qty||1;allRevenue+=it.price*(it.qty||1);});
+    });
+    precioPromedio=allItems>0?allRevenue/allItems:0;
+  }
+
+  // Equilibrio: ¿cuántos items necesito para cubrir gastos?
+  const peItems=precioPromedio>0?Math.ceil(totalGastos/precioPromedio):0;
+  const faltan=Math.max(0,peItems-itemsVendidos);
+  const superavit=Math.max(0,totalVendido-totalGastos);
+
+  // Barra de progreso (vendido vs gastos)
+  const pct=totalGastos>0?Math.min(100,Math.round(totalVendido/totalGastos*100)):100;
+
+  // Elementos
+  const bar=document.getElementById('adm-pe-bar');
+  const msg=document.getElementById('adm-pe-msg');
+  const badge=document.getElementById('adm-pe-badge');
+  const gEl=document.getElementById('adm-pe-gastos');
+  const vEl=document.getElementById('adm-pe-vendido');
+  const aEl=document.getElementById('adm-pe-avg');
+
+  if(bar) bar.style.width=pct+'%';
+  if(bar){
+    if(pct>=100) bar.style.background='linear-gradient(90deg,#1eaa4e,#2ab8b8)';
+    else if(pct>=60) bar.style.background='linear-gradient(90deg,#f5a623,#f5c800)';
+    else bar.style.background='linear-gradient(90deg,var(--red),#f5a623)';
+  }
+  if(gEl) gEl.textContent='$'+totalGastos.toFixed(2);
+  if(vEl) vEl.textContent='$'+totalVendido.toFixed(2);
+  if(aEl) aEl.textContent=precioPromedio>0?'$'+precioPromedio.toFixed(2):'—';
+
+  if(totalGastos===0){
+    if(msg) msg.innerHTML='<span style="color:var(--text3)">Sin gastos registrados hoy — sin necesidad de equilibrio.</span>';
+    if(badge){badge.textContent='Sin gastos';badge.style.background='rgba(100,220,100,.12)';badge.style.color='#64dc64';}
+  } else if(pct>=100){
+    const plus=superavit;
+    if(msg) msg.innerHTML=`✅ <span style="color:#64dc64">¡Gastos cubiertos!</span> Llevas <strong>$${plus.toFixed(2)}</strong> de ganancia neta hoy.`;
+    if(badge){badge.textContent='✅ Cubierto';badge.style.background='rgba(100,220,100,.12)';badge.style.color='#64dc64';}
+  } else if(peItems>0&&faltan>0){
+    const producto=products&&products[0]?products[0].name:'producto';
+    if(msg) msg.innerHTML=`Necesitas vender <strong>${peItems}</strong> ${producto}${peItems!==1?'s':''} para cubrir gastos.<br><span style="color:var(--gold)">Faltan <strong>${faltan}</strong> — llevas ${itemsVendidos} vendidos.</span>`;
+    if(badge){badge.textContent=`Faltan ${faltan}`;badge.style.background='rgba(245,200,0,.12)';badge.style.color='var(--gold)';}
+  } else {
+    if(msg) msg.innerHTML=`<span style="color:var(--text3)">Agrega el precio promedio de tus productos para calcular el punto de equilibrio.</span>`;
+    if(badge){badge.textContent='Sin datos';badge.style.background='rgba(42,184,184,.12)';badge.style.color='#2ab8b8';}
+  }
+}
+
+/* ─── Mapa de Calor por Horas ─── */
+function renderHeatMap(){
+  const el=document.getElementById('adm-heat-map');
+  if(!el)return;
+
+  // Contar pedidos por hora (usando timestamp)
+  const counts=Array(24).fill(0);
+  (sales||[]).forEach(s=>{
+    const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();
+    if(h>=0&&h<24) counts[h]++;
+  });
+
+  const maxCount=Math.max(...counts,1);
+
+  // Solo mostrar horas donde hay datos o rango de 0-23 compactado
+  // Agrupar en bloques de 2h para compactar si hay muchas horas vacías
+  const rows=[];
+  for(let h=0;h<24;h+=2){
+    const cnt=counts[h]+(counts[h+1]||0);
+    rows.push({label:(h<10?'0':'')+h+'–'+(h+1<10?'0':'')+(h+1)+'h', cnt, h});
+  }
+  const maxRow=Math.max(...rows.map(r=>r.cnt),1);
+
+  el.innerHTML=rows.map(r=>{
+    const pct=Math.round(r.cnt/maxRow*100);
+    const alpha=r.cnt===0?0.07:0.12+pct/100*0.88;
+    const labelColor=r.cnt===0?'var(--text4)':'var(--text2)';
+    const isTop=r.cnt===maxRow&&r.cnt>0;
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;font-weight:600;color:${labelColor};min-width:54px;flex-shrink:0">${r.label}</span>
+      <div style="flex:1;height:14px;border-radius:4px;background:rgba(42,184,184,${alpha.toFixed(2)});position:relative;transition:width .3s">
+        ${isTop?`<span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:800;color:#fff">🔥 PICO</span>`:''}
+      </div>
+      <span style="font-size:10px;color:${r.cnt>0?'var(--text2)':'var(--text4)'};min-width:22px;text-align:right">${r.cnt||''}</span>
+    </div>`;
+  }).join('');
+
+  if(!sales||!sales.length) el.innerHTML='<div class="admin-empty" style="padding:8px 0">Sin ventas para analizar</div>';
 }
 
 /* ─── Admin User Management ─── */
@@ -4543,6 +4715,9 @@ function loadGastos(){
     if(admTab&&admTab.classList.contains('active')) renderGastos();
     const cidopTab=document.getElementById('view-gastos');
     if(cidopTab&&cidopTab.classList.contains('active')) renderCidopGastosList();
+    // Update break-even widget if resumen is open
+    const resTab=document.getElementById('adm-tab-resumen');
+    if(resTab&&resTab.classList.contains('active')) renderPuntoEquilibrio();
   });
 }
 
