@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#E02020">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,7 +34,7 @@
 @keyframes totalBump      {0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 
 /* ── RESET & ROOT ── */
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :root{
   --red:#E02020;--red-dark:#b01616;--red-dim:#2a1515;
   --gold:#F5C800;--gold-dim:#1e1c10;--gold-glow:rgba(245,200,0,.2);
@@ -896,7 +896,7 @@ body{
 .login-card{
   background:linear-gradient(135deg,#1e1e1e,#1a1a1a);
   border:1px solid var(--border2);border-radius:var(--radius-xl);
-  padding:28px 24px;width:100%;max-width:340px;
+  padding:28px 24px;width:100%;max-width:420px;
   box-shadow:0 20px 60px rgba(0,0,0,.5);
 }
 /* ── PERSON PICKER ── */
@@ -911,7 +911,7 @@ body{
 .picker-sub{font-size:13px;color:var(--text3);margin-bottom:32px;text-align:center}
 .picker-grid{
   display:grid;grid-template-columns:1fr 1fr;
-  gap:12px;width:100%;max-width:340px;
+  gap:12px;width:100%;max-width:420px;
 }
 .picker-btn{
   background:linear-gradient(135deg,#1e1e1e,#1a1a1a);
@@ -1415,6 +1415,23 @@ body{
 
 ::-webkit-scrollbar{width:2px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── iPAD / TABLET ── */
+@media (min-width:768px){
+  .login-card{max-width:480px;padding:36px 32px}
+  .picker-grid{max-width:480px;grid-template-columns:repeat(3,1fr)}
+  .login-logo{font-size:80px}
+  .login-brand{font-size:32px}
+  .products-grid{grid-template-columns:repeat(4,1fr) !important}
+  .fav-strip{gap:10px}
+  .fav-btn{min-width:110px;padding:14px 18px}
+  .tab{font-size:13px;padding:14px 8px}
+  .header-title{font-size:20px}
+  .header-icon{font-size:26px}
+  .view-cobrar-layout .products-grid{grid-template-columns:repeat(4,1fr) !important}
+  .total-amt{font-size:32px}
+  .btn-cobrar{font-size:17px;padding:16px}
+}
 </style>
 </head>
 <body onclick="">
