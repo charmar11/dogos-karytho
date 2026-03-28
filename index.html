@@ -2779,30 +2779,47 @@ function selectPerson(name){
 function doLogin(){
   const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
-  if(!u||!p){
-    showLoginError('Escribe usuario y contraseña');return;
-  }
+  if(!u||!p){showLoginError('Escribe usuario y contraseña');return;}
   const btn=document.querySelector('.btn-login');
-  btn.textContent='Verificando...';btn.disabled=true;
-  loginWithFirebase(u,p,(data,err)=>{
-    btn.textContent='Entrar';btn.disabled=false;
-    if(err){showLoginError(err);return;}
-    if(u==='CIDOP'){
-      safeStorage.setItem(SK_ROLE,'user');
-      safeStorage.removeItem(SK_SESSION);
-      showPicker();
-    } else {
-      const role=data.role||'user';
-      safeStorage.setItem(SK_SESSION,'1');
-      safeStorage.setItem(SK_ROLE,role);
-      safeStorage.setItem(SK_DISPLAY,data.display||u);
-      document.getElementById('login-screen').classList.add('hidden');
-      if(role==='admin') bootAdmin();
-      else if(role==='inventario') bootInventario();
-      else if(role==='eventos') bootEventos();
-      else bootApp();
-    }
-  });
+  btn.textContent='Conectando...';btn.disabled=true;
+
+  function runLogin(){
+    btn.textContent='Verificando...';
+    loginWithFirebase(u,p,(data,err)=>{
+      btn.textContent='Entrar';btn.disabled=false;
+      if(err){showLoginError(err);return;}
+      if(u==='CIDOP'){
+        safeStorage.setItem(SK_ROLE,'user');
+        safeStorage.removeItem(SK_SESSION);
+        showPicker();
+      } else {
+        const role=data.role||'user';
+        safeStorage.setItem(SK_SESSION,'1');
+        safeStorage.setItem(SK_ROLE,role);
+        safeStorage.setItem(SK_DISPLAY,data.display||u);
+        document.getElementById('login-screen').classList.add('hidden');
+        if(role==='admin') bootAdmin();
+        else if(role==='inventario') bootInventario();
+        else if(role==='eventos') bootEventos();
+        else bootApp();
+      }
+    });
+  }
+
+  if(!fbDb){
+    let tries=0;
+    const wait=setInterval(()=>{
+      tries++;
+      if(fbDb){clearInterval(wait);runLogin();}
+      else if(tries>=16){
+        clearInterval(wait);
+        btn.textContent='Entrar';btn.disabled=false;
+        showLoginError('Sin conexión a internet. Revisa tu WiFi.');
+      }
+    },500);
+  } else {
+    runLogin();
+  }
 }
 function showLoginError(msg){
   const err=document.getElementById('login-error');
