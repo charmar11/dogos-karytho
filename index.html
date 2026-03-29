@@ -4571,6 +4571,10 @@ function bootAdmin(){
       if(data&&Object.keys(data).length>0){
         sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
         safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        // Smart default: if no sales today but historical data exists, show 'todo'
+        const todayKey=toDateKey(new Date());
+        const hasTodaySales=sales.some(s=>s.date===todayKey);
+        if(!hasTodaySales&&sales.length>0) adminRange='todo';
         renderAdmin();
       }
     }).catch(()=>{});
@@ -4625,7 +4629,7 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
-  setAdminRange('hoy');
+  setAdminRange(adminRange);
 }
 
 /* ─── Punto de Equilibrio Diario ─── */
