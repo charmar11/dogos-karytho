@@ -5141,6 +5141,17 @@ function _getSalesFilt(){
 }
 
 /* ── Excel 1: Finanzas ── */
+/* ─── Helper: descarga Excel via Blob para evitar bloqueo de Vista Protegida ─── */
+function xlsxDownload(wb, fname){
+  const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true});
+  const blob=new Blob([wbout],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=fname;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+}
+
 function exportarGastosExcel(){
   if(typeof XLSX==='undefined'){showToast('XLSX no disponible','red');return;}
   const salesFilt=_getSalesFilt();
@@ -5216,7 +5227,7 @@ function exportarGastosExcel(){
   _xlsxBold(ws2,0,1);_xlsxBold(ws2,3,4);_xlsxBold(ws2,ws2Data.length-1,4);
   XLSX.utils.book_append_sheet(wb,ws2,'Por categoria');
 
-  XLSX.writeFile(wb,'finanzas-karytho-'+perLbl.replace(/ /g,'-').toLowerCase()+'-'+dateStamp.replace(/\//g,'-')+'.xlsx');
+  xlsxDownload(wb,'finanzas-karytho-'+perLbl.replace(/ /g,'-').toLowerCase()+'-'+dateStamp.replace(/\//g,'-')+'.xlsx');
   showToast('Finanzas exportadas','green');
 }
 
@@ -5283,7 +5294,7 @@ function exportarHistorialGastos(){
   _xlsxBold(ws2,0,1);_xlsxBold(ws2,3,4);_xlsxBold(ws2,ws2Data.length-1,4);
   XLSX.utils.book_append_sheet(wb,ws2,'Por '+modeLabel.toLowerCase());
 
-  XLSX.writeFile(wb,'historial-gastos-karytho-'+perLbl.replace(/ /g,'-').toLowerCase()+'-'+dateStamp.replace(/\//g,'-')+'.xlsx');
+  xlsxDownload(wb,'historial-gastos-karytho-'+perLbl.replace(/ /g,'-').toLowerCase()+'-'+dateStamp.replace(/\//g,'-')+'.xlsx');
   showToast('Historial exportado','green');
 }
 
@@ -5900,7 +5911,6 @@ function exportExcel(){
         }
         sum=parseFloat(sum.toFixed(2));
         const colLetter=XLSX.utils.encode_col(col-1);
-        // Write value AND formula — value shows immediately, formula works for editing
         ws[addr]={t:'n', v:sum, f:`SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})`, z:PESO};
       }
     });
@@ -6070,7 +6080,7 @@ function exportExcel(){
     XLSX.utils.book_append_sheet(wb,ws2,'Productos por mes');
   }
 
-  XLSX.writeFile(wb,fname);
+  xlsxDownload(wb,fname);
   showToast('Excel descargado','green');
 }
 
