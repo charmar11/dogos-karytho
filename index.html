@@ -2666,18 +2666,18 @@ function initAuthDb(){
 }
 
 function loginWithFirebase(user,pass,cb){
-  if(!fbDb){cb(null,'Sin conexion a internet');return;}
-  fbDb.ref('users/'+user.toLowerCase()).once('value')
-    .then(snap=>{
+  if(!fbDb){cb(null,'Sin conexión a internet');return;}
+  safeAsync(
+    ()=>fbDb.ref('users/'+user.toLowerCase()).once('value').then(snap=>{
       const data=snap.val();
       if(!data){cb(null,'Usuario o contraseña incorrectos');return;}
       if(data.pass!==pass){cb(null,'Usuario o contraseña incorrectos');return;}
       cb(data,null);
-    })
-    .catch(e=>{
-      console.error('Login error:',e);
-      cb(null,'Error de conexion. Revisa tu internet.');
-    });
+    }),
+    'Error de conexión. Revisa tu internet.'
+  ).then(result=>{
+    if(result===null) cb(null,'Error de conexión. Revisa tu internet.');
+  });
 }
 
 function backToLogin(){
@@ -3145,12 +3145,12 @@ function startFbListeners(){
 function fbSaveProd(){
   if(!fbDb)return;
   const obj={};products.forEach(p=>obj[p.id]=p);
-  fbDb.ref('products').set(obj).catch(()=>{});
+  fbSafe(fbDb.ref('products').set(obj),'Error al guardar productos');
 }
 function fbSaveSales(){
   if(!fbDb)return;
   const obj={};sales.forEach(s=>obj[s.id]=s);
-  fbDb.ref('sales').set(obj).catch(()=>{});
+  fbSafe(fbDb.ref('sales').set(obj),'Error al guardar ventas en la nube');
 }
 
 /* ─── Activity Log ─── */
@@ -3296,8 +3296,10 @@ function saveProd(){
   fbSaveProd();
 }
 function saveSales(){
-  safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-  fbSaveSales();
+  safeCall(()=>{
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    fbSaveSales();
+  },'Error al guardar la venta');
 }
 const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 
@@ -3341,6 +3343,24 @@ function showToast(msg,type=''){
   if(toastTimer)clearTimeout(toastTimer);
   requestAnimationFrame(()=>t.classList.add('show'));
   toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ─── Error Utilities ─────────────────────────────────────────────────────
+ *  safeCall(fn, msg)   → ejecuta fn() síncrona; muestra toast si falla
+ *  safeAsync(fn, msg)  → igual pero para funciones async (devuelve Promise)
+ *  fbSafe(promise,msg) → envuelve promesas Firebase; loguea y muestra error
+ * ──────────────────────────────────────────────────────────────────────── */
+function safeCall(fn, errorMsg='Ocurrió un error'){
+  try{ return fn(); }
+  catch(err){ console.error('[safeCall]',err); showToast(errorMsg,'red'); return null; }
+}
+function safeAsync(fn, errorMsg='Ocurrió un error'){
+  return Promise.resolve().then(()=>fn()).catch(err=>{
+    console.error('[safeAsync]',err); showToast(errorMsg,'red'); return null;
+  });
+}
+function fbSafe(promise, errorMsg='Error al sincronizar'){
+  return promise.catch(err=>{ console.error('[Firebase]',err); showToast(errorMsg,'red'); });
 }
 
 /* ─── Float particle ─── */
