@@ -2132,6 +2132,27 @@ body{
           <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto listo para compartir</div>
         </div>
       </button>
+      <button class="btn-export btn-export-csv" onclick="exportarVentasJSON()" style="margin-top:6px">
+        <span style="font-size:20px">💾</span>
+        <div style="text-align:left">
+          <div>Backup JSON de ventas</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Descarga todas las ventas para respaldar</div>
+        </div>
+      </button>
+      <button class="btn-export" onclick="recuperarDesdeFB()" style="margin-top:6px;background:rgba(245,200,0,.12);border:1px solid rgba(245,200,0,.3);color:var(--gold)">
+        <span style="font-size:20px">🔄</span>
+        <div style="text-align:left">
+          <div>Recuperar ventas de Firebase</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Recarga los datos directamente de la nube</div>
+        </div>
+      </button>
+      <button class="btn-export" onclick="importarVentasJSON()" style="margin-top:6px;background:rgba(0,200,120,.08);border:1px solid rgba(0,200,120,.25);color:#0dc87a">
+        <span style="font-size:20px">📂</span>
+        <div style="text-align:left">
+          <div>Importar backup JSON</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Restaurar ventas desde un archivo de backup</div>
+        </div>
+      </button>
     </div>
 
     <!-- Sales list -->
@@ -3152,11 +3173,13 @@ function startFbListeners(){
 
 function fbSaveProd(){
   if(!fbDb)return;
+  if(!products||!products.length)return; // NEVER write empty — would delete Firebase node
   const obj={};products.forEach(p=>obj[p.id]=p);
   fbDb.ref('products').set(obj).catch(err=>console.error('[fbSaveProd]',err));
 }
 function fbSaveSales(){
   if(!fbDb)return;
+  if(!sales||!sales.length)return; // NEVER write empty — would delete Firebase node
   const obj={};sales.forEach(s=>obj[s.id]=s);
   fbDb.ref('sales').set(obj).catch(err=>console.error('[fbSaveSales]',err));
 }
@@ -4410,6 +4433,45 @@ function clearAllSales(){
     logActivity('ventas_del',`${ps.length} ventas eliminadas`);
     showToast('Ventas borradas');
   });
+}
+
+/* ─── Data Export / Recovery ─── */
+function exportarVentasJSON(){
+  if(!sales.length){showToast('No hay ventas para exportar','red');return;}
+  const blob=new Blob([JSON.stringify(sales,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='ventas_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();showToast('Backup de ventas descargado','green');
+}
+function importarVentasJSON(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!Array.isArray(data)){showToast('Formato inválido','red');return;}
+        const antes=sales.length;
+        const existing=new Set(sales.map(s=>s.id));
+        const nuevas=data.filter(s=>s&&s.id&&!existing.has(s.id));
+        sales=[...sales,...nuevas].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        saveSales();renderAdmin();renderHistorial();
+        showToast(`Recuperadas ${nuevas.length} ventas (total: ${sales.length})`,'green');
+      }catch{showToast('Error al leer el archivo','red');}
+    };reader.readAsText(file);
+  };input.click();
+}
+function recuperarDesdeFB(){
+  if(!fbDb){showToast('Sin conexión Firebase','red');return;}
+  fbDb.ref('sales').once('value').then(snap=>{
+    const data=snap.val();
+    if(!data||!Object.keys(data).length){showToast('No se encontraron ventas en Firebase','red');return;}
+    sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    renderAdmin();renderHistorial();
+    showToast(`${sales.length} ventas recuperadas de Firebase`,'green');
+  }).catch(e=>{console.error(e);showToast('Error al leer Firebase','red');});
 }
 
 /* ─── Corte ─── */
