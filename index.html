@@ -3307,11 +3307,12 @@ function bootApp(){
   document.getElementById('main-app').style.display='block';
   load();
   loadInvData(); // load ingredients + recipes so descontarInventario works
-  loadGastoCats();
-  if(typeof loadGastos==='function') loadGastos(); // sync gastos from Firebase
   updateDate();renderGrid();renderFavStrip();renderOrder();
   setFbStatus('connecting');
-  initFirebase(FB_CONFIG);
+  initFirebase(FB_CONFIG); // <-- fbDb queda listo aquí
+  // Ahora que fbDb existe, registrar listeners de gastos
+  loadGastoCats();
+  if(typeof loadGastos==='function') loadGastos();
   const displayName=safeStorage.getItem(SK_DISPLAY)||'Usuario';
   setTimeout(()=>{
     startPresence(displayName);
