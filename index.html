@@ -2855,7 +2855,7 @@ function adminLogout(){
 
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
-let fbDb=null,fbConnected=false,fbListening=false;
+let fbDb=null,fbConnected=false,fbListening=false; let isProcessing=false;
 
 /* ─── Firebase config (fija) ─── */
 const FB_CONFIG={
@@ -4049,22 +4049,33 @@ function renderCidopGastosList(){
 
 function confirmarCobro(){
   if(!order.length)return;
-  const total=order.reduce((s,o)=>s+o.price*o.qty,0);
-  const cash=parseFloat(document.getElementById('cash-input').value)||0;
-  const cambio=cash>0?cash-total:null;
-  const now=new Date();
-  sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
-  saveSales();
-  const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
-  clearOrder();closeCash();
-  logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
-  descontarInventario(orderSnapshot);
-  // Refresh gastos chart if admin gastos tab is open (ingresos changed)
-  const _gastosTab=document.getElementById('adm-tab-gastos');
-  if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
-  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
-  showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
-  setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
+  if(isProcessing)return;
+  isProcessing=true;
+  const btnConfirm=document.getElementById('btn-cash-confirm');
+  if(btnConfirm){btnConfirm.disabled=true;btnConfirm.textContent='Procesando...';}
+  try{
+    const total=order.reduce((s,o)=>s+o.price*o.qty,0);
+    const cash=parseFloat(document.getElementById('cash-input').value)||0;
+    const cambio=cash>0?cash-total:null;
+    const now=new Date();
+    sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+    saveSales();
+    const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
+    clearOrder();closeCash();
+    logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
+    descontarInventario(orderSnapshot);
+    const _gastosTab=document.getElementById('adm-tab-gastos');
+    if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
+    const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
+    showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
+    setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
+  }catch(err){
+    console.error('Error al confirmar cobro:',err);
+    showToast('Error al registrar la venta. Intenta de nuevo.','red');
+  }finally{
+    isProcessing=false;
+    if(btnConfirm){btnConfirm.disabled=false;btnConfirm.textContent='Confirmar';}
+  }
 }
 
 /* ─── Chart ─── */
