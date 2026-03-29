@@ -2666,18 +2666,18 @@ function initAuthDb(){
 }
 
 function loginWithFirebase(user,pass,cb){
-  if(!fbDb){cb(null,'Sin conexión a internet');return;}
-  safeAsync(
-    ()=>fbDb.ref('users/'+user.toLowerCase()).once('value').then(snap=>{
+  if(!fbDb){cb(null,'Sin conexion a internet');return;}
+  fbDb.ref('users/'+user.toLowerCase()).once('value')
+    .then(snap=>{
       const data=snap.val();
       if(!data){cb(null,'Usuario o contraseña incorrectos');return;}
       if(data.pass!==pass){cb(null,'Usuario o contraseña incorrectos');return;}
       cb(data,null);
-    }),
-    'Error de conexión. Revisa tu internet.'
-  ).then(result=>{
-    if(result===null) cb(null,'Error de conexión. Revisa tu internet.');
-  });
+    })
+    .catch(e=>{
+      console.error('Login error:',e);
+      cb(null,'Error de conexion. Revisa tu internet.');
+    });
 }
 
 function backToLogin(){
@@ -3116,19 +3116,24 @@ function startFbListeners(){
   // Sync products
   fbDb.ref('products').on('value',snap=>{
     const data=snap.val();
-    if(data){
+    if(data && Object.keys(data).length>0){
       products=Object.values(data);
       nextId=products.reduce((m,p)=>Math.max(m,p.id),99)+1;
+      safeStorage.setItem(SK_PROD,JSON.stringify(products));
       renderGrid();renderFavStrip();
       if(document.getElementById('view-productos')?.classList.contains('active'))renderProdAdmin();
-      // Also refresh inventory recipes if inventory screen is open
       if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
     }
-  });
-  // Sync sales
+    // If Firebase returns null/empty, keep existing products from localStorage
+  },err=>console.error('[products listener]',err));
+  // Sync sales — only update if Firebase has real data (never overwrite with empty)
   fbDb.ref('sales').on('value',snap=>{
     const data=snap.val();
-    sales=data?Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];
+    if(data && Object.keys(data).length>0){
+      sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    }
+    // If Firebase returns null/empty, keep existing data from localStorage
     // Update cajero historial if open
     if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
     // Update admin panel if open
@@ -3139,6 +3144,9 @@ function startFbListeners(){
       const gastosTab=document.getElementById('adm-tab-gastos');
       if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
     }
+  },err=>{
+    // Permission denied or connection error — keep localStorage data, don't wipe
+    console.error('[sales listener]',err);
   });
 }
 
