@@ -2564,10 +2564,24 @@ body{
 
     <!-- Precio total -->
     <div class="form-card" style="margin-bottom:12px">
-      <div class="sec-label" style="margin-top:0;color:var(--red)">Precio</div>
-      <label class="form-lbl">Precio total del evento ($)</label>
-      <input class="form-input" id="ev-price" type="number" inputmode="decimal" placeholder="0.00"/>
-      <label class="form-lbl" style="margin-top:6px">Productos / descripción del pedido</label>
+      <div class="sec-label" style="margin-top:0;color:var(--red)">Precio y gastos</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label class="form-lbl">💰 Cobrar al cliente ($)</label>
+          <input class="form-input" id="ev-price" type="number" inputmode="decimal" placeholder="0.00"
+            oninput="evCalcUtilidad()"/>
+        </div>
+        <div>
+          <label class="form-lbl">🧾 Gasto del evento ($)</label>
+          <input class="form-input" id="ev-gasto" type="number" inputmode="decimal" placeholder="0.00"
+            oninput="evCalcUtilidad()"/>
+        </div>
+      </div>
+      <div id="ev-utilidad-row" style="display:none;background:rgba(45,138,45,.1);border:1px solid rgba(45,138,45,.3);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;font-weight:700;color:var(--text3)">Utilidad estimada</span>
+        <span id="ev-utilidad-val" style="font-size:16px;font-weight:800;color:#2d8a2d">$0.00</span>
+      </div>
+      <label class="form-lbl">Productos / descripción del pedido</label>
       <textarea class="form-input" id="ev-productos" placeholder="Ej: 80 dogos sencillos, 20 chile dogos…" style="height:72px;resize:none;font-size:14px"></textarea>
     </div>
 
@@ -6767,19 +6781,37 @@ function renderEvResumen(){
   });
 }
 
+function evCalcUtilidad(){
+  const price=parseFloat(document.getElementById('ev-price')?.value)||0;
+  const gasto=parseFloat(document.getElementById('ev-gasto')?.value)||0;
+  const row=document.getElementById('ev-utilidad-row');
+  const val=document.getElementById('ev-utilidad-val');
+  if(!row||!val)return;
+  if(price>0||gasto>0){
+    const util=price-gasto;
+    row.style.display='flex';
+    row.style.background=util>=0?'rgba(45,138,45,.1)':'rgba(224,32,32,.08)';
+    row.style.borderColor=util>=0?'rgba(45,138,45,.3)':'rgba(224,32,32,.3)';
+    val.style.color=util>=0?'#2d8a2d':'#f57474';
+    val.textContent=(util>=0?'':'−')+'$'+Math.abs(util).toFixed(2);
+  } else {
+    row.style.display='none';
+  }
+}
+
 function registrarEvento(){
   const name=document.getElementById('ev-name').value.trim();
   const date=document.getElementById('ev-date').value||toDateKey(new Date());
   const note=document.getElementById('ev-note').value.trim();
   const price=parseFloat(document.getElementById('ev-price').value)||0;
+  const gastoEvento=parseFloat(document.getElementById('ev-gasto')?.value)||0;
   const productos=document.getElementById('ev-productos')?.value.trim()||'';
   if(!name){showToast('Escribe el nombre del evento','red');return;}
   if(!price){showToast('Escribe el precio total','red');return;}
 
   const now=new Date();
-  // Derive timestamp from the event date so filters (week/month) use the correct date
-  // date comes from the form as YYYY-MM-DD (input type=date)
   const eventTs=date?new Date(date+'T12:00:00').getTime():now.getTime();
+  const fechaISO=date||todayISO();
   const sale={
     id:Date.now(),timestamp:eventTs,
     date:date?new Date(date+'T12:00:00').toLocaleDateString('es-MX'):toDateKey(now),
@@ -6787,12 +6819,37 @@ function registrarEvento(){
     total:price,isEvento:true,eventoName:name,note,
     items:[{name:name,qty:1,price,var:'Evento',extras:productos}],
     productosDesc:productos,
+    gastoEvento:gastoEvento||0,
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
   };
   if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
 
-  // Log en historial de inventario (solo referencia, sin tocar stock)
-  logInvHistory('consumo',`Evento: ${name} — $${price.toFixed(2)}${productos?' · '+productos:''}`,
+  // ── Auto-registrar gasto en CIDOP si se capturó ──
+  if(gastoEvento>0){
+    const registradoEn=Date.now();
+    const g={
+      id:'g_ev_'+registradoEn,timestamp:registradoEn,registradoEn,
+      desc:'Gasto evento: '+name+(productos?' ('+productos+')':''),
+      monto:parseFloat(gastoEvento.toFixed(2)),
+      cat:'evento',
+      fecha:fechaISO,
+      user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
+    };
+    if(!gastos) gastos=[];
+    gastos.unshift(g);
+    safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+    if(fbDb){
+      fbDb.ref('gastos/'+g.id).set(g).catch(()=>{
+        _queueGastoPending(g);
+        setTimeout(()=>_syncPendingGastos(),2000);
+      });
+    } else {
+      _queueGastoPending(g);
+    }
+  }
+
+  // Log en historial de inventario
+  logInvHistory('consumo',`Evento: ${name} — $${price.toFixed(2)}${gastoEvento?` (gasto: $${gastoEvento.toFixed(2)})`:''}${productos?' · '+productos:''}`,
     {isEvento:true,eventoName:name,total:price});
 
   // Reset form
@@ -6802,8 +6859,11 @@ function registrarEvento(){
   document.getElementById('ev-note').value='';
   document.getElementById('ev-date').value=toDateKey(new Date());
   if(document.getElementById('ev-productos')) document.getElementById('ev-productos').value='';
+  if(document.getElementById('ev-gasto')) document.getElementById('ev-gasto').value='';
+  evCalcUtilidad();
 
-  showToast(`✅ ${name} — $${price.toFixed(2)}`,'green');
+  const gastoPart=gastoEvento>0?` · Gasto $${gastoEvento.toFixed(2)} registrado en CIDOP`:'';
+  showToast(`✅ ${name} — $${price.toFixed(2)}${gastoPart}`,'green');
   setEventosTab('historial');
 }
 
@@ -6825,7 +6885,10 @@ function renderEventosHistorial(){
     card.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
         <div style="font-size:14px;font-weight:800;color:var(--text)">🎪 ${s.eventoName||'Evento'}</div>
-        <div style="font-size:15px;font-weight:800;color:var(--red)">$${s.total.toFixed(2)}</div>
+        <div style="text-align:right">
+          <div style="font-size:15px;font-weight:800;color:var(--red)">$${s.total.toFixed(2)}</div>
+          ${s.gastoEvento>0?`<div style="font-size:11px;color:var(--text3);font-weight:600">Gasto: $${s.gastoEvento.toFixed(2)} · <span style="color:${(s.total-s.gastoEvento)>=0?'#2ab8b8':'#f57474'}">Util: $${(s.total-s.gastoEvento).toFixed(2)}</span></div>`:''}
+        </div>
       </div>
       <div style="font-size:12px;color:var(--text3);margin-bottom:6px">${pList}</div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
