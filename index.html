@@ -8406,7 +8406,21 @@ const savedRole=safeStorage.getItem(SK_ROLE);
 if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();
+  document.getElementById('admin-screen').classList.add('active');
+  renderAdmin();
   initFirebase(FB_CONFIG);
+  if(fbDb){
+    fbDb.ref('sales').once('value').then(snap=>{
+      const data=snap.val();
+      if(data&&Object.keys(data).length>0){
+        sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        const todayKey=toDateKey(new Date());
+        if(!sales.some(s=>s.date===todayKey)&&sales.length>0) adminRange='todo';
+        renderAdmin();
+      }
+    }).catch(()=>{});
+  }
   setTimeout(()=>{
     fbListening=false;
     startFbListeners();
@@ -8415,9 +8429,7 @@ if(savedSession==='1' && savedRole==='admin'){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
-    document.getElementById('admin-screen').classList.add('active');
-    renderAdmin();
-  },1000);
+  },200);
 } else if(savedSession==='1' && savedRole==='inventario'){
   document.getElementById('login-screen').classList.add('hidden');
   load();loadInvData();
