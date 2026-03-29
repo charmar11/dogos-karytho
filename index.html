@@ -2135,7 +2135,10 @@ body{
     </div>
 
     <!-- Sales list -->
-    <div class="sec-label" style="margin-top:18px">📋 Lista de ventas</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;margin-bottom:8px">
+      <div class="sec-label" style="margin-top:0;margin-bottom:0">📋 Lista de ventas</div>
+      <button id="adm-sort-btn" onclick="toggleAdmVentasSort()" style="display:none;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;transition:all .18s">↓ Más reciente</button>
+    </div>
     <div id="adm-ventas-list"><div class="admin-empty">Sin ventas</div></div>
   </div>
 
@@ -3991,9 +3994,12 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
       if(!semanas.find(s=>s.mon===rm))semanas.push({mon:rm,sun:rs,num:numSem++});
       cur.setDate(cur.getDate()+(7-dow));
     }
-    semanas.sort((a,b)=>a.mon.localeCompare(b.mon)).forEach(({mon:wm,sun:ws,num})=>{
+    semanas.sort((a,b)=>a.mon.localeCompare(b.mon));
+    let semDisplayNum=0;
+    semanas.forEach(({mon:wm,sun:ws})=>{
       const lista=gs.filter(g=>{const f=normFecha(g.fecha);return f>=wm&&f<=ws;});
       if(!lista.length)return;
+      semDisplayNum++;
       const totalSem=lista.reduce((s,g)=>s+g.monto,0);
       const byCat={};lista.forEach(g=>{const cid=g.cat||'__otros';if(!byCat[cid])byCat[cid]=0;byCat[cid]+=g.monto;});
       const wrap=document.createElement('div');
@@ -4003,7 +4009,7 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
       body.innerHTML=Object.entries(byCat).map(([cid,monto])=>{const c=getCat(cid);return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--border)"><span style="font-size:14px">${c.icon}</span><span style="flex:1;font-size:12px;color:var(--text2)">${c.name}</span><span style="font-size:13px;font-weight:700;color:var(--red)">-$${monto.toFixed(2)}</span></div>`;}).join('');
       const head=document.createElement('div');
       head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;user-select:none';
-      head.innerHTML=`<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${num}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wm} → ${ws}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`;
+      head.innerHTML=`<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${semDisplayNum}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wm} → ${ws}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--red)">-$${totalSem.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`;
       head.onclick=()=>{const open=body.style.display!=='none';body.style.display=open?'none':'block';head.querySelector('._chev').style.transform=open?'':'rotate(90deg)';};
       wrap.appendChild(head);wrap.appendChild(body);
       el.appendChild(wrap);
@@ -5769,106 +5775,146 @@ function renderAdminVTop(ps){
   el.innerHTML=sorted.map(([name,cnt])=>`<div class="top-item"><div class="top-name">${name}</div><div class="top-item-row"><div class="top-bar-bg"><div class="top-bar-fill" style="width:${Math.round(cnt/mx*100)}%"></div></div><div class="top-count">${cnt}x <span style="color:var(--text3)">$${(totals[name]||0).toFixed(2)}</span></div></div></div>`).join('');
 }
 
+let admVentasSortDesc=true;
+function toggleAdmVentasSort(){
+  admVentasSortDesc=!admVentasSortDesc;
+  const btn=document.getElementById('adm-sort-btn');
+  if(btn)btn.textContent=admVentasSortDesc?'↓ Más reciente':'↑ Más antiguo';
+  renderAdminVentas(getAdminSales());
+}
+
 function renderAdminVentas(ps){
   const list=document.getElementById('adm-ventas-list');if(!list)return;
   if(!ps||!ps.length){list.innerHTML='<div class="admin-empty">Sin ventas en este periodo</div>';return;}
 
   const effectiveRange=adminSpecificDate?'hoy':adminRange;
+  const sortBtn=document.getElementById('adm-sort-btn');
+  if(sortBtn)sortBtn.style.display=effectiveRange==='hoy'?'':'none';
 
-  // ── HOY: agrupar por hora ──
+  // ── HOY: lista plana, sin agrupar por hora ──
   if(effectiveRange==='hoy'){
-    const byH={};
-    ps.forEach(s=>{
-      const h=s.hour!==undefined?s.hour:new Date(s.timestamp).getHours();
-      const key=String(h).padStart(2,'0')+':00';
-      if(!byH[key])byH[key]={sales:[],total:0};
-      byH[key].sales.push(s);
-      byH[key].total+=s.total;
+    const sorted=[...ps].sort((a,b)=>{
+      const ta=(a.hour||0)*60+(parseInt((a.time||'0:0').split(':')[1])||0);
+      const tb=(b.hour||0)*60+(parseInt((b.time||'0:0').split(':')[1])||0);
+      return admVentasSortDesc?tb-ta:ta-tb;
     });
-    const hours=Object.entries(byH).sort((a,b)=>a[0].localeCompare(b[0]));
-    list.innerHTML=hours.map(([hora,g])=>{
-      const rows=g.sales.map(s=>{
-        let its='';
-        if(s.isEvento){
-          its=`<span style="color:var(--red);font-weight:700">🎪 Evento</span>${s.productosDesc?' — '+s.productosDesc:s.eventoName?' — '+s.eventoName:''}`;
-        } else {
-          its=(s.items||[]).map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
-        }
-        return `<div style="border-bottom:1px solid var(--border);padding:8px 0;last-child:border:none"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:var(--text3)">${s.time}</span><span style="font-weight:700;color:var(--gold);font-size:12px">$${s.total.toFixed(2)}</span></div><div style="font-size:11px;color:var(--text3);margin-top:2px">${its}</div>${s.cambio!=null?`<div style="margin-top:2px"><span style="font-size:10px;background:rgba(245,200,0,.1);color:var(--gold);padding:1px 6px;border-radius:4px">Cambio $${s.cambio.toFixed(2)}</span></div>`:''}</div>`;
-      }).join('');
-      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">🕐 ${hora}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.sales.length} venta${g.sales.length!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:6px">${rows}</div></div>`;
+    list.innerHTML=sorted.map(s=>{
+      let its='';
+      if(s.isEvento){
+        its=`<span style="color:var(--red);font-weight:700">🎪 Evento</span>${s.productosDesc?' — '+s.productosDesc:s.eventoName?' — '+s.eventoName:''}`;
+      } else {
+        its=(s.items||[]).map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
+      }
+      return `<div class="sale-card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:12px;font-weight:700;color:var(--text3)">🕐 ${s.time}</span><span style="font-weight:800;color:var(--gold);font-size:14px">$${s.total.toFixed(2)}</span></div><div style="font-size:12px;color:var(--text2)">${its}</div>${s.cambio!=null?`<div style="margin-top:4px"><span style="font-size:10px;background:rgba(245,200,0,.1);color:var(--gold);padding:2px 7px;border-radius:4px">Cambio $${s.cambio.toFixed(2)}</span></div>`:''}</div>`;
     }).join('');
     return;
   }
 
-  // ── SEMANA: productos totales por día ──
+  // helper: crea card colapsable estilo gastos
+  function makeCard(headHTML,bodyHTML){
+    const wrap=document.createElement('div');
+    wrap.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden';
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;user-select:none';
+    head.innerHTML=headHTML;
+    const body=document.createElement('div');
+    body.style.display='none';
+    body.innerHTML=bodyHTML;
+    head.onclick=()=>{const open=body.style.display!=='none';body.style.display=open?'none':'block';head.querySelector('._chev').style.transform=open?'':'rotate(90deg)';};
+    wrap.appendChild(head);wrap.appendChild(body);
+    return wrap;
+  }
+  function prodsHTML(prods){
+    return prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:6px 12px;border-top:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4);padding:8px 12px;border-top:1px solid var(--border)">Sin productos</div>';
+  }
+  function subLabel(txt){return `<div style="padding:5px 12px 3px;font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--border)">${txt}</div>`;}
+
+  // ── SEMANA: colapsable por día ──
   if(effectiveRange==='semana'){
     const dayNames=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
     const byD={};
     ps.forEach(s=>{
       const d=new Date(s.timestamp);
-      const key=s.date;
-      if(!byD[key])byD[key]={dayName:dayNames[d.getDay()],total:0,prods:{},count:0};
-      byD[key].total+=s.total;
-      byD[key].count++;
-      (s.items||[]).forEach(it=>{
-        const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
-        byD[key].prods[k]=(byD[key].prods[k]||0)+it.qty;
-      });
+      if(!byD[s.date])byD[s.date]={dayName:dayNames[d.getDay()],ts:d.getTime(),total:0,prods:{},sales:[],count:0};
+      byD[s.date].total+=s.total;byD[s.date].count++;byD[s.date].sales.push(s);
+      (s.items||[]).forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');byD[s.date].prods[k]=(byD[s.date].prods[k]||0)+it.qty;});
     });
-    const days=Object.entries(byD).sort((a,b)=>new Date(a[0])-new Date(b[0]));
-    list.innerHTML=days.map(([date,g])=>{
+    const totalAll=ps.reduce((s,v)=>s+v.total,0);
+    const frag=document.createDocumentFragment();
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Esta semana</span><span style="font-size:13px;font-weight:800;color:var(--gold)">$${totalAll.toFixed(2)}</span>`;
+    frag.appendChild(hdr);
+    Object.entries(byD).sort((a,b)=>b[1].ts-a[1].ts).forEach(([date,g])=>{
       const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
-      const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
-      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">📅 ${g.dayName} ${date}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
-    }).join('');
+      const salesRows=g.sales.sort((a,b)=>{const ta=(a.hour||0)*60+(parseInt((a.time||'0:0').split(':')[1])||0);const tb=(b.hour||0)*60+(parseInt((b.time||'0:0').split(':')[1])||0);return tb-ta;}).map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:5px 12px;border-top:1px solid var(--border)"><span style="color:var(--text3)">${s.time} — ${(s.items||[]).map(it=>it.qty+'x '+it.name).join(', ')}</span><span style="color:var(--gold);font-weight:700;flex-shrink:0;margin-left:8px">$${s.total.toFixed(2)}</span></div>`).join('');
+      frag.appendChild(makeCard(
+        `<div><span style="font-size:12px;font-weight:800;color:var(--text)">${g.dayName} ${date}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">${g.count} venta${g.count!==1?'s':''}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
+        subLabel('Productos')+prodsHTML(prods)+subLabel('Ventas')+salesRows
+      ));
+    });
+    list.innerHTML='';list.appendChild(frag);
     return;
   }
 
-  // ── MES: productos totales por semana ──
+  // ── MES: colapsable por semana calendario ──
   if(effectiveRange==='mes'){
+    const totalAll=ps.reduce((s,v)=>s+v.total,0);
     const byW={};
     ps.forEach(s=>{
       const d=new Date(s.timestamp);
       const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);
       const key=toDateKey(mon);
-      if(!byW[key])byW[key]={start:mon,total:0,prods:{},count:0};
-      byW[key].total+=s.total;
-      byW[key].count++;
-      (s.items||[]).forEach(it=>{
-        const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
-        byW[key].prods[k]=(byW[key].prods[k]||0)+it.qty;
-      });
+      if(!byW[key])byW[key]={start:mon,total:0,prods:{},byDay:{},count:0};
+      byW[key].total+=s.total;byW[key].count++;
+      if(!byW[key].byDay[s.date])byW[key].byDay[s.date]={total:0,count:0};
+      byW[key].byDay[s.date].total+=s.total;byW[key].byDay[s.date].count++;
+      (s.items||[]).forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');byW[key].prods[k]=(byW[key].prods[k]||0)+it.qty;});
     });
-    const weeks=Object.entries(byW).sort((a,b)=>new Date(a[0])-new Date(b[0]));
-    list.innerHTML=weeks.map(([,g],i)=>{
+    const weeks=Object.entries(byW).sort((a,b)=>new Date(b[0])-new Date(a[0]));
+    const frag=document.createDocumentFragment();
+    const hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+    hdr.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Este mes</span><span style="font-size:13px;font-weight:800;color:var(--gold)">$${totalAll.toFixed(2)}</span>`;
+    frag.appendChild(hdr);
+    weeks.forEach(([,g],idx)=>{
+      const endW=new Date(g.start);endW.setDate(g.start.getDate()+6);
+      const wLabel=g.start.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' → '+endW.toLocaleDateString('es-MX',{day:'numeric',month:'short'});
       const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
-      const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
-      return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">📆 Semana ${i+1}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''} · $${g.total.toFixed(2)}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
-    }).join('');
+      const daysRows=Object.entries(g.byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,d])=>`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 12px;border-top:1px solid var(--border)"><span style="color:var(--text3)">${date} <span style="color:var(--text4)">(${d.count} venta${d.count!==1?'s':''})</span></span><span style="color:var(--gold);font-weight:700">$${d.total.toFixed(2)}</span></div>`).join('');
+      frag.appendChild(makeCard(
+        `<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${weeks.length-idx}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wLabel}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
+        subLabel('Productos')+prodsHTML(prods)+subLabel('Por día')+daysRows
+      ));
+    });
+    list.innerHTML='';list.appendChild(frag);
     return;
   }
 
-  // ── TODO: productos totales por mes ──
+  // ── TODO: colapsable por mes ──
   const monthNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const byM={};
   ps.forEach(s=>{
     const d=new Date(s.timestamp);
     const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     if(!byM[key])byM[key]={label:monthNames[d.getMonth()]+' '+d.getFullYear(),total:0,prods:{},count:0};
-    byM[key].total+=s.total;
-    byM[key].count++;
-    (s.items||[]).forEach(it=>{
-      const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');
-      byM[key].prods[k]=(byM[key].prods[k]||0)+it.qty;
-    });
+    byM[key].total+=s.total;byM[key].count++;
+    (s.items||[]).forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');byM[key].prods[k]=(byM[key].prods[k]||0)+it.qty;});
   });
-  const months=Object.entries(byM).sort((a,b)=>a[0].localeCompare(b[0]));
-  list.innerHTML=months.map(([,g])=>{
+  const totalAll=ps.reduce((s,v)=>s+v.total,0);
+  const frag=document.createDocumentFragment();
+  const hdrA=document.createElement('div');
+  hdrA.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
+  hdrA.innerHTML=`<span style="font-size:11px;color:var(--text3);font-weight:700">Histórico</span><span style="font-size:13px;font-weight:800;color:var(--gold)">$${totalAll.toFixed(2)}</span>`;
+  frag.appendChild(hdrA);
+  Object.entries(byM).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([,g])=>{
     const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
-    const prodsHtml=prods.length?prods.map(([n,q])=>`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);padding:2px 0;border-bottom:1px solid var(--border)"><span>${n}</span><span style="font-weight:700;color:var(--text2)">${q}x</span></div>`).join(''):'<div style="font-size:11px;color:var(--text4)">Sin productos</div>';
-    return `<div class="sale-card" style="margin-bottom:10px"><div class="sale-header"><div class="sale-header-left"><div class="sale-time">🗓️ ${g.label}</div><div style="font-size:10px;color:var(--text3);margin-top:1px">${g.count} venta${g.count!==1?'s':''}</div></div><div class="sale-total-amt">$${g.total.toFixed(2)}</div></div><div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Productos vendidos</div>${prodsHtml}</div></div>`;
-  }).join('');
+    frag.appendChild(makeCard(
+      `<div><span style="font-size:12px;font-weight:800;color:var(--text);text-transform:capitalize">${g.label}</span><span style="font-size:11px;color:var(--text3);margin-left:8px">${g.count} venta${g.count!==1?'s':''}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
+      prodsHTML(prods)
+    ));
+  });
+  list.innerHTML='';list.appendChild(frag);
 }
 
 /* ─── Excel export — grouped by period ─── */
