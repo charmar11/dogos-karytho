@@ -2855,7 +2855,8 @@ function adminLogout(){
 
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
-let fbDb=null,fbConnected=false,fbListening=false; let isProcessing=false;
+let fbDb=null,fbConnected=false,fbListening=false;
+let isProcessing=false;
 
 /* ─── Firebase config (fija) ─── */
 const FB_CONFIG={
@@ -2906,6 +2907,7 @@ function startPresence(userName){
     });
     sessRef.set({
       name:userName,
+      online:true,
       since:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
       ts:Date.now(),
       role:safeStorage.getItem(SK_ROLE)||'user'
@@ -4062,12 +4064,12 @@ function confirmarCobro(){
     saveSales();
     const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
     clearOrder();closeCash();
-    logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
+    logActivity('venta',`Venta registrada — ${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
     descontarInventario(orderSnapshot);
     const _gastosTab=document.getElementById('adm-tab-gastos');
     if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
     const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
-    showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
+    showToast(cambio!=null?`✓ Cambio: ${cambio.toFixed(2)}`:`✓ Venta registrada ${total.toFixed(2)}`,'green');
     setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
   }catch(err){
     console.error('Error al confirmar cobro:',err);
@@ -8333,5 +8335,5 @@ if(savedSession==='1' && savedRole==='admin'){
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
-</body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="052392c1-13b1-4bc8-aac5-1d68a252d38b"></script></body>
 </html>
