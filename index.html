@@ -3850,17 +3850,14 @@ function agregarGastoCidop(){
   safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
   document.getElementById('cidop-gasto-desc').value='';
   document.getElementById('cidop-gasto-monto').value='';
+  showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbDb.ref('gastos/'+g.id).set(g)
-      .then(()=>showToast('✅ Gasto guardado','green'))
-      .catch(()=>{
-        _queueGastoPending(g);
-        showToast('✅ Guardado — sincronizando...','green');
-        setTimeout(()=>_syncPendingGastos(),3000);
-      });
+    fbDb.ref('gastos/'+g.id).set(g).catch(()=>{
+      _queueGastoPending(g);
+      setTimeout(()=>_syncPendingGastos(),2000);
+    });
   } else {
     _queueGastoPending(g);
-    showToast('✅ Gasto guardado localmente','green');
   }
   renderCidopGastosList();
 }
