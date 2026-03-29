@@ -2132,6 +2132,27 @@ body{
           <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Texto listo para compartir</div>
         </div>
       </button>
+      <button class="btn-export btn-export-csv" onclick="exportarVentasJSON()" style="margin-top:6px">
+        <span style="font-size:20px">💾</span>
+        <div style="text-align:left">
+          <div>Backup JSON de ventas</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Descarga todas las ventas para respaldar</div>
+        </div>
+      </button>
+      <button class="btn-export" onclick="recuperarDesdeFB()" style="margin-top:6px;background:rgba(245,200,0,.12);border:1px solid rgba(245,200,0,.3);color:var(--gold)">
+        <span style="font-size:20px">🔄</span>
+        <div style="text-align:left">
+          <div>Recuperar ventas de Firebase</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Recarga los datos directamente de la nube</div>
+        </div>
+      </button>
+      <button class="btn-export" onclick="importarVentasJSON()" style="margin-top:6px;background:rgba(0,200,120,.08);border:1px solid rgba(0,200,120,.25);color:#0dc87a">
+        <span style="font-size:20px">📂</span>
+        <div style="text-align:left">
+          <div>Importar backup JSON</div>
+          <div style="font-size:11px;opacity:.8;font-weight:500;margin-top:1px">Restaurar ventas desde un archivo de backup</div>
+        </div>
+      </button>
     </div>
 
     <!-- Sales list -->
@@ -2856,6 +2877,7 @@ function adminLogout(){
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
 let fbDb=null,fbConnected=false,fbListening=false;
+let isProcessing=false;
 
 /* ─── Firebase config (fija) ─── */
 const FB_CONFIG={
@@ -2906,6 +2928,7 @@ function startPresence(userName){
     });
     sessRef.set({
       name:userName,
+      online:true,
       since:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
       ts:Date.now(),
       role:safeStorage.getItem(SK_ROLE)||'user'
@@ -3114,19 +3137,24 @@ function startFbListeners(){
   // Sync products
   fbDb.ref('products').on('value',snap=>{
     const data=snap.val();
-    if(data){
+    if(data && Object.keys(data).length>0){
       products=Object.values(data);
       nextId=products.reduce((m,p)=>Math.max(m,p.id),99)+1;
+      safeStorage.setItem(SK_PROD,JSON.stringify(products));
       renderGrid();renderFavStrip();
       if(document.getElementById('view-productos')?.classList.contains('active'))renderProdAdmin();
-      // Also refresh inventory recipes if inventory screen is open
       if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
     }
-  });
-  // Sync sales
+    // If Firebase returns null/empty, keep existing products from localStorage
+  },err=>console.error('[products listener]',err));
+  // Sync sales — only update if Firebase has real data (never overwrite with empty)
   fbDb.ref('sales').on('value',snap=>{
     const data=snap.val();
-    sales=data?Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];
+    if(data && Object.keys(data).length>0){
+      sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    }
+    // If Firebase returns null/empty, keep existing data from localStorage
     // Update cajero historial if open
     if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
     // Update admin panel if open
@@ -3137,18 +3165,23 @@ function startFbListeners(){
       const gastosTab=document.getElementById('adm-tab-gastos');
       if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
     }
+  },err=>{
+    // Permission denied or connection error — keep localStorage data, don't wipe
+    console.error('[sales listener]',err);
   });
 }
 
 function fbSaveProd(){
   if(!fbDb)return;
+  if(!products||!products.length)return; // NEVER write empty — would delete Firebase node
   const obj={};products.forEach(p=>obj[p.id]=p);
-  fbDb.ref('products').set(obj).catch(()=>{});
+  fbDb.ref('products').set(obj).catch(err=>console.error('[fbSaveProd]',err));
 }
 function fbSaveSales(){
   if(!fbDb)return;
+  if(!sales||!sales.length)return; // NEVER write empty — would delete Firebase node
   const obj={};sales.forEach(s=>obj[s.id]=s);
-  fbDb.ref('sales').set(obj).catch(()=>{});
+  fbDb.ref('sales').set(obj).catch(err=>console.error('[fbSaveSales]',err));
 }
 
 /* ─── Activity Log ─── */
@@ -3294,8 +3327,10 @@ function saveProd(){
   fbSaveProd();
 }
 function saveSales(){
-  safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-  fbSaveSales();
+  safeCall(()=>{
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    fbSaveSales();
+  },'Error al guardar la venta');
 }
 const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 
@@ -3339,6 +3374,24 @@ function showToast(msg,type=''){
   if(toastTimer)clearTimeout(toastTimer);
   requestAnimationFrame(()=>t.classList.add('show'));
   toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ─── Error Utilities ─────────────────────────────────────────────────────
+ *  safeCall(fn, msg)   → ejecuta fn() síncrona; muestra toast si falla
+ *  safeAsync(fn, msg)  → igual pero para funciones async (devuelve Promise)
+ *  fbSafe(promise,msg) → envuelve promesas Firebase; loguea y muestra error
+ * ──────────────────────────────────────────────────────────────────────── */
+function safeCall(fn, errorMsg='Ocurrió un error'){
+  try{ return fn(); }
+  catch(err){ console.error('[safeCall]',err); showToast(errorMsg,'red'); return null; }
+}
+function safeAsync(fn, errorMsg='Ocurrió un error'){
+  return Promise.resolve().then(()=>fn()).catch(err=>{
+    console.error('[safeAsync]',err); showToast(errorMsg,'red'); return null;
+  });
+}
+function fbSafe(promise, errorMsg='Error al sincronizar'){
+  return promise.catch(err=>{ console.error('[Firebase]',err); showToast(errorMsg,'red'); });
 }
 
 /* ─── Float particle ─── */
@@ -4049,22 +4102,33 @@ function renderCidopGastosList(){
 
 function confirmarCobro(){
   if(!order.length)return;
-  const total=order.reduce((s,o)=>s+o.price*o.qty,0);
-  const cash=parseFloat(document.getElementById('cash-input').value)||0;
-  const cambio=cash>0?cash-total:null;
-  const now=new Date();
-  sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
-  saveSales();
-  const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
-  clearOrder();closeCash();
-  logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
-  descontarInventario(orderSnapshot);
-  // Refresh gastos chart if admin gastos tab is open (ingresos changed)
-  const _gastosTab=document.getElementById('adm-tab-gastos');
-  if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
-  const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
-  showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
-  setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
+  if(isProcessing)return;
+  isProcessing=true;
+  const btnConfirm=document.getElementById('btn-cash-confirm');
+  if(btnConfirm){btnConfirm.disabled=true;btnConfirm.textContent='Procesando...';}
+  try{
+    const total=order.reduce((s,o)=>s+o.price*o.qty,0);
+    const cash=parseFloat(document.getElementById('cash-input').value)||0;
+    const cambio=cash>0?cash-total:null;
+    const now=new Date();
+    sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+    saveSales();
+    const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
+    clearOrder();closeCash();
+    logActivity('venta',`Venta registrada — ${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
+    descontarInventario(orderSnapshot);
+    const _gastosTab=document.getElementById('adm-tab-gastos');
+    if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
+    const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
+    showToast(cambio!=null?`✓ Cambio: ${cambio.toFixed(2)}`:`✓ Venta registrada ${total.toFixed(2)}`,'green');
+    setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
+  }catch(err){
+    console.error('Error al confirmar cobro:',err);
+    showToast('Error al registrar la venta. Intenta de nuevo.','red');
+  }finally{
+    isProcessing=false;
+    if(btnConfirm){btnConfirm.disabled=false;btnConfirm.textContent='Confirmar';}
+  }
 }
 
 /* ─── Chart ─── */
@@ -4371,6 +4435,45 @@ function clearAllSales(){
   });
 }
 
+/* ─── Data Export / Recovery ─── */
+function exportarVentasJSON(){
+  if(!sales.length){showToast('No hay ventas para exportar','red');return;}
+  const blob=new Blob([JSON.stringify(sales,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='ventas_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();showToast('Backup de ventas descargado','green');
+}
+function importarVentasJSON(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const data=JSON.parse(ev.target.result);
+        if(!Array.isArray(data)){showToast('Formato inválido','red');return;}
+        const antes=sales.length;
+        const existing=new Set(sales.map(s=>s.id));
+        const nuevas=data.filter(s=>s&&s.id&&!existing.has(s.id));
+        sales=[...sales,...nuevas].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        saveSales();renderAdmin();renderHistorial();
+        showToast(`Recuperadas ${nuevas.length} ventas (total: ${sales.length})`,'green');
+      }catch{showToast('Error al leer el archivo','red');}
+    };reader.readAsText(file);
+  };input.click();
+}
+function recuperarDesdeFB(){
+  if(!fbDb){showToast('Sin conexión Firebase','red');return;}
+  fbDb.ref('sales').once('value').then(snap=>{
+    const data=snap.val();
+    if(!data||!Object.keys(data).length){showToast('No se encontraron ventas en Firebase','red');return;}
+    sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    renderAdmin();renderHistorial();
+    showToast(`${sales.length} ventas recuperadas de Firebase`,'green');
+  }).catch(e=>{console.error(e);showToast('Error al leer Firebase','red');});
+}
+
 /* ─── Corte ─── */
 function openCorte(){
   const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),total=ps.reduce((s,v)=>s+v.total,0),now=new Date();
@@ -4461,6 +4564,21 @@ function bootAdmin(){
   if(!fbDb)initFirebase(FB_CONFIG);
   renderAdmin();
   fbListening=false;
+  // Read sales from Firebase immediately (don't wait for realtime listener delay)
+  if(fbDb){
+    fbDb.ref('sales').once('value').then(snap=>{
+      const data=snap.val();
+      if(data&&Object.keys(data).length>0){
+        sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        // Smart default: if no sales today but historical data exists, show 'todo'
+        const todayKey=toDateKey(new Date());
+        const hasTodaySales=sales.some(s=>s.date===todayKey);
+        if(!hasTodaySales&&sales.length>0) adminRange='todo';
+        renderAdmin();
+      }
+    }).catch(()=>{});
+  }
   setTimeout(()=>{
     startFbListeners();
     startMembersListener();
@@ -4468,7 +4586,7 @@ function bootAdmin(){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
-  },800);
+  },200);
 }
 
 function renderAdmin(){
@@ -4511,7 +4629,7 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
-  setAdminRange('hoy');
+  setAdminRange(adminRange);
 }
 
 /* ─── Punto de Equilibrio Diario ─── */
@@ -8288,7 +8406,21 @@ const savedRole=safeStorage.getItem(SK_ROLE);
 if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();
+  document.getElementById('admin-screen').classList.add('active');
+  renderAdmin();
   initFirebase(FB_CONFIG);
+  if(fbDb){
+    fbDb.ref('sales').once('value').then(snap=>{
+      const data=snap.val();
+      if(data&&Object.keys(data).length>0){
+        sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        const todayKey=toDateKey(new Date());
+        if(!sales.some(s=>s.date===todayKey)&&sales.length>0) adminRange='todo';
+        renderAdmin();
+      }
+    }).catch(()=>{});
+  }
   setTimeout(()=>{
     fbListening=false;
     startFbListeners();
@@ -8297,9 +8429,7 @@ if(savedSession==='1' && savedRole==='admin'){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
-    document.getElementById('admin-screen').classList.add('active');
-    renderAdmin();
-  },1000);
+  },200);
 } else if(savedSession==='1' && savedRole==='inventario'){
   document.getElementById('login-screen').classList.add('hidden');
   load();loadInvData();
@@ -8322,5 +8452,5 @@ if(savedSession==='1' && savedRole==='admin'){
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
-</body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="052392c1-13b1-4bc8-aac5-1d68a252d38b"></script></body>
 </html>
