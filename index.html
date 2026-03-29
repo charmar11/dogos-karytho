@@ -4564,6 +4564,17 @@ function bootAdmin(){
   if(!fbDb)initFirebase(FB_CONFIG);
   renderAdmin();
   fbListening=false;
+  // Read sales from Firebase immediately (don't wait for realtime listener delay)
+  if(fbDb){
+    fbDb.ref('sales').once('value').then(snap=>{
+      const data=snap.val();
+      if(data&&Object.keys(data).length>0){
+        sales=Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        renderAdmin();
+      }
+    }).catch(()=>{});
+  }
   setTimeout(()=>{
     startFbListeners();
     startMembersListener();
@@ -4571,7 +4582,7 @@ function bootAdmin(){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
-  },800);
+  },200);
 }
 
 function renderAdmin(){
