@@ -3088,6 +3088,7 @@ function initFirebase(cfg){
     fbDb.ref('.info/connected').on('value',snap=>{
       fbConnected=!!snap.val();
       setFbStatus(fbConnected?'ok':'offline');
+      if(fbConnected) setTimeout(()=>_syncPendingGastos(),1500);
     });
     startFbListeners();
   }catch(e){
@@ -3795,6 +3796,41 @@ function renderCidopGastoCatSelect(){
   if(gastoCats.find(c=>c.id===cur)) sel.value=cur;
 }
 
+/* ── Cola de gastos pendientes (sync cuando Firebase falla) ── */
+const SK_GASTOS_PENDING='dk_gastos_pending';
+
+function _queueGastoPending(g){
+  try{
+    const q=JSON.parse(safeStorage.getItem(SK_GASTOS_PENDING)||'[]');
+    if(!q.find(x=>x.id===g.id)) q.push(g);
+    safeStorage.setItem(SK_GASTOS_PENDING,JSON.stringify(q));
+  }catch(e){}
+}
+
+function _syncPendingGastos(){
+  if(!fbDb) return;
+  try{
+    const q=JSON.parse(safeStorage.getItem(SK_GASTOS_PENDING)||'[]');
+    if(!q.length) return;
+    const remaining=[];
+    const promises=q.map(g=>
+      fbDb.ref('gastos/'+g.id).set(g)
+        .then(()=>{
+          if(gastos&&!gastos.find(x=>x.id===g.id)) gastos.unshift(g);
+        })
+        .catch(()=>remaining.push(g))
+    );
+    Promise.all(promises).then(()=>{
+      safeStorage.setItem(SK_GASTOS_PENDING,JSON.stringify(remaining));
+      if(remaining.length<q.length){
+        const synced=q.length-remaining.length;
+        showToast('✅ '+synced+' gasto'+(synced>1?'s':'')+' sincronizado'+(synced>1?'s':''),'green');
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos||[]));
+      }
+    });
+  }catch(e){}
+}
+
 function agregarGastoCidop(){
   const desc=document.getElementById('cidop-gasto-desc').value.trim();
   const monto=parseFloat(document.getElementById('cidop-gasto-monto').value)||0;
@@ -3814,11 +3850,17 @@ function agregarGastoCidop(){
   safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
   document.getElementById('cidop-gasto-desc').value='';
   document.getElementById('cidop-gasto-monto').value='';
-  showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbDb.ref('gastos/'+g.id).set(g).catch(()=>{
-      showToast('Sin conexión — guardado localmente','red');
-    });
+    fbDb.ref('gastos/'+g.id).set(g)
+      .then(()=>showToast('✅ Gasto guardado','green'))
+      .catch(()=>{
+        _queueGastoPending(g);
+        showToast('✅ Guardado — sincronizando...','green');
+        setTimeout(()=>_syncPendingGastos(),3000);
+      });
+  } else {
+    _queueGastoPending(g);
+    showToast('✅ Gasto guardado localmente','green');
   }
   renderCidopGastosList();
 }
@@ -4874,8 +4916,13 @@ function loadGastos(){
   fbDb.ref('gastos').on('value',snap=>{
     const d=snap.val();
     if(d&&Object.keys(d).length>0){
-      // Firebase has data → use it
+      // Firebase has data → use it, pero preservar pendientes locales
       gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
+      try{
+        const pending=JSON.parse(safeStorage.getItem(SK_GASTOS_PENDING)||'[]');
+        pending.forEach(g=>{if(!gastos.find(x=>x.id===g.id))gastos.unshift(g);});
+        if(pending.length)_syncPendingGastos();
+      }catch(e){}
       safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
     } else {
       // Firebase empty → push local cache up (e.g. offline write came back)
