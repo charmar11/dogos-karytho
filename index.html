@@ -3145,12 +3145,12 @@ function startFbListeners(){
 function fbSaveProd(){
   if(!fbDb)return;
   const obj={};products.forEach(p=>obj[p.id]=p);
-  fbSafe(fbDb.ref('products').set(obj),'Error al guardar productos');
+  fbDb.ref('products').set(obj).catch(err=>console.error('[fbSaveProd]',err));
 }
 function fbSaveSales(){
   if(!fbDb)return;
   const obj={};sales.forEach(s=>obj[s.id]=s);
-  fbSafe(fbDb.ref('sales').set(obj),'Error al guardar ventas en la nube');
+  fbDb.ref('sales').set(obj).catch(err=>console.error('[fbSaveSales]',err));
 }
 
 /* ─── Activity Log ─── */
