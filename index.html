@@ -250,19 +250,6 @@ position:sticky;top:0;z-index:20;
   position:fixed;width:9px;height:9px;border-radius:2px;
   animation:confettiFall linear forwards;pointer-events:none;z-index:9998;
 }
-/* Compact product buttons for cobrar */
-.view-cobrar-layout .products-grid{
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
-@media(min-width:500px){.view-cobrar-layout .products-grid{grid-template-columns:repeat(3,1fr)}}
-.view-cobrar-layout .prod-btn{
-  padding:14px 8px;
-  min-height:72px;
-}
-.view-cobrar-layout .pname{font-size:13px}
-.view-cobrar-layout .pprice{font-size:14px;margin-top:4px}
-.view-cobrar-layout .phint{font-size:9px;margin-top:3px}
 /* Compact fav strip */
 .view-cobrar-layout .fav-strip{
   padding:0 0 8px;
@@ -2232,24 +2219,26 @@ position:sticky;top:0;z-index:20;
   <div class="admin-tab-view" id="adm-tab-ventas">
     <!-- ── Meta diaria de ventas ── -->
     <div class="form-card" style="margin-bottom:14px;padding:14px 16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text)">🎯 Meta diaria de ventas</div>
         <div id="adm-goal-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,200,0,.1);color:var(--gold)">sin meta</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:13px;color:var(--text2);font-weight:600">$</span>
-        <input type="number" inputmode="decimal" id="adm-goal-input" placeholder="Ej: 1500"
-          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:700;outline:none"/>
-        <button onclick="saveDailyGoal()"
-          style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0">
-          Guardar
-        </button>
+      <div style="display:flex;align-items:stretch;gap:8px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:0 12px;gap:4px">
+          <span style="font-size:14px;color:var(--text2);font-weight:700;flex-shrink:0">$</span>
+          <input type="number" inputmode="decimal" id="adm-goal-input" placeholder="Ej: 1500"
+            style="width:100%;background:transparent;border:none;color:var(--text);font-size:15px;font-weight:700;outline:none;padding:10px 0"/>
+        </div>
         <button onclick="clearDailyGoal()" title="Quitar meta"
-          style="background:transparent;border:1.5px solid var(--border2);border-radius:8px;padding:9px 10px;color:var(--text3);font-size:13px;cursor:pointer;flex-shrink:0">
+          style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:10px 14px;color:var(--text3);font-size:16px;cursor:pointer;flex-shrink:0;line-height:1">
           ✕
         </button>
       </div>
-      <div style="font-size:10px;color:var(--text4);margin-top:7px">La meta se muestra en tiempo real a los cajeros como barra de progreso.</div>
+      <button onclick="saveDailyGoal()"
+        style="width:100%;background:var(--gold);color:#111;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Guardar meta
+      </button>
+      <div style="font-size:10px;color:var(--text4);margin-top:8px">La meta se muestra en tiempo real a los cajeros como barra de progreso.</div>
     </div>
     <!-- Period selector -->
     <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
@@ -3677,6 +3666,7 @@ function bootApp(){
   if(typeof loadGastos==='function') loadGastos();
   const displayName=safeStorage.getItem(SK_DISPLAY)||'Usuario';
   setTimeout(()=>{
+    startFbListeners(); // registra productos, ventas y meta diaria
     startPresence(displayName);
     loadCidopMembers();
     // Keep ingredients + recipes + generalRecipe synced from Firebase
@@ -3775,6 +3765,7 @@ function setTab(tab){
   if(tab==='historial') renderHistorial();
   if(tab==='productos') renderProdAdmin();
   if(tab==='gastos')    initCidopGastos();
+  if(tab==='cobrar')    updateGoalBar();
 }
 // ── Historial navigation state ──
 let histNavOffset=0; // kept for compat (unused after refactor)
