@@ -3364,7 +3364,7 @@ function _applyGoal(v){
 function updateGoalBar(){
   const wrap=document.getElementById('goal-bar-wrap');
   if(!wrap)return;
-  if(!dailyGoal||dailyGoal<=0){wrap.style.display='none';return;}
+  if(!dailyGoal||dailyGoal<=0||currentPeriod!=='dia'){wrap.style.display='none';return;}
   wrap.style.display='block';
   const total=getTodaySalesTotal();
   const pct=Math.min(100,Math.round((total/dailyGoal)*100));
@@ -3833,6 +3833,7 @@ function setPeriod(p){
   if(ns) ns.style.display=p==='semana'?'block':'none';
   if(nm) nm.style.display=p==='mes'?'block':'none';
   renderHistorial();
+  updateGoalBar();
 }
 
 function histNavPrev(){ /* no-op — replaced by date pickers */ }
