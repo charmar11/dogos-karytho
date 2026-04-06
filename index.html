@@ -3758,7 +3758,7 @@ function closeCashOutside(e){if(e.target.id==='cash-overlay')closeCash();}
 function setBill(amt){
   document.querySelectorAll('.bill-btn').forEach(b=>b.classList.remove('selected'));
   const btns=document.querySelectorAll('.bill-btn');
-  const vals=[20,50,100,200,500];
+  const vals=[0,20,50,100,200,500];
   const i=vals.indexOf(amt);if(i>=0)btns[i].classList.add('selected');
   activeBill=amt;
   document.getElementById('cash-input').value=amt;
