@@ -359,24 +359,24 @@ body{
 .total-amt.bump{animation:totalBump .3s ease}
 .btn-cancel{
   padding:12px 14px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--border2);background:transparent;
-  color:var(--text3);cursor:pointer;font-size:13px;font-weight:700;
-  transition:background .15s,color .15s,border-color .15s;white-space:nowrap;
+  border:none;background:transparent;
+  color:var(--text4);cursor:pointer;font-size:12px;font-weight:600;
+  transition:color .15s;white-space:nowrap;
   flex-shrink:0;
 }
-.btn-cancel:hover{border-color:var(--border3);color:var(--text2)}
-.btn-cancel:active{background:var(--bg3)}
+.btn-cancel:hover{color:var(--text2)}
+.btn-cancel:active{color:var(--red)}
 .btn-cobrar{
-  padding:14px 20px;border-radius:var(--radius-sm);border:none;
-  background:linear-gradient(135deg,var(--red),#c01818);
-  color:#fff;cursor:pointer;font-size:17px;font-weight:800;
+  padding:16px 28px;border-radius:var(--radius-sm);border:none;
+  background:linear-gradient(135deg,var(--green),#1e6b1e);
+  color:#fff;cursor:pointer;font-size:19px;font-weight:800;
   transition:transform .12s,box-shadow .2s,background .2s;
   white-space:nowrap;letter-spacing:.5px;
-  box-shadow:0 4px 18px rgba(224,32,32,.3);
+  box-shadow:0 4px 18px rgba(45,138,45,.35);
   flex-shrink:0;
 }
-.btn-cobrar:hover{box-shadow:0 6px 24px rgba(224,32,32,.45);transform:translateY(-2px)}
-.btn-cobrar:active{transform:scale(.94) translateY(0);box-shadow:0 2px 8px rgba(224,32,32,.2)}
+.btn-cobrar:hover{box-shadow:0 6px 24px rgba(45,138,45,.5);transform:translateY(-2px)}
+.btn-cobrar:active{transform:scale(.94) translateY(0);box-shadow:0 2px 8px rgba(45,138,45,.2)}
 .btn-cobrar.done{background:linear-gradient(135deg,var(--green),#1e6b1e);box-shadow:0 4px 18px rgba(45,138,45,.3)}
 
 /* ── BACKDROP ── */
@@ -1558,7 +1558,7 @@ body{
         <div class="total-lbl">Total a cobrar</div>
         <div class="total-amt">$<span id="total-display">0.00</span></div>
       </div>
-      <button class="btn-cancel" onclick="clearOrder()">Cancelar</button>
+      <button class="btn-cancel" onclick="if(document.querySelectorAll('.order-row').length>0){if(confirm('¿Cancelar el pedido?'))clearOrder()}else{clearOrder()}">Cancelar</button>
       <button class="btn-cobrar" id="btn-cobrar" onclick="openCash()">Cobrar</button>
     </div>
   </div>
