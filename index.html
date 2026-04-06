@@ -8528,4 +8528,45 @@ function descontarInventario(items){
   }
 }
 
+/* ─── Init ─── */
+const savedSession=safeStorage.getItem(SK_SESSION);
+const savedRole=safeStorage.getItem(SK_ROLE);
+if(savedSession==='1' && savedRole==='admin'){
+  document.getElementById('login-screen').classList.add('hidden');
+  load();
+  initFirebase(FB_CONFIG);
+  setTimeout(()=>{
+    fbListening=false;
+    startFbListeners();
+    startMembersListener();
+    startActivityListener();
+    startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
+    loadGastoCats();
+    loadGastos();
+    document.getElementById('admin-screen').classList.add('active');
+    renderAdmin();
+  },1000);
+} else if(savedSession==='1' && savedRole==='inventario'){
+  document.getElementById('login-screen').classList.add('hidden');
+  load();loadInvData();
+  initFirebase(FB_CONFIG);
+  setTimeout(()=>{
+    fbListening=false;
+    bootInventario();
+  },500);
+} else if(savedSession==='1' && savedRole==='eventos'){
+  document.getElementById('login-screen').classList.add('hidden');
+  load();loadInvData();
+  initFirebase(FB_CONFIG);
+  setTimeout(()=>{fbListening=false;bootEventos();},500);
+} else if(savedSession==='1' && savedRole==='user'){
+  document.getElementById('login-screen').classList.add('hidden');
+  bootApp();
+} else if(savedRole==='user' && !savedSession){
+  showPicker();
+} else {
+  setTimeout(()=>document.getElementById('login-user').focus(),300);
+}
+</script>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script></body>
 </html>
