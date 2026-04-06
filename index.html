@@ -1754,11 +1754,12 @@ body{
     <div class="cash-total-display">$<span id="cash-total-show">0.00</span></div>
     <div class="cash-sub">Selecciona el billete o escribe la cantidad</div>
     <div class="bills-row" id="bills-row">
-      <button class="bill-btn" onclick="setBill(20)">$20</button>
-      <button class="bill-btn" onclick="setBill(50)">$50</button>
-      <button class="bill-btn" onclick="setBill(100)">$100</button>
-      <button class="bill-btn" onclick="setBill(200)">$200</button>
-      <button class="bill-btn" onclick="setBill(500)">$500</button>
+<button class="bill-btn" style="background:linear-gradient(135deg,#1a7a3a,#155f2e);color:#fff;border-color:#1a7a3a" onclick="setExacto()">Exacto</button>
+<button class="bill-btn" onclick="setBill(20)">$20</button>
+<button class="bill-btn" onclick="setBill(50)">$50</button>
+<button class="bill-btn" onclick="setBill(100)">$100</button>
+<button class="bill-btn" onclick="setBill(200)">$200</button>
+<button class="bill-btn" onclick="setBill(500)">$500</button>
     </div>
     <div class="cash-input-row">
       <span class="cash-input-lbl">Con $</span>
@@ -3655,6 +3656,11 @@ function tapProductFrom(id,el){
 
 /* ─── Sale modal ─── */
 function openModal(p){
+  // Si no tiene variantes ni extras, agregar directo
+  if((!p.variations||!p.variations.length)&&(!p.extras||!p.extras.length)){
+    addToOrder({productId:p.id,productName:p.name,varName:'',extrasStr:'',price:p.basePrice});
+    return;
+  }
   mProd=p;mExtras=[];mVar=p.variations&&p.variations.length?p.variations[0]:null;
   document.getElementById('modal-title').textContent=p.name;
   const vEl=document.getElementById('modal-variations');vEl.innerHTML='';
@@ -3677,25 +3683,6 @@ function openModal(p){
   }else esSec.style.display='none';
   updateModalPreview();document.getElementById('modal-overlay').classList.remove('hidden');
 }
-function updateModalPreview(){const base=mVar?mVar.price:(mProd?mProd.basePrice:0);document.getElementById('modal-price-preview').textContent=base+mExtras.reduce((s,e)=>s+e.price,0);}
-function selVar(idx){mVar=mProd.variations[idx];document.querySelectorAll('.var-option').forEach((el,i)=>el.classList.toggle('selected',i===idx));updateModalPreview();}
-function togExtra(idx){
-  const el=document.querySelector(`.extra-option[data-ei="${idx}"]`),e=mProd.extras[idx];
-  const pos=mExtras.findIndex(x=>x.name===e.name);
-  if(pos>=0){mExtras.splice(pos,1);el.classList.remove('selected');el.querySelector('.extra-check').textContent='';}
-  else{mExtras.push(e);el.classList.add('selected');el.querySelector('.extra-check').textContent='✓';}
-  updateModalPreview();
-}
-function closeModal(){document.getElementById('modal-overlay').classList.add('hidden');mProd=null;}
-function closeModalOutside(e){if(e.target.id==='modal-overlay')closeModal();}
-function confirmModal(){
-  if(!mProd)return;
-  const v=mVar||(mProd.variations&&mProd.variations[0]);
-  const base=v?v.price:mProd.basePrice;
-  addToOrder({productId:mProd.id,productName:mProd.name,varName:v?v.name:'',extrasStr:mExtras.map(e=>e.name).join(', '),price:base+mExtras.reduce((s,e)=>s+e.price,0)});
-  closeModal();
-}
-
 /* ─── Order ─── */
 function addToOrder(item){
   const key=item.productId+'|'+item.varName+'|'+item.extrasStr;
@@ -3741,6 +3728,12 @@ function openCash(){
 }
 function closeCash(){document.getElementById('cash-overlay').classList.add('hidden');}
 function closeCashOutside(e){if(e.target.id==='cash-overlay')closeCash();}
+  function setExacto(){
+  const total=order.reduce((s,o)=>s+o.price*o.qty,0);
+  document.querySelectorAll('.bill-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('cash-input').value=total.toFixed(2);
+  updateCambio();
+}
 function setBill(amt){
   document.querySelectorAll('.bill-btn').forEach(b=>b.classList.remove('selected'));
   const btns=document.querySelectorAll('.bill-btn');
