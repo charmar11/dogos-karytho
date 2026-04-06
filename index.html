@@ -2663,23 +2663,28 @@ const SK_DISPLAY='dk_display';
 
 /* ─── Firebase login helper ─── */
 let fbAuthDb=null;
-function initAuthDb(){
-  // Reusar fbDb que ya fue inicializado al cargar la pagina
-  if(!fbAuthDb)fbAuthDb=fbDb;
-}
-
 function loginWithFirebase(user,pass,cb){
-  if(!fbDb){cb(null,'Sin conexion a internet');return;}
-  fbDb.ref('users/'+user.toLowerCase()).once('value')
+  const auth=firebase.auth();
+  const emailMap={
+    'CIDOP':'cidop@karytho.com',
+    'ADMIN':'admin@karytho.com',
+    'EVENTOS':'eventos@karytho.com'
+  };
+  const email=emailMap[user.toUpperCase()];
+  if(!email){cb(null,'Usuario o contraseña incorrectos');return;}
+  auth.signInWithEmailAndPassword(email,pass)
+    .then(cred=>{
+      const uid=cred.user.uid;
+      return fbDb.ref('users/'+uid).once('value');
+    })
     .then(snap=>{
       const data=snap.val();
-      if(!data){cb(null,'Usuario o contraseña incorrectos');return;}
-      if(data.pass!==pass){cb(null,'Usuario o contraseña incorrectos');return;}
+      if(!data){cb(null,'Usuario no configurado');return;}
       cb(data,null);
     })
     .catch(e=>{
       console.error('Login error:',e);
-      cb(null,'Error de conexion. Revisa tu internet.');
+      cb(null,'Usuario o contraseña incorrectos');
     });
 }
 
