@@ -3730,7 +3730,7 @@ function renderOrder(){
   document.getElementById('total-display').textContent=order.reduce((s,o)=>s+o.price*o.qty,0).toFixed(2);
 }
 function chgQty(idx,d){order[idx].qty+=d;if(order[idx].qty<=0)order.splice(idx,1);renderOrder();bumpTotal();}
-function clearOrder(){order=[];renderOrder();}
+function clearOrder(){   if(!order.length)return;   customConfirm('¿Limpiar toda la orden?','Limpiar',()=>{     order=[];renderOrder();   }); }
 
 /* ─── Cash modal ─── */
 let activeBill=null;
