@@ -1560,7 +1560,7 @@ position:sticky;top:0;z-index:20;
         <div class="total-lbl">Total a cobrar</div>
         <div class="total-amt">$<span id="total-display">0.00</span></div>
       </div>
-      <button class="btn-cancel" onclick="if(document.querySelectorAll('.order-row').length>0){if(confirm('¿Cancelar el pedido?'))clearOrder()}else{clearOrder()}">Cancelar</button>
+      <button class="btn-cancel" onclick="clearOrder()">Cancelar</button>
       <button class="btn-cobrar" id="btn-cobrar" onclick="openCash()">Cobrar</button>
     </div>
   </div>
