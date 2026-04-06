@@ -2863,8 +2863,7 @@ function loginWithFirebase(user,pass,cb){
       if(!data){cb(null,'Usuario no configurado');return;}
       cb(data,null);
     })
-    .catch(e=>{
-      console.error('Login error:',e);
+    .catch(()=>{
       cb(null,'Usuario o contraseña incorrectos');
     });
 }
@@ -3014,7 +3013,12 @@ function showLoginError(msg){
   document.getElementById('login-pass').value='';
   setTimeout(()=>err.textContent='',3500);
 }
-// Recordar último usuario const lastUser=safeStorage.getItem('last_user'); if(lastUser)document.getElementById('login-user').value=lastUser;  document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
+// Recordar último usuario
+const lastUser = safeStorage.getItem('last_user');
+if(lastUser) document.getElementById('login-user').value = lastUser;
+document.getElementById('login-user').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('login-pass').focus();
+});
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 function doLogout(){
@@ -3067,15 +3071,15 @@ let fbAuthReady=false;
     fbDb=firebase.database();
     // Autenticacion anonima silenciosa — requerida por reglas de seguridad
     firebase.auth().signInAnonymously()
-      .then(()=>{fbAuthReady=true;console.log('[Firebase] Auth anonima OK');})
-      .catch(e=>{fbAuthReady=true;console.warn('[Firebase] Auth anonima no habilitada aun:',e.code);});
+      .then(()=>{fbAuthReady=true;})
+      .catch(()=>{fbAuthReady=true;});
     // Mantener sesion activa — re-autenticar si expira
     firebase.auth().onAuthStateChanged(user=>{
       if(!user&&fbDb){
         firebase.auth().signInAnonymously().catch(()=>{});
       }
     });
-  }catch(e){fbAuthReady=true;console.error('Firebase init error:',e);}
+  }catch(e){fbAuthReady=true;}
 })();
 
 /* ─── Helper: garantiza auth antes de escribir en Firebase ─── */
@@ -3319,7 +3323,6 @@ function initFirebase(cfg){
     });
     startFbListeners();
   }catch(e){
-    console.error('Firebase listeners error:',e);
     setFbStatus('error');
   }
 }
@@ -4188,6 +4191,7 @@ function agregarGastoCidop(){
   const fecha=normFecha(fechaRaw)||todayISO(); // always YYYY-MM-DD
   if(!desc){showToast('Escribe una descripción','red');return;}
   if(!monto){showToast('Escribe el monto','red');return;}
+  if(fecha>todayISO()){showToast('La fecha no puede ser futura','red');return;}
   const registradoEn=Date.now(); // exact moment of registration
   const g={
     id:'g_'+registradoEn,timestamp:registradoEn,registradoEn,
@@ -4201,10 +4205,7 @@ function agregarGastoCidop(){
   document.getElementById('cidop-gasto-monto').value='';
   showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbWriteSecure(fbDb.ref('gastos/'+g.id),g).catch(e=>{
-      console.error('Error guardando gasto:',e&&e.code,e&&e.message);
-      // Solo mostrar error si es de permisos, no sobreescribir el éxito ya mostrado
-    });
+    fbWriteSecure(fbDb.ref('gastos/'+g.id),g).catch(()=>{});
   }
   renderCidopGastosList();
 }
