@@ -2014,6 +2014,12 @@ body{
         <div style="font-size:13px;font-weight:800;color:var(--text)">⚖️ Punto de equilibrio <span style="font-size:10px;font-weight:500;color:var(--text4)">HOY</span></div>
         <div id="adm-pe-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(42,184,184,.12);color:#2ab8b8">cargando…</div>
       </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">Producto meta (para calcular unidades)</label>
+        <select id="adm-pe-product-sel" onchange="peSelectedProductId=this.value;renderPuntoEquilibrio()" style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+          <option value="">— Precio promedio histórico —</option>
+        </select>
+      </div>
       <!-- Barra de progreso -->
       <div style="background:var(--bg3);border-radius:8px;height:10px;overflow:hidden;margin-bottom:10px">
         <div id="adm-pe-bar" style="height:100%;border-radius:8px;background:linear-gradient(90deg,var(--red),#f5a623);width:0%;transition:width .5s ease"></div>
@@ -2190,6 +2196,20 @@ body{
           style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
           onchange="admGastosSetDay(this.value)"/>
         <button onclick="admGastosNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">Hoy</button>
+      </div>
+      <!-- Selector de semana (solo visible en periodo Semana) -->
+      <div id="gp-sub-semana" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
+        <select id="adm-gastos-semana-sel" onchange="admGastosSetSemana(this.value)"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+        </select>
+        <button onclick="admGastosSemanaNow()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">Esta</button>
+      </div>
+      <!-- Selector de mes (solo visible en periodo Mes) -->
+      <div id="gp-sub-mes" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="month" id="adm-gastos-mes-input"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
+          onchange="admGastosSetMes(this.value)"/>
+        <button onclick="admGastosMesNow()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:9px 14px;cursor:pointer;white-space:nowrap">Este</button>
       </div>
     </div>
 
@@ -4244,7 +4264,7 @@ function renderHistorial(){
         <div class="sale-items-txt">${its}</div>
         ${cambioHtml?'<div class="sale-footer">'+cambioHtml+'</div>':''}
       </div>`;
-    }).join('')+`<button class="btn-clear-all" onclick="clearAllSales()">🗑 Borrar ventas del día</button>`;
+    }).join('');
     return;
   }
 
@@ -4301,7 +4321,7 @@ function renderHistorial(){
       const label=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'short'});
       const daySales=byDay[iso];
       return makeAccordion(label,daySales.length+' ventas',daySales,i);
-    }).join('')+`<button class="btn-clear-all" onclick="clearAllSales()">🗑 Borrar ventas de esta semana</button>`;
+    }).join('');
     return;
   }
 
@@ -4324,7 +4344,7 @@ function renderHistorial(){
       const mon=new Date(monISO+'T12:00:00');
       const label='Semana del '+mon.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' al '+sun.toLocaleDateString('es-MX',{day:'numeric',month:'short'});
       return makeAccordion(label,byWeek[monISO].length+' ventas',byWeek[monISO],i);
-    }).join('')+`<button class="btn-clear-all" onclick="clearAllSales()">🗑 Borrar ventas del mes</button>`;
+    }).join('');
     return;
   }
 
@@ -4565,13 +4585,30 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
-  setAdminRange('hoy');
+  setAdminTab('ventas');
 }
 
 /* ─── Punto de Equilibrio Diario ─── */
+let peSelectedProductId=''; // '' = use historical average
+
+function _updatePeProductSelect(){
+  const sel=document.getElementById('adm-pe-product-sel');
+  if(!sel||!products||!products.length)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Precio promedio histórico —</option>'+
+    products.map(p=>`<option value="${p.id}">${p.name}${p.variations&&p.variations.length?' ('+p.variations.map(v=>'$'+v.price).join('/')+')':' ($'+p.basePrice+')'}</option>`).join('');
+  if(products.find(p=>String(p.id)===String(cur))) sel.value=cur;
+  else {sel.value='';peSelectedProductId='';}
+}
+
 function renderPuntoEquilibrio(){
   const today=todayISO();
   const todayKey=toDateKey(new Date());
+
+  // Populate product selector
+  _updatePeProductSelect();
+  const sel=document.getElementById('adm-pe-product-sel');
+  if(sel) peSelectedProductId=sel.value;
 
   // Gastos del día
   const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===today);
@@ -4585,9 +4622,19 @@ function renderPuntoEquilibrio(){
   let itemsVendidos=0;
   ventasHoy.forEach(s=>(s.items||[]).forEach(it=>{itemsVendidos+=it.qty||1;}));
 
-  // Precio promedio por item (usa histórico si no hay ventas hoy)
+  // Precio promedio: use selected product price, or historical average
   let precioPromedio=0;
-  if(itemsVendidos>0){
+  if(peSelectedProductId){
+    const selProd=products&&products.find(p=>String(p.id)===String(peSelectedProductId));
+    if(selProd){
+      if(selProd.variations&&selProd.variations.length){
+        const prices=selProd.variations.map(v=>v.price).filter(x=>x>0);
+        precioPromedio=prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:selProd.basePrice;
+      } else {
+        precioPromedio=selProd.basePrice||0;
+      }
+    }
+  } else if(itemsVendidos>0){
     precioPromedio=totalVendido/itemsVendidos;
   } else {
     let allItems=0,allRevenue=0;
@@ -4631,8 +4678,8 @@ function renderPuntoEquilibrio(){
     if(msg) msg.innerHTML=`✅ <span style="color:#64dc64">¡Gastos cubiertos!</span> Llevas <strong>$${plus.toFixed(2)}</strong> de ganancia neta hoy.`;
     if(badge){badge.textContent='✅ Cubierto';badge.style.background='rgba(100,220,100,.12)';badge.style.color='#64dc64';}
   } else if(peItems>0&&faltan>0){
-    const producto=products&&products[0]?products[0].name:'producto';
-    if(msg) msg.innerHTML=`Necesitas vender <strong>${peItems}</strong> ${producto}${peItems!==1?'s':''} para cubrir gastos.<br><span style="color:var(--gold)">Faltan <strong>${faltan}</strong> — llevas ${itemsVendidos} vendidos.</span>`;
+    const selProdName=peSelectedProductId?(products&&products.find(p=>String(p.id)===String(peSelectedProductId))?.name||'producto'):(products&&products[0]?products[0].name:'producto');
+    if(msg) msg.innerHTML=`Necesitas vender <strong>${peItems}</strong> ${selProdName}${peItems!==1?'s':''} para cubrir gastos.<br><span style="color:var(--gold)">Faltan <strong>${faltan}</strong> — llevas ${itemsVendidos} vendidos.</span>`;
     if(badge){badge.textContent=`Faltan ${faltan}`;badge.style.background='rgba(245,200,0,.12)';badge.style.color='var(--gold)';}
   } else {
     if(msg) msg.innerHTML=`<span style="color:var(--text3)">Agrega el precio promedio de tus productos para calcular el punto de equilibrio.</span>`;
@@ -4910,6 +4957,8 @@ let gastos=[];
 let gastosPeriod='hoy'; // kept for export functions compatibility
 let gastosSubPeriod='hora';
 let admGastosDiaISO=''; // YYYY-MM-DD seleccionado en el admin panel
+let admGastosSemanaISO=''; // YYYY-MM-DD (Monday of selected week)
+let admGastosMesYM=''; // YYYY-MM seleccionado
 
 function loadGastos(){
   if(!fbDb){return;}
@@ -4995,8 +5044,65 @@ function setGastosPeriod(p){
     const b=document.getElementById('gp-btn-'+k);
     if(b) b.classList.toggle('active',k===p);
   });
-  const sub=document.getElementById('gp-sub-hoy');
-  if(sub) sub.style.display=p==='hoy'?'flex':'none';
+  const subHoy=document.getElementById('gp-sub-hoy');
+  const subSem=document.getElementById('gp-sub-semana');
+  const subMes=document.getElementById('gp-sub-mes');
+  if(subHoy) subHoy.style.display=p==='hoy'?'flex':'none';
+  if(subSem) subSem.style.display=p==='semana'?'flex':'none';
+  if(subMes) subMes.style.display=p==='mes'?'flex':'none';
+  // Initialize selectors for semana/mes
+  if(p==='semana') _initGastosSemanaSelect();
+  if(p==='mes') _initGastosMesInput();
+  renderGastos();
+}
+function _getMonday(d){
+  const r=new Date(d);r.setHours(12,0,0,0);
+  const dy=r.getDay();r.setDate(r.getDate()-(dy===0?6:dy-1));
+  return r;
+}
+function _isoOfDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _initGastosSemanaSelect(){
+  const sel=document.getElementById('adm-gastos-semana-sel');if(!sel)return;
+  // Build list of distinct weeks from sales+gastos data
+  const weekSet=new Set();
+  const now=new Date();
+  const thisMonISO=_isoOfDate(_getMonday(now));
+  weekSet.add(thisMonISO);
+  // Add weeks from gastos
+  (gastos||[]).forEach(g=>{const f=normFecha(g.fecha);if(f){const d=new Date(f+'T12:00:00');if(!isNaN(d))weekSet.add(_isoOfDate(_getMonday(d)));}});
+  // Add weeks from sales
+  (sales||[]).forEach(s=>{if(s.timestamp){const d=new Date(s.timestamp);if(!isNaN(d))weekSet.add(_isoOfDate(_getMonday(d)));}});
+  const weeks=[...weekSet].sort().reverse();
+  const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  sel.innerHTML=weeks.map(monISO=>{
+    const mon=new Date(monISO+'T12:00:00');
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    const lbl=mon.getDate()+' '+monthNames[mon.getMonth()]+' — '+sun.getDate()+' '+monthNames[sun.getMonth()];
+    const isThis=monISO===thisMonISO;
+    return `<option value="${monISO}">${lbl}${isThis?' (esta semana)':''}</option>`;
+  }).join('');
+  if(!admGastosSemanaISO||!weeks.includes(admGastosSemanaISO)) admGastosSemanaISO=thisMonISO;
+  sel.value=admGastosSemanaISO;
+}
+function _initGastosMesInput(){
+  const inp=document.getElementById('adm-gastos-mes-input');if(!inp)return;
+  const now=new Date();
+  const thisYM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  if(!admGastosMesYM) admGastosMesYM=thisYM;
+  inp.value=admGastosMesYM;
+}
+function admGastosSetSemana(monISO){if(!monISO)return;admGastosSemanaISO=monISO;renderGastos();}
+function admGastosSemanaNow(){
+  const monISO=_isoOfDate(_getMonday(new Date()));
+  admGastosSemanaISO=monISO;
+  const sel=document.getElementById('adm-gastos-semana-sel');if(sel)sel.value=monISO;
+  renderGastos();
+}
+function admGastosSetMes(ym){if(!ym)return;admGastosMesYM=ym;renderGastos();}
+function admGastosMesNow(){
+  const now=new Date();
+  admGastosMesYM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const inp=document.getElementById('adm-gastos-mes-input');if(inp)inp.value=admGastosMesYM;
   renderGastos();
 }
 function setGastosSubPeriod(sp){ gastosSubPeriod=sp; renderGastos(); }
@@ -5007,13 +5113,15 @@ function getGastosFiltrados(){
     return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   if(gastosPeriod==='semana'){
-    const dow=(new Date().getDay()+6)%7;
-    const lun=new Date(); lun.setDate(lun.getDate()-dow); const lunISO=localISODate(lun);
-    const dom=new Date(lun); dom.setDate(lun.getDate()+6); const domISO=localISODate(dom);
+    // Use selected week (Monday ISO) or default to current week
+    const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
+    const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
+    const domISO=_isoOfDate(domDate);
     return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   }
   if(gastosPeriod==='mes'){
-    const ym=todayISO().slice(0,7);
+    // Use selected month (YYYY-MM) or default to current month
+    const ym=admGastosMesYM||todayISO().slice(0,7);
     return gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
@@ -5138,11 +5246,22 @@ function renderGastos(){
     const isToday=iso===todayISO();
     perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
   } else if(gastosPeriod==='semana'){
-    salesFilt=sales.filter(s=>isSameWeek(s.timestamp));
-    perLbl='Esta semana';
+    const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
+    const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
+    const domISO=_isoOfDate(domDate);
+    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;});
+    const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const mon=new Date(lunISO+'T12:00:00');
+    const sun=new Date(domDate);
+    const isThisWeek=lunISO===_isoOfDate(_getMonday(new Date()));
+    perLbl=isThisWeek?'Esta semana':'Sem. '+mon.getDate()+' '+monthNames[mon.getMonth()]+' – '+sun.getDate()+' '+monthNames[sun.getMonth()];
   } else if(gastosPeriod==='mes'){
-    salesFilt=sales.filter(s=>isSameMonth(s.timestamp));
-    perLbl='Este mes';
+    const ym=admGastosMesYM||todayISO().slice(0,7);
+    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;});
+    const [ymY,ymM]=ym.split('-').map(Number);
+    const monthNamesL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const isThisMes=ym===todayISO().slice(0,7);
+    perLbl=isThisMes?'Este mes':monthNamesL[ymM-1]+' '+ymY;
   }
   const ingresos=salesFilt.reduce((s,v)=>s+v.total,0);
   const ganancia=ingresos-totalGasto;
@@ -5194,9 +5313,21 @@ function _xlsxBold(ws, row, ncols){
 }
 function _getSalesFilt(){
   const today=toDateKey(new Date());
-  if(gastosPeriod==='hoy') return sales.filter(s=>s.date===today);
-  if(gastosPeriod==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
-  if(gastosPeriod==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
+  if(gastosPeriod==='hoy'){
+    const iso=admGastosDiaISO||todayISO();
+    const dayKey=toDateKey(new Date(iso+'T12:00:00'));
+    return sales.filter(s=>s.date===dayKey);
+  }
+  if(gastosPeriod==='semana'){
+    const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
+    const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
+    const domISO=_isoOfDate(domDate);
+    return sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;});
+  }
+  if(gastosPeriod==='mes'){
+    const ym=admGastosMesYM||todayISO().slice(0,7);
+    return sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;});
+  }
   return [...sales];
 }
 
@@ -5469,29 +5600,34 @@ function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
       keys=slots.slice(first,last+1);
     }
   } else if(gastosPeriod==='semana'){
-    // Lunes a hoy — claves YYYY-MM-DD igual que g.fecha
+    // Use selected week's Monday, show all 7 days (up to today for current week)
     const now=new Date();
-    const mon=new Date(now);
-    mon.setDate(now.getDate()-((now.getDay()+6)%7));
+    const selLunISO=admGastosSemanaISO||_isoOfDate(_getMonday(now));
+    const mon=new Date(selLunISO+'T12:00:00');
+    const isCurrentWeek=selLunISO===_isoOfDate(_getMonday(now));
     const slots=[];
     for(let i=0;i<=6;i++){
       const d=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i);
-      if(d>now) break;
+      if(isCurrentWeek&&d>now) break;
       slots.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
     }
     slots.forEach(k=>{if(!map[k])map[k]={ing:0,gas:0};});
-    // Show from first day with data to today
     const first=slots.findIndex(k=>(map[k].ing||0)>0||(map[k].gas||0)>0);
     keys=first<0?[slots[slots.length-1]]:slots.slice(first);
   } else if(gastosPeriod==='mes'){
-    // Semanas del mes (Lunes de cada semana) hasta hoy
+    // Semanas del mes seleccionado
     const now=new Date();
-    const firstDay=new Date(now.getFullYear(),now.getMonth(),1);
-    const mon=new Date(firstDay);
-    mon.setDate(firstDay.getDate()-((firstDay.getDay()+6)%7));
+    const selYM=admGastosMesYM||(_isoOfDate(now).slice(0,7));
+    const [selY,selM]=selYM.split('-').map(Number);
+    const isCurrentMonth=selYM===_isoOfDate(now).slice(0,7);
+    const _now=now;
+    const firstDay=new Date(selY,selM-1,1);
+    const lastDay=isCurrentMonth?_now:new Date(selY,selM,0);
+    const mon2=new Date(firstDay);
+    mon2.setDate(firstDay.getDate()-((firstDay.getDay()+6)%7));
     const slots=[];
-    const cur=new Date(mon);
-    while(cur<=now){
+    const cur=new Date(mon2);
+    while(cur<=lastDay){
       slots.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
       cur.setDate(cur.getDate()+7);
     }
@@ -8392,45 +8528,4 @@ function descontarInventario(items){
   }
 }
 
-/* ─── Init ─── */
-const savedSession=safeStorage.getItem(SK_SESSION);
-const savedRole=safeStorage.getItem(SK_ROLE);
-if(savedSession==='1' && savedRole==='admin'){
-  document.getElementById('login-screen').classList.add('hidden');
-  load();
-  initFirebase(FB_CONFIG);
-  setTimeout(()=>{
-    fbListening=false;
-    startFbListeners();
-    startMembersListener();
-    startActivityListener();
-    startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
-    loadGastoCats();
-    loadGastos();
-    document.getElementById('admin-screen').classList.add('active');
-    renderAdmin();
-  },1000);
-} else if(savedSession==='1' && savedRole==='inventario'){
-  document.getElementById('login-screen').classList.add('hidden');
-  load();loadInvData();
-  initFirebase(FB_CONFIG);
-  setTimeout(()=>{
-    fbListening=false;
-    bootInventario();
-  },500);
-} else if(savedSession==='1' && savedRole==='eventos'){
-  document.getElementById('login-screen').classList.add('hidden');
-  load();loadInvData();
-  initFirebase(FB_CONFIG);
-  setTimeout(()=>{fbListening=false;bootEventos();},500);
-} else if(savedSession==='1' && savedRole==='user'){
-  document.getElementById('login-screen').classList.add('hidden');
-  bootApp();
-} else if(savedRole==='user' && !savedSession){
-  showPicker();
-} else {
-  setTimeout(()=>document.getElementById('login-user').focus(),300);
-}
-</script>
-<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script></body>
 </html>
