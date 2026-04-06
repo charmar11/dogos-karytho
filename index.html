@@ -91,7 +91,7 @@ position:sticky;top:0;z-index:20;
 
 /* ── COBRAR FIXED LAYOUT ── */
 .view-cobrar-layout{
-  height:calc(100dvh - 58px - 40px);
+  height:calc(100dvh - 58px - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   display:none;
   flex-direction:column;
   padding:0 !important;
@@ -104,11 +104,12 @@ position:sticky;top:0;z-index:20;
   -webkit-overflow-scrolling:touch;
   padding:10px 14px 6px;
   scrollbar-width:none;
+  max-height:55%;
 }
 .cobrar-top::-webkit-scrollbar{display:none}
 .cobrar-bottom{
   flex-shrink:0;
-  padding:8px 14px 12px;
+  padding:8px 14px calc(12px + env(safe-area-inset-bottom));
   background:var(--bg);
   border-top:1px solid var(--border);
 }
