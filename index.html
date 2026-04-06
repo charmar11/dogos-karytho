@@ -3128,7 +3128,7 @@ function initFirebase(cfg){
     if(!fbDb){
       if(!firebase.apps.length)firebase.initializeApp(cfg);
       fbDb=firebase.database();
-      firebase.auth().signInAnonymously().catch(e=>console.warn('[Firebase] Auth:',e.code));
+      // Auth manejado por loginWithFirebase
     }
     setFbStatus('connecting');
     fbDb.ref('.info/connected').on('value',snap=>{
