@@ -3730,7 +3730,8 @@ function renderOrder(){
   document.getElementById('total-display').textContent=order.reduce((s,o)=>s+o.price*o.qty,0).toFixed(2);
 }
 function chgQty(idx,d){order[idx].qty+=d;if(order[idx].qty<=0)order.splice(idx,1);renderOrder();bumpTotal();}
-function clearOrder(){   if(!order.length)return;   customConfirm('¿Limpiar toda la orden?','Limpiar',()=>{     order=[];renderOrder();   }); }
+function clearOrderSilent(){order=[];renderOrder();}
+function clearOrder(){if(!order.length)return;customConfirm('¿Limpiar toda la orden?','Limpiar',()=>{order=[];renderOrder();});}
 
 /* ─── Cash modal ─── */
 let activeBill=null;
@@ -4146,7 +4147,7 @@ function confirmarCobro(){
   sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
-  clearOrder();closeCash();
+  clearOrderSilent();closeCash();
   logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
   descontarInventario(orderSnapshot);
   // Refresh gastos chart if admin gastos tab is open (ingresos changed)
