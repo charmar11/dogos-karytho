@@ -1707,15 +1707,10 @@ position:sticky;top:0;z-index:20;
   </div>
   <div id="hist-nav-semana" style="display:none;padding:6px 0 2px">
     <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Desde</span>
-      <input type="date" id="hist-sem-desde"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 8px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="histSetSemManual()"/>
-      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Hasta</span>
-      <input type="date" id="hist-sem-hasta"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 8px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="histSetSemManual()"/>
-      <button onclick="histSemHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 8px;cursor:pointer;white-space:nowrap">Esta sem.</button>
+      <select id="hist-semana-sel" onchange="histSetSemana(this.value)"
+        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+      </select>
+      <button onclick="histSemanaNow()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 10px;cursor:pointer;white-space:nowrap">Esta</button>
     </div>
   </div>
   <div id="hist-nav-mes" style="display:none;padding:6px 0 2px">
@@ -3789,9 +3784,30 @@ function _histThisMesYM(){
 function _syncHistDiaInput(){
   const el=document.getElementById('hist-dia-input'); if(el) el.value=histDiaISO||todayISO();
 }
-function _syncHistSemInputs(){
-  const d=document.getElementById('hist-sem-desde'); if(d) d.value=histSemDesde;
-  const h=document.getElementById('hist-sem-hasta'); if(h) h.value=histSemHasta;
+function _initHistSemanaSelect(){
+  const sel=document.getElementById('hist-semana-sel');if(!sel)return;
+  const weekSet=new Set();
+  const now=new Date();
+  const thisMonISO=_isoOfDate(_getMonday(now));
+  weekSet.add(thisMonISO);
+  (sales||[]).forEach(s=>{
+    const d=s.timestamp?new Date(s.timestamp):s.date?new Date(s.date+'T12:00:00'):null;
+    if(d&&!isNaN(d))weekSet.add(_isoOfDate(_getMonday(d)));
+  });
+  const weeks=[...weekSet].sort(); // ascendente: oldest = Semana 1
+  const total=weeks.length;
+  sel.innerHTML=weeks.map((monISO,i)=>{
+    const num=i+1;
+    const isThis=monISO===thisMonISO;
+    const lbl=isThis?`Semana ${num} (esta semana)`:`Semana ${num}`;
+    return `<option value="${monISO}">${lbl}</option>`;
+  }).reverse().join(''); // newest al inicio del select
+  if(!histSemDesde||!weeks.includes(histSemDesde)){
+    histSemDesde=thisMonISO;
+    const sun=new Date(thisMonISO+'T12:00:00');sun.setDate(sun.getDate()+6);
+    histSemHasta=_isoOfDate(sun);
+  }
+  sel.value=histSemDesde;
 }
 function _syncHistMesInput(){
   const el=document.getElementById('hist-mes-input'); if(el) el.value=histMesYM||_histThisMesYM();
@@ -3799,17 +3815,20 @@ function _syncHistMesInput(){
 
 function histSetDia(iso){ if(!iso)return; histDiaISO=iso; renderHistorial(); }
 function histNavHoy(){ histDiaISO=todayISO(); _syncHistDiaInput(); renderHistorial(); }
-function histSetSemManual(){
-  const d=document.getElementById('hist-sem-desde');
-  const h=document.getElementById('hist-sem-hasta');
-  if(d) histSemDesde=d.value;
-  if(h) histSemHasta=h.value;
+function histSetSemana(monISO){
+  if(!monISO)return;
+  histSemDesde=monISO;
+  const sun=new Date(monISO+'T12:00:00');sun.setDate(sun.getDate()+6);
+  histSemHasta=_isoOfDate(sun);
   renderHistorial();
 }
-function histSemHoy(){
-  const{desde,hasta}=_histThisWeek();
-  histSemDesde=desde; histSemHasta=hasta;
-  _syncHistSemInputs(); renderHistorial();
+function histSemanaNow(){
+  const monISO=_isoOfDate(_getMonday(new Date()));
+  histSemDesde=monISO;
+  const sun=new Date(monISO+'T12:00:00');sun.setDate(sun.getDate()+6);
+  histSemHasta=_isoOfDate(sun);
+  _initHistSemanaSelect();
+  renderHistorial();
 }
 function histSetMes(val){ if(!val)return; histMesYM=val; renderHistorial(); }
 function histMesHoy(){ histMesYM=_histThisMesYM(); _syncHistMesInput(); renderHistorial(); }
@@ -3818,7 +3837,7 @@ function _initHistNav(){
   if(!histDiaISO) histDiaISO=todayISO();
   if(!histSemDesde){ const{desde,hasta}=_histThisWeek(); histSemDesde=desde; histSemHasta=hasta; }
   if(!histMesYM) histMesYM=_histThisMesYM();
-  _syncHistDiaInput(); _syncHistSemInputs(); _syncHistMesInput();
+  _syncHistDiaInput(); _initHistSemanaSelect(); _syncHistMesInput();
 }
 
 function setPeriod(p){
@@ -3832,6 +3851,7 @@ function setPeriod(p){
   if(nd) nd.style.display=p==='dia'?'flex':'none';
   if(ns) ns.style.display=p==='semana'?'block':'none';
   if(nm) nm.style.display=p==='mes'?'block':'none';
+  if(p==='semana') _initHistSemanaSelect();
   renderHistorial();
   updateGoalBar();
 }
