@@ -3344,18 +3344,19 @@ function setFbStatus(s){
 
 /* ─── DAILY GOAL ─── */
 let dailyGoal=0; // 0 = not set
-
-function todayISO(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+const SK_DAILY_GOAL='dg_daily_goal';
 
 function getTodaySalesTotal(){
-  const iso=todayISO();
-  return sales.filter(s=>{
-    if(!s.timestamp)return false;
-    return s.timestamp.slice(0,10)===iso;
-  }).reduce((sum,s)=>sum+(s.total||0),0);
+  // s.date is stored via toDateKey(now) → locale string e.g. "6/4/2026"
+  const todayKey=toDateKey(new Date());
+  return (sales||[]).filter(s=>s.date===todayKey)
+    .reduce((sum,s)=>sum+(s.total||0),0);
+}
+
+function _applyGoal(v){
+  dailyGoal=(v&&typeof v==='number'&&v>0)?v:0;
+  updateGoalBar();
+  updateAdminGoalBadge();
 }
 
 function updateGoalBar(){
@@ -3369,6 +3370,7 @@ function updateGoalBar(){
   const pctEl=document.getElementById('goal-bar-pct');
   const curEl=document.getElementById('goal-bar-cur');
   const metaEl=document.getElementById('goal-bar-meta');
+  if(!fill)return;
   fill.style.width=pct+'%';
   if(pct>=100){fill.classList.add('complete');}else{fill.classList.remove('complete');}
   pctEl.textContent=pct+'%';
@@ -3380,8 +3382,8 @@ function checkDailyGoal(){
   if(!dailyGoal||dailyGoal<=0)return;
   const total=getTodaySalesTotal();
   if(total<dailyGoal)return;
-  // Only celebrate once per day
-  const celebKey='goal_celebrated_'+todayISO();
+  const todayKey=todayISO();
+  const celebKey='goal_celebrated_'+todayKey;
   if(safeStorage.getItem(celebKey)==='1')return;
   safeStorage.setItem(celebKey,'1');
   launchCelebration(total);
@@ -3434,23 +3436,32 @@ function updateAdminGoalBadge(){
   } else {
     badge.textContent='sin meta';
     badge.style.background='rgba(245,200,0,.08)';
+    if(input)input.value='';
   }
 }
 
 function saveDailyGoal(){
   const v=parseFloat(document.getElementById('adm-goal-input')?.value)||0;
   if(!v||v<=0){showToast('Escribe una meta válida','red');return;}
-  if(!fbDb){showToast('Sin conexión a Firebase','red');return;}
-  fbWriteSecure(fbDb.ref('config/daily_goal'),v)
-    .then(()=>showToast('Meta guardada: $'+v.toFixed(2),'green'))
-    .catch(()=>showToast('Error al guardar','red'));
+  // Save to localStorage first (instant, works offline)
+  safeStorage.setItem(SK_DAILY_GOAL,String(v));
+  _applyGoal(v);
+  showToast('Meta guardada: $'+v.toFixed(2),'green');
+  // Also push to Firebase so other devices sync
+  if(fbDb){
+    fbWriteSecure(fbDb.ref('config/daily_goal'),v).catch(()=>{});
+  }
 }
 
 function clearDailyGoal(){
-  if(!fbDb){dailyGoal=0;updateGoalBar();updateAdminGoalBadge();return;}
-  fbRemoveSecure(fbDb.ref('config/daily_goal'))
-    .then(()=>{if(document.getElementById('adm-goal-input'))document.getElementById('adm-goal-input').value='';showToast('Meta eliminada');})
-    .catch(()=>showToast('Error al eliminar','red'));
+  safeStorage.removeItem(SK_DAILY_GOAL);
+  _applyGoal(0);
+  const input=document.getElementById('adm-goal-input');
+  if(input)input.value='';
+  showToast('Meta eliminada');
+  if(fbDb){
+    fbRemoveSecure(fbDb.ref('config/daily_goal')).catch(()=>{});
+  }
 }
 
 function startFbListeners(){
@@ -3485,12 +3496,20 @@ function startFbListeners(){
     // Update goal bar in cobrar tab
     updateGoalBar();
   });
-  // Sync daily goal config
+  // Sync daily goal config from Firebase (override localStorage if found)
   fbDb.ref('config/daily_goal').on('value',snap=>{
     const v=snap.val();
-    dailyGoal=(v&&typeof v==='number'&&v>0)?v:0;
-    updateGoalBar();
-    updateAdminGoalBadge();
+    if(v&&typeof v==='number'&&v>0){
+      safeStorage.setItem(SK_DAILY_GOAL,String(v));
+      _applyGoal(v);
+    } else {
+      // Only clear if Firebase explicitly has null (goal was deleted from admin)
+      if(snap.exists()===false){
+        safeStorage.removeItem(SK_DAILY_GOAL);
+        _applyGoal(0);
+      }
+      // If Firebase has nothing yet, keep localStorage value
+    }
   });
 }
 
@@ -3659,6 +3678,9 @@ function bootApp(){
   load();
   loadInvData(); // load ingredients + recipes so descontarInventario works
   updateDate();renderGrid();renderFavStrip();renderOrder();
+  // Load saved daily goal from localStorage immediately (before Firebase arrives)
+  const _lsGoal=parseFloat(safeStorage.getItem(SK_DAILY_GOAL)||'0');
+  if(_lsGoal>0) _applyGoal(_lsGoal);
   setFbStatus('connecting');
   initFirebase(FB_CONFIG); // <-- fbDb queda listo aquí
   // Ahora que fbDb existe, registrar listeners de gastos
@@ -4836,6 +4858,9 @@ function bootAdmin(){
   load();
   document.getElementById('admin-screen').classList.add('active');
   if(!fbDb)initFirebase(FB_CONFIG);
+  // Load saved daily goal from localStorage immediately
+  const _lsGoal=parseFloat(safeStorage.getItem(SK_DAILY_GOAL)||'0');
+  if(_lsGoal>0) _applyGoal(_lsGoal);
   renderAdmin();
   fbListening=false;
   setTimeout(()=>{
