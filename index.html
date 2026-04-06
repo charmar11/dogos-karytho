@@ -1673,20 +1673,6 @@ position:sticky;top:0;z-index:20;
   </div>
   <!-- BOTTOM: orden + cobrar (always visible) -->
   <div class="cobrar-bottom">
-    <!-- Daily goal progress bar (hidden when no goal set) -->
-    <div class="goal-bar-wrap" id="goal-bar-wrap" style="display:none">
-      <div class="goal-bar-header">
-        <span class="goal-bar-lbl">🎯 Meta del día</span>
-        <span class="goal-bar-pct" id="goal-bar-pct">0%</span>
-      </div>
-      <div class="goal-bar-track">
-        <div class="goal-bar-fill" id="goal-bar-fill" style="width:0%"></div>
-      </div>
-      <div class="goal-bar-amounts">
-        <span class="goal-bar-cur" id="goal-bar-cur">$0</span>
-        <span class="goal-bar-meta" id="goal-bar-meta">meta: $0</span>
-      </div>
-    </div>
     <div class="order-box" id="order-box">
       <div class="empty-order" id="empty-order">
         <div class="empty-icon">🛒</div>
@@ -1740,6 +1726,21 @@ position:sticky;top:0;z-index:20;
       <button onclick="histMesHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Este mes</button>
     </div>
   </div>
+  <!-- Barra de meta diaria -->
+  <div class="goal-bar-wrap" id="goal-bar-wrap" style="display:none;margin-bottom:12px">
+    <div class="goal-bar-header">
+      <span class="goal-bar-lbl">🎯 Meta del día</span>
+      <span class="goal-bar-pct" id="goal-bar-pct">0%</span>
+    </div>
+    <div class="goal-bar-track">
+      <div class="goal-bar-fill" id="goal-bar-fill" style="width:0%"></div>
+    </div>
+    <div class="goal-bar-amounts">
+      <span class="goal-bar-cur" id="goal-bar-cur">$0</span>
+      <span class="goal-bar-meta" id="goal-bar-meta">meta: $0</span>
+    </div>
+  </div>
+
   <div class="stat-grid">
     <div class="stat-card"><div class="stat-lbl">Ventas</div><div class="stat-val" id="stat-count">0</div><div class="stat-sub" id="stat-period-lbl">Hoy</div></div>
     <div class="stat-card"><div class="stat-lbl">Ingresos</div><div class="stat-val" id="stat-total">$0</div><div class="stat-sub" id="stat-avg">Promedio: $0</div></div>
@@ -2213,12 +2214,9 @@ position:sticky;top:0;z-index:20;
     <div class="form-card" style="padding:12px 15px">
       <div id="adm-top-products"><div class="admin-empty">Sin datos</div></div>
     </div>
-  </div>
 
-  <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
-  <div class="admin-tab-view" id="adm-tab-ventas">
     <!-- ── Meta diaria de ventas ── -->
-    <div class="form-card" style="margin-bottom:14px;padding:14px 16px">
+    <div class="form-card" style="margin-top:14px;padding:14px 16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="font-size:13px;font-weight:800;color:var(--text)">🎯 Meta diaria de ventas</div>
         <div id="adm-goal-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,200,0,.1);color:var(--gold)">sin meta</div>
@@ -2238,8 +2236,12 @@ position:sticky;top:0;z-index:20;
         style="width:100%;background:var(--gold);color:#111;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:800;cursor:pointer">
         💾 Guardar meta
       </button>
-      <div style="font-size:10px;color:var(--text4);margin-top:8px">La meta se muestra en tiempo real a los cajeros como barra de progreso.</div>
+      <div style="font-size:10px;color:var(--text4);margin-top:8px">La meta se muestra en tiempo real en el historial de los cajeros.</div>
     </div>
+  </div>
+
+  <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
+  <div class="admin-tab-view" id="adm-tab-ventas">
     <!-- Period selector -->
     <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
       <button class="admin-range-btn adm-ventas-btn active" onclick="setAdminRange('hoy')">Hoy</button>
@@ -3372,8 +3374,15 @@ function updateGoalBar(){
   const metaEl=document.getElementById('goal-bar-meta');
   if(!fill)return;
   fill.style.width=pct+'%';
-  if(pct>=100){fill.classList.add('complete');}else{fill.classList.remove('complete');}
-  pctEl.textContent=pct+'%';
+  if(pct>=100){
+    fill.classList.add('complete');
+    pctEl.textContent='✓ Meta cumplida';
+    pctEl.style.color='#6fcf6f';
+  }else{
+    fill.classList.remove('complete');
+    pctEl.textContent=pct+'%';
+    pctEl.style.color='';
+  }
   curEl.textContent='$'+total.toFixed(2);
   metaEl.textContent='meta: $'+dailyGoal.toFixed(2);
 }
@@ -3390,38 +3399,8 @@ function checkDailyGoal(){
 }
 
 function launchCelebration(total){
-  const overlay=document.getElementById('goal-celebration');
-  if(!overlay)return;
-  overlay.style.display='flex';
-  overlay.innerHTML=`<div class="goal-celebration-msg">
-    <span class="goal-celebration-emoji">🎉</span>
-    <div class="goal-celebration-title">¡META ALCANZADA!</div>
-    <div class="goal-celebration-sub">$${total.toFixed(2)} — ¡Excelente trabajo!</div>
-    <button onclick="document.getElementById('goal-celebration').style.display='none'"
-      style="margin-top:16px;background:var(--gold);color:#111;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:800;cursor:pointer">
-      ¡Genial! 🙌
-    </button>
-  </div>`;
-  spawnConfetti();
-}
-
-function spawnConfetti(){
-  const colors=['#F5C800','#E02020','#2ab8b8','#ffffff','#f5a623','#a78bfa'];
-  for(let i=0;i<80;i++){
-    const el=document.createElement('div');
-    el.className='confetti-piece';
-    el.style.left=Math.random()*100+'vw';
-    el.style.top='-20px';
-    el.style.background=colors[Math.floor(Math.random()*colors.length)];
-    el.style.width=(6+Math.random()*8)+'px';
-    el.style.height=(6+Math.random()*8)+'px';
-    el.style.borderRadius=Math.random()>.5?'50%':'2px';
-    const dur=(1.5+Math.random()*2).toFixed(2)+'s';
-    el.style.animationDuration=dur;
-    el.style.animationDelay=(Math.random()*.8).toFixed(2)+'s';
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(),(parseFloat(dur)+1)*1000);
-  }
+  // Solo mostrar toast simple — sin animación ni confetti
+  showToast('✓ ¡Meta del día cumplida! $'+total.toFixed(2),'green');
 }
 
 function updateAdminGoalBadge(){
@@ -3784,10 +3763,9 @@ function setTab(tab){
     document.getElementById('view-'+t).classList.toggle('active',t===tab);
     document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
   });
-  if(tab==='historial') renderHistorial();
+  if(tab==='historial'){ renderHistorial(); updateGoalBar(); }
   if(tab==='productos') renderProdAdmin();
   if(tab==='gastos')    initCidopGastos();
-  if(tab==='cobrar')    updateGoalBar();
 }
 // ── Historial navigation state ──
 let histNavOffset=0; // kept for compat (unused after refactor)
