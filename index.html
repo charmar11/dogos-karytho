@@ -2809,6 +2809,7 @@ function doLogin(){
   const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
   if(!u||!p){showLoginError('Escribe usuario y contraseña');return;}
+  safeStorage.setItem('last_user',u);
   const btn=document.querySelector('.btn-login');
   btn.textContent='Conectando...';btn.disabled=true;
 
@@ -2853,7 +2854,7 @@ function showLoginError(msg){
   document.getElementById('login-pass').value='';
   setTimeout(()=>err.textContent='',3500);
 }
-document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
+// Recordar último usuario const lastUser=safeStorage.getItem('last_user'); if(lastUser)document.getElementById('login-user').value=lastUser;  document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 function doLogout(){
