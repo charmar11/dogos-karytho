@@ -4137,6 +4137,8 @@ function renderCidopGastosList(){
 
 function confirmarCobro(){
   if(!order.length)return;
+  const cashVal=parseFloat(document.getElementById('cash-input').value)||0;
+  if(cashVal===0){showToast('Elige un billete o escribe la cantidad','red');return;}
   const total=order.reduce((s,o)=>s+o.price*o.qty,0);
   const cash=parseFloat(document.getElementById('cash-input').value)||0;
   const cambio=cash>0?cash-total:null;
