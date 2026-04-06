@@ -32,6 +32,10 @@
 @keyframes backdropIn     {from{opacity:0}to{opacity:1}}
 @keyframes staggerItem    {from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes totalBump      {0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes goalPop        {0%{transform:scale(.85);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes confettiFall   {0%{transform:translateY(-40px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+@keyframes goalBarShimmer {0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes goalPulse      {0%,100%{box-shadow:0 0 0 0 rgba(245,200,0,.0)}50%{box-shadow:0 0 14px 4px rgba(245,200,0,.3)}}
 
 /* ── RESET & ROOT ── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
@@ -100,18 +104,151 @@ position:sticky;top:0;z-index:20;
 .view.view-cobrar-layout.active{display:flex}
 .cobrar-top{
   flex:1;
+  min-height:0;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
-  padding:10px 14px 6px;
+  padding:8px 12px 4px;
   scrollbar-width:none;
-  max-height:55%;
 }
 .cobrar-top::-webkit-scrollbar{display:none}
 .cobrar-bottom{
   flex-shrink:0;
-  padding:8px 14px calc(12px + env(safe-area-inset-bottom));
+  padding:6px 12px calc(10px + env(safe-area-inset-bottom));
   background:var(--bg);
   border-top:1px solid var(--border);
+}
+
+/* ── MÓVIL PEQUEÑO (hasta 390px — iPhone SE, Moto G) ── */
+.view-cobrar-layout .products-grid{grid-template-columns:1fr 1fr;gap:6px;}
+.view-cobrar-layout .prod-btn{padding:10px 6px;min-height:60px;}
+.view-cobrar-layout .pname{font-size:12px}
+.view-cobrar-layout .pprice{font-size:12px;margin-top:3px}
+.view-cobrar-layout .phint{font-size:9px;margin-top:2px}
+.view-cobrar-layout .fav-strip{padding:0 0 6px;margin-bottom:0;}
+.view-cobrar-layout .fav-btn{padding:8px 10px;min-width:75px;}
+.view-cobrar-layout .fav-btn .pname{font-size:11px}
+.view-cobrar-layout .fav-btn .pprice{font-size:11px;margin-top:2px}
+.view-cobrar-layout .order-box{
+  max-height:28vh;min-height:40px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;margin-bottom:5px;padding:5px 8px;
+}
+.view-cobrar-layout .order-box::-webkit-scrollbar{display:none}
+.view-cobrar-layout .order-row{padding:5px 0}
+.view-cobrar-layout .order-row-name{font-size:12px}
+.view-cobrar-layout .empty-order{padding:6px 0;gap:4px}
+.view-cobrar-layout .empty-icon{font-size:16px}
+.view-cobrar-layout .empty-txt{font-size:11px}
+.view-cobrar-layout .total-bar{padding:8px 10px;margin-top:0;}
+.view-cobrar-layout .total-amt{font-size:22px}
+
+/* ── MÓVIL NORMAL (391px — 500px — iPhone 14, Samsung S) ── */
+@media(min-width:391px){
+  .view-cobrar-layout .products-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .view-cobrar-layout .prod-btn{padding:12px 8px;min-height:68px;}
+  .view-cobrar-layout .pname{font-size:13px}
+  .view-cobrar-layout .pprice{font-size:13px;margin-top:3px}
+  .view-cobrar-layout .fav-btn{padding:9px 12px;min-width:85px;}
+  .view-cobrar-layout .fav-btn .pname{font-size:12px}
+  .view-cobrar-layout .fav-btn .pprice{font-size:12px}
+  .view-cobrar-layout .order-box{max-height:30vh;padding:6px 10px;}
+  .view-cobrar-layout .order-row-name{font-size:13px}
+  .view-cobrar-layout .total-amt{font-size:24px}
+  .view-cobrar-layout .total-bar{padding:10px 12px;}
+}
+
+/* ── MÓVIL GRANDE / TABLET PEQUEÑA (501px — 767px) ── */
+@media(min-width:501px){
+  .view-cobrar-layout .products-grid{grid-template-columns:repeat(3,1fr);gap:10px;}
+  .view-cobrar-layout .prod-btn{padding:14px 10px;min-height:76px;}
+  .view-cobrar-layout .pname{font-size:14px}
+  .view-cobrar-layout .pprice{font-size:14px;margin-top:4px}
+  .view-cobrar-layout .fav-btn{padding:10px 16px;min-width:100px;}
+  .view-cobrar-layout .order-box{max-height:32vh;}
+  .view-cobrar-layout .total-amt{font-size:26px}
+  .cobrar-top{padding:10px 14px 6px;}
+  .cobrar-bottom{padding:8px 14px calc(12px + env(safe-area-inset-bottom));}
+}
+
+/* ── TABLET (768px — 1024px) ── */
+@media(min-width:768px){
+  .view-cobrar-layout .products-grid{grid-template-columns:repeat(4,1fr);gap:12px;}
+  .view-cobrar-layout .prod-btn{padding:20px 12px;min-height:90px;}
+  .view-cobrar-layout .pname{font-size:15px}
+  .view-cobrar-layout .pprice{font-size:16px;margin-top:6px}
+  .view-cobrar-layout .phint{font-size:10px;margin-top:4px}
+  .view-cobrar-layout .fav-btn{padding:14px 20px;min-width:110px;}
+  .view-cobrar-layout .fav-btn .pname{font-size:14px}
+  .view-cobrar-layout .fav-btn .pprice{font-size:14px;margin-top:4px}
+  .view-cobrar-layout .order-box{max-height:35vh;}
+  .view-cobrar-layout .order-row-name{font-size:15px}
+  .view-cobrar-layout .total-amt{font-size:30px}
+  .view-cobrar-layout .total-bar{padding:14px 18px;}
+  .cobrar-top{padding:12px 18px 8px;}
+  .cobrar-bottom{padding:10px 18px 16px;}
+}
+
+/* ── PC / PANTALLA GRANDE (1025px+) ── */
+@media(min-width:1025px){
+  .view-cobrar-layout .products-grid{grid-template-columns:repeat(5,1fr);gap:14px;}
+  .view-cobrar-layout .prod-btn{padding:24px 14px;min-height:100px;}
+  .view-cobrar-layout .pname{font-size:16px}
+  .view-cobrar-layout .pprice{font-size:17px}
+  .view-cobrar-layout .order-box{max-height:40vh;}
+  .view-cobrar-layout .total-amt{font-size:34px}
+  .cobrar-top{padding:14px 24px 10px;}
+  .cobrar-bottom{padding:12px 24px 20px;}
+}
+/* ── DAILY GOAL PROGRESS BAR ── */
+.goal-bar-wrap{
+  padding:6px 0 4px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:2px;
+}
+.goal-bar-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:5px;
+}
+.goal-bar-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.goal-bar-pct{font-size:11px;font-weight:800;color:var(--gold)}
+.goal-bar-track{
+  background:var(--bg3);border-radius:6px;height:8px;overflow:hidden;
+}
+.goal-bar-fill{
+  height:100%;border-radius:6px;
+  background:linear-gradient(90deg,var(--red),#f5a623,var(--gold));
+  background-size:200% 100%;
+  transition:width .6s cubic-bezier(.34,1.56,.64,1);
+}
+.goal-bar-fill.complete{
+  background:linear-gradient(90deg,#2ab8b8,#2d8a2d,var(--gold));
+  animation:goalBarShimmer 1.8s linear infinite,goalPulse 2s ease-in-out infinite;
+}
+.goal-bar-amounts{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:3px;
+}
+.goal-bar-cur{font-size:11px;font-weight:800;color:#2ab8b8}
+.goal-bar-meta{font-size:10px;color:var(--text3)}
+/* ── CELEBRATION OVERLAY ── */
+#goal-celebration{
+  position:fixed;inset:0;z-index:9999;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.goal-celebration-msg{
+  background:linear-gradient(135deg,#1e1e1e,#282822);
+  border:2px solid var(--gold);
+  border-radius:22px;padding:28px 36px;text-align:center;
+  animation:goalPop .45s cubic-bezier(.34,1.56,.64,1) forwards;
+  box-shadow:0 0 40px rgba(245,200,0,.25),0 8px 30px rgba(0,0,0,.7);
+  pointer-events:auto;
+}
+.goal-celebration-emoji{font-size:52px;display:block;margin-bottom:8px}
+.goal-celebration-title{font-size:22px;font-weight:900;color:var(--gold);letter-spacing:1px;margin-bottom:4px}
+.goal-celebration-sub{font-size:13px;color:var(--text2)}
+.confetti-piece{
+  position:fixed;width:9px;height:9px;border-radius:2px;
+  animation:confettiFall linear forwards;pointer-events:none;z-index:9998;
 }
 /* Compact product buttons for cobrar */
 .view-cobrar-layout .products-grid{
@@ -1549,6 +1686,20 @@ position:sticky;top:0;z-index:20;
   </div>
   <!-- BOTTOM: orden + cobrar (always visible) -->
   <div class="cobrar-bottom">
+    <!-- Daily goal progress bar (hidden when no goal set) -->
+    <div class="goal-bar-wrap" id="goal-bar-wrap" style="display:none">
+      <div class="goal-bar-header">
+        <span class="goal-bar-lbl">🎯 Meta del día</span>
+        <span class="goal-bar-pct" id="goal-bar-pct">0%</span>
+      </div>
+      <div class="goal-bar-track">
+        <div class="goal-bar-fill" id="goal-bar-fill" style="width:0%"></div>
+      </div>
+      <div class="goal-bar-amounts">
+        <span class="goal-bar-cur" id="goal-bar-cur">$0</span>
+        <span class="goal-bar-meta" id="goal-bar-meta">meta: $0</span>
+      </div>
+    </div>
     <div class="order-box" id="order-box">
       <div class="empty-order" id="empty-order">
         <div class="empty-icon">🛒</div>
@@ -2079,6 +2230,27 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
   <div class="admin-tab-view" id="adm-tab-ventas">
+    <!-- ── Meta diaria de ventas ── -->
+    <div class="form-card" style="margin-bottom:14px;padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">🎯 Meta diaria de ventas</div>
+        <div id="adm-goal-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,200,0,.1);color:var(--gold)">sin meta</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;color:var(--text2);font-weight:600">$</span>
+        <input type="number" inputmode="decimal" id="adm-goal-input" placeholder="Ej: 1500"
+          style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;font-weight:700;outline:none"/>
+        <button onclick="saveDailyGoal()"
+          style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0">
+          Guardar
+        </button>
+        <button onclick="clearDailyGoal()" title="Quitar meta"
+          style="background:transparent;border:1.5px solid var(--border2);border-radius:8px;padding:9px 10px;color:var(--text3);font-size:13px;cursor:pointer;flex-shrink:0">
+          ✕
+        </button>
+      </div>
+      <div style="font-size:10px;color:var(--text4);margin-top:7px">La meta se muestra en tiempo real a los cajeros como barra de progreso.</div>
+    </div>
     <!-- Period selector -->
     <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
       <button class="admin-range-btn adm-ventas-btn active" onclick="setAdminRange('hoy')">Hoy</button>
@@ -3181,6 +3353,117 @@ function setFbStatus(s){
   txts.forEach(t=>{t.textContent=label;});
 }
 
+/* ─── DAILY GOAL ─── */
+let dailyGoal=0; // 0 = not set
+
+function todayISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function getTodaySalesTotal(){
+  const iso=todayISO();
+  return sales.filter(s=>{
+    if(!s.timestamp)return false;
+    return s.timestamp.slice(0,10)===iso;
+  }).reduce((sum,s)=>sum+(s.total||0),0);
+}
+
+function updateGoalBar(){
+  const wrap=document.getElementById('goal-bar-wrap');
+  if(!wrap)return;
+  if(!dailyGoal||dailyGoal<=0){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  const total=getTodaySalesTotal();
+  const pct=Math.min(100,Math.round((total/dailyGoal)*100));
+  const fill=document.getElementById('goal-bar-fill');
+  const pctEl=document.getElementById('goal-bar-pct');
+  const curEl=document.getElementById('goal-bar-cur');
+  const metaEl=document.getElementById('goal-bar-meta');
+  fill.style.width=pct+'%';
+  if(pct>=100){fill.classList.add('complete');}else{fill.classList.remove('complete');}
+  pctEl.textContent=pct+'%';
+  curEl.textContent='$'+total.toFixed(2);
+  metaEl.textContent='meta: $'+dailyGoal.toFixed(2);
+}
+
+function checkDailyGoal(){
+  if(!dailyGoal||dailyGoal<=0)return;
+  const total=getTodaySalesTotal();
+  if(total<dailyGoal)return;
+  // Only celebrate once per day
+  const celebKey='goal_celebrated_'+todayISO();
+  if(safeStorage.getItem(celebKey)==='1')return;
+  safeStorage.setItem(celebKey,'1');
+  launchCelebration(total);
+}
+
+function launchCelebration(total){
+  const overlay=document.getElementById('goal-celebration');
+  if(!overlay)return;
+  overlay.style.display='flex';
+  overlay.innerHTML=`<div class="goal-celebration-msg">
+    <span class="goal-celebration-emoji">🎉</span>
+    <div class="goal-celebration-title">¡META ALCANZADA!</div>
+    <div class="goal-celebration-sub">$${total.toFixed(2)} — ¡Excelente trabajo!</div>
+    <button onclick="document.getElementById('goal-celebration').style.display='none'"
+      style="margin-top:16px;background:var(--gold);color:#111;border:none;border-radius:10px;padding:10px 28px;font-size:14px;font-weight:800;cursor:pointer">
+      ¡Genial! 🙌
+    </button>
+  </div>`;
+  spawnConfetti();
+}
+
+function spawnConfetti(){
+  const colors=['#F5C800','#E02020','#2ab8b8','#ffffff','#f5a623','#a78bfa'];
+  for(let i=0;i<80;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    el.style.left=Math.random()*100+'vw';
+    el.style.top='-20px';
+    el.style.background=colors[Math.floor(Math.random()*colors.length)];
+    el.style.width=(6+Math.random()*8)+'px';
+    el.style.height=(6+Math.random()*8)+'px';
+    el.style.borderRadius=Math.random()>.5?'50%':'2px';
+    const dur=(1.5+Math.random()*2).toFixed(2)+'s';
+    el.style.animationDuration=dur;
+    el.style.animationDelay=(Math.random()*.8).toFixed(2)+'s';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),(parseFloat(dur)+1)*1000);
+  }
+}
+
+function updateAdminGoalBadge(){
+  const badge=document.getElementById('adm-goal-badge');
+  const input=document.getElementById('adm-goal-input');
+  if(!badge)return;
+  if(dailyGoal&&dailyGoal>0){
+    badge.textContent='$'+dailyGoal.toFixed(2);
+    badge.style.background='rgba(245,200,0,.15)';
+    badge.style.color='var(--gold)';
+    if(input&&!input.value)input.value=dailyGoal;
+  } else {
+    badge.textContent='sin meta';
+    badge.style.background='rgba(245,200,0,.08)';
+  }
+}
+
+function saveDailyGoal(){
+  const v=parseFloat(document.getElementById('adm-goal-input')?.value)||0;
+  if(!v||v<=0){showToast('Escribe una meta válida','red');return;}
+  if(!fbDb){showToast('Sin conexión a Firebase','red');return;}
+  fbWriteSecure(fbDb.ref('config/daily_goal'),v)
+    .then(()=>showToast('Meta guardada: $'+v.toFixed(2),'green'))
+    .catch(()=>showToast('Error al guardar','red'));
+}
+
+function clearDailyGoal(){
+  if(!fbDb){dailyGoal=0;updateGoalBar();updateAdminGoalBadge();return;}
+  fbRemoveSecure(fbDb.ref('config/daily_goal'))
+    .then(()=>{if(document.getElementById('adm-goal-input'))document.getElementById('adm-goal-input').value='';showToast('Meta eliminada');})
+    .catch(()=>showToast('Error al eliminar','red'));
+}
+
 function startFbListeners(){
   if(!fbDb||fbListening)return;
   fbListening=true;
@@ -3210,6 +3493,15 @@ function startFbListeners(){
       const gastosTab=document.getElementById('adm-tab-gastos');
       if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
     }
+    // Update goal bar in cobrar tab
+    updateGoalBar();
+  });
+  // Sync daily goal config
+  fbDb.ref('config/daily_goal').on('value',snap=>{
+    const v=snap.val();
+    dailyGoal=(v&&typeof v==='number'&&v>0)?v:0;
+    updateGoalBar();
+    updateAdminGoalBadge();
   });
 }
 
@@ -4153,6 +4445,9 @@ function confirmarCobro(){
   // Refresh gastos chart if admin gastos tab is open (ingresos changed)
   const _gastosTab=document.getElementById('adm-tab-gastos');
   if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
+  // Update goal bar & check for celebration
+  updateGoalBar();
+  checkDailyGoal();
   const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
   showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
   setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
@@ -8585,5 +8880,8 @@ if(savedSession==='1' && savedRole==='admin'){
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
 </script>
+<!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
+<div id="goal-celebration" style="display:none"></div>
+
 <script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script></body>
 </html>
