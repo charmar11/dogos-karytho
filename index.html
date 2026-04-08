@@ -2237,6 +2237,15 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
   <div class="admin-tab-view" id="adm-tab-ventas">
+    <!-- Filtro de sucursal -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px">
+      <span style="font-size:12px;color:var(--text3);font-weight:700;flex-shrink:0">🏪 Sucursal:</span>
+      <select id="adm-branch-filter" onchange="onAdminBranchChange()" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-weight:700;outline:none;color-scheme:dark">
+        <option value="all">Todas las sucursales</option>
+        <option value="carro1">🌭 Carro 1 (Original)</option>
+        <option value="carro2">🌭 Carro 2</option>
+      </select>
+    </div>
     <!-- Period selector -->
     <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
       <button class="admin-range-btn adm-ventas-btn active" onclick="setAdminRange('hoy')">Hoy</button>
@@ -2323,6 +2332,15 @@ position:sticky;top:0;z-index:20;
   <!-- ── TAB: ACTIVIDAD ── -->
   <!-- ── TAB: GASTOS ── -->
   <div class="admin-tab-view" id="adm-tab-gastos">
+    <!-- Filtro de sucursal -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px">
+      <span style="font-size:12px;color:var(--text3);font-weight:700;flex-shrink:0">🏪 Sucursal:</span>
+      <select id="adm-branch-filter-gastos" onchange="renderGastos()" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-weight:700;outline:none;color-scheme:dark">
+        <option value="all">Todas las sucursales</option>
+        <option value="carro1">🌭 Carro 1 (Original)</option>
+        <option value="carro2">🌭 Carro 2</option>
+      </select>
+    </div>
 
     <!-- ── Balance: 3 stats ── -->
     <div class="form-card" style="margin-bottom:12px">
@@ -2841,6 +2859,9 @@ const CIDOP_MEMBERS=['Caro','Ivan','Denisse','Oscar','Piers'];
 const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
+const SK_BRANCH='dk_branch';
+// Sucursal activa del usuario. 'carro1' = carro original, 'carro2' = segundo carro
+let currentUserBranch='carro1';
 
 /* ─── Firebase login helper ─── */
 let fbAuthDb=null;
@@ -2986,6 +3007,9 @@ function doLogin(){
         safeStorage.setItem(SK_SESSION,'1');
         safeStorage.setItem(SK_ROLE,role);
         safeStorage.setItem(SK_DISPLAY,data.display||u);
+        // Cargar sucursal asignada al usuario (si no tiene, se queda en carro1)
+        currentUserBranch=data.branchId||'carro1';
+        safeStorage.setItem(SK_BRANCH,currentUserBranch);
         document.getElementById('login-screen').classList.add('hidden');
         if(role==='admin') bootAdmin();
         else if(role==='inventario') bootInventario();
@@ -3651,6 +3675,9 @@ const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 
 /* ─── Boot app after login ─── */
 function bootApp(){
+  // Restaurar sucursal guardada en sesión previa
+  const savedBranch=safeStorage.getItem(SK_BRANCH);
+  if(savedBranch) currentUserBranch=savedBranch;
   document.getElementById('main-app').style.display='block';
   load();
   loadInvData(); // load ingredients + recipes so descontarInventario works
@@ -4196,6 +4223,7 @@ function agregarGastoCidop(){
   const g={
     id:'g_'+registradoEn,timestamp:registradoEn,registradoEn,
     desc,monto:parseFloat(monto.toFixed(2)),cat,fecha,
+    branchId:currentUserBranch,
     user:safeStorage.getItem(SK_DISPLAY)||'Cajero'
   };
   if(!gastos) gastos=[];
@@ -4449,7 +4477,7 @@ function confirmarCobro(){
   const cash=parseFloat(document.getElementById('cash-input').value)||0;
   const cambio=cash>0?cash-total:null;
   const now=new Date();
-  sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+  sales.unshift({id:Date.now(),branchId:currentUserBranch,timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
   clearOrderSilent();closeCash();
@@ -4870,7 +4898,46 @@ function bootAdmin(){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
+    // Migración automática: agregar branchId:'carro1' a ventas y gastos que no lo tengan
+    migrarBranchId();
+    // Asegurarse que la rama 'branches' exista en Firebase
+    initBranches();
   },800);
+}
+
+// ─── Migración única: agrega branchId a documentos sin él ───
+function migrarBranchId(){
+  if(!fbDb)return;
+  const migKey='dk_migration_branch_v1';
+  if(safeStorage.getItem(migKey)==='done')return; // ya se corrió
+  fbDb.ref('sales').once('value').then(snap=>{
+    const updates={};
+    snap.forEach(child=>{
+      if(!child.val().branchId) updates['sales/'+child.key+'/branchId']='carro1';
+    });
+    if(Object.keys(updates).length) fbDb.ref().update(updates).then(()=>console.log('✅ Migración ventas: '+Object.keys(updates).length+' docs'));
+  });
+  fbDb.ref('gastos').once('value').then(snap=>{
+    const updates={};
+    snap.forEach(child=>{
+      if(!child.val().branchId) updates['gastos/'+child.key+'/branchId']='carro1';
+    });
+    if(Object.keys(updates).length) fbDb.ref().update(updates).then(()=>console.log('✅ Migración gastos: '+Object.keys(updates).length+' docs'));
+  });
+  safeStorage.setItem(migKey,'done');
+}
+
+// ─── Crear rama 'branches' en Firebase si no existe ───
+function initBranches(){
+  if(!fbDb)return;
+  fbDb.ref('branches').once('value').then(snap=>{
+    if(!snap.val()){
+      fbDb.ref('branches').set({
+        carro1:{id:'carro1',name:'Carro 1 (Original)',active:true},
+        carro2:{id:'carro2',name:'Carro 2',active:false}
+      });
+    }
+  });
 }
 
 function renderAdmin(){
@@ -5227,13 +5294,32 @@ function loadCidopMembers(){
 
 let adminSpecificDate=null; // DD/MM/YYYY when a specific day is selected
 
+function getAdminBranchFilter(){
+  const sel=document.getElementById('adm-branch-filter');
+  return sel?sel.value:'all';
+}
+function getAdminGastosBranchFilter(){
+  const sel=document.getElementById('adm-branch-filter-gastos');
+  return sel?sel.value:'all';
+}
+function applyBranchFilter(arr, branchVal){
+  if(!branchVal||branchVal==='all') return arr;
+  return arr.filter(item=>(item.branchId||'carro1')===branchVal);
+}
+function onAdminBranchChange(){ renderAdmin(); }
+
 function getAdminSales(){
-  if(adminSpecificDate) return sales.filter(s=>s.date===adminSpecificDate);
-  const today=toDateKey(new Date());
-  if(adminRange==='hoy') return sales.filter(s=>s.date===today);
-  if(adminRange==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
-  if(adminRange==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
-  return [...sales];
+  const branch=getAdminBranchFilter();
+  let base;
+  if(adminSpecificDate) base=sales.filter(s=>s.date===adminSpecificDate);
+  else {
+    const today=toDateKey(new Date());
+    if(adminRange==='hoy') base=sales.filter(s=>s.date===today);
+    else if(adminRange==='semana') base=sales.filter(s=>isSameWeek(s.timestamp));
+    else if(adminRange==='mes') base=sales.filter(s=>isSameMonth(s.timestamp));
+    else base=[...sales];
+  }
+  return applyBranchFilter(base,branch);
 }
 
 function setAdminSpecificDate(val){
@@ -5436,23 +5522,23 @@ function admGastosMesNow(){
 function setGastosSubPeriod(sp){ gastosSubPeriod=sp; renderGastos(); }
 
 function getGastosFiltrados(){
+  const branch=getAdminGastosBranchFilter();
+  let base;
   if(gastosPeriod==='hoy'){
     const iso=admGastosDiaISO||todayISO();
-    return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  }
-  if(gastosPeriod==='semana'){
-    // Use selected week (Monday ISO) or default to current week
+    base=gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  } else if(gastosPeriod==='semana'){
     const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
     const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
     const domISO=_isoOfDate(domDate);
-    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  }
-  if(gastosPeriod==='mes'){
-    // Use selected month (YYYY-MM) or default to current month
+    base=gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  } else if(gastosPeriod==='mes'){
     const ym=admGastosMesYM||todayISO().slice(0,7);
-    return gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    base=gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  } else {
+    base=[...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
-  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  return applyBranchFilter(base,branch);
 }
 
 function guardarEdicionGasto(g, cambios){
@@ -5566,18 +5652,19 @@ function renderGastos(){
   const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
 
   // Balance: ingresos según periodo activo
-  let salesFilt=sales;
+  const branchG=getAdminGastosBranchFilter();
+  let salesFilt=applyBranchFilter(sales,branchG);
   let perLbl='Histórico';
   if(gastosPeriod==='hoy'){
     const dayKey=toDateKey(new Date(iso+'T12:00:00'));
-    salesFilt=sales.filter(s=>s.date===dayKey);
+    salesFilt=applyBranchFilter(sales.filter(s=>s.date===dayKey),branchG);
     const isToday=iso===todayISO();
     perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
   } else if(gastosPeriod==='semana'){
     const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
     const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
     const domISO=_isoOfDate(domDate);
-    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;});
+    salesFilt=applyBranchFilter(sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;}),branchG);
     const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const mon=new Date(lunISO+'T12:00:00');
     const sun=new Date(domDate);
@@ -5585,7 +5672,7 @@ function renderGastos(){
     perLbl=isThisWeek?'Esta semana':'Sem. '+mon.getDate()+' '+monthNames[mon.getMonth()]+' – '+sun.getDate()+' '+monthNames[sun.getMonth()];
   } else if(gastosPeriod==='mes'){
     const ym=admGastosMesYM||todayISO().slice(0,7);
-    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;});
+    salesFilt=applyBranchFilter(sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;}),branchG);
     const [ymY,ymM]=ym.split('-').map(Number);
     const monthNamesL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const isThisMes=ym===todayISO().slice(0,7);
@@ -6754,8 +6841,10 @@ let currentActiveNames=[];
 function openSettings(){
   const name=safeStorage.getItem(SK_DISPLAY)||'—';
   const role=safeStorage.getItem(SK_ROLE)||'user';
+  const branch=safeStorage.getItem(SK_BRANCH)||'carro1';
+  const branchName=branch==='carro2'?'Carro 2':'Carro 1';
   document.getElementById('settings-user-name').textContent=name;
-  document.getElementById('settings-user-role').textContent=role==='admin'?'Administrador':'Cajero';
+  document.getElementById('settings-user-role').textContent=(role==='admin'?'Administrador':'Cajero')+' · '+branchName;
   document.getElementById('avatar-progress').textContent='Toca la foto para cambiarla';
   document.getElementById('avatar-progress').className='avatar-upload-progress';
   // Load avatar
