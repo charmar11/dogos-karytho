@@ -5312,7 +5312,8 @@ function guardarNuevoCajero(){
   if(!fbDb){showToast('Sin conexión','red');return;}
   CIDOP_MEMBERS.push(nombre);
   const obj={};CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
-  const updates={'cidop_members':obj,'picker_branches/'+nombre.toLowerCase():branch};
+  const updates={'cidop_members':obj};
+  updates['picker_branches/'+nombre.toLowerCase()]=branch;
   fbDb.ref().update(updates).then(()=>{
     showToast('✅ '+nombre+' creado en '+(branch==='carro2'?'Carro 2':'Carro 1'),'green');
     logActivity('prod_nuevo','Cajero creado — '+nombre);
@@ -5329,7 +5330,9 @@ function adminDeleteUser(name){
     if(!fbDb){showToast('Sin conexión','red');return;}
     CIDOP_MEMBERS.splice(idx,1);
     const obj={};CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
-    fbDb.ref().update({'cidop_members':obj,['picker_branches/'+name.toLowerCase()]:null})
+    const delUpdates={'cidop_members':obj};
+    delUpdates['picker_branches/'+name.toLowerCase()]=null;
+    fbDb.ref().update(delUpdates)
       .then(()=>showToast('"'+name+'" quitado','green'))
       .catch(()=>showToast('Error al eliminar','red'));
   });
