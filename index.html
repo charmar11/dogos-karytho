@@ -2128,26 +2128,7 @@ position:sticky;top:0;z-index:20;
     <button class="btn-admin-logout" onclick="adminLogout()">Salir</button>
   </div>
 
-  <!-- ── Selector de sucursal GLOBAL ── -->
-  <div style="background:var(--bg2);border-bottom:2px solid var(--border2);padding:8px 14px;display:flex;align-items:center;gap:8px">
-    <span style="font-size:10px;color:var(--text3);font-weight:700;flex-shrink:0;letter-spacing:.5px;text-transform:uppercase">🏪 Viendo:</span>
-    <div style="display:flex;gap:6px;flex:1">
-      <button id="branch-btn-all" onclick="setAdminBranch('all')"
-        style="flex:1;padding:7px 2px;border-radius:8px;border:1.5px solid var(--gold);background:var(--gold);color:#111;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s">
-        📊 Todas
-      </button>
-      <button id="branch-btn-carro1" onclick="setAdminBranch('carro1')"
-        style="flex:1;padding:7px 2px;border-radius:8px;border:1.5px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;font-weight:800;cursor:pointer;transition:all .2s">
-        🌭 Carro 1
-      </button>
-      <button id="branch-btn-carro2" onclick="setAdminBranch('carro2')"
-        style="flex:1;padding:7px 2px;border-radius:8px;border:1.5px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11px;font-weight:800;cursor:pointer;transition:all .2s">
-        🌭 Carro 2
-      </button>
-    </div>
-  </div>
-
-  <!-- Admin tabs -->
+  <!-- Admin tabs — 4 tabs now -->
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="setAdminTab('resumen')">📊 Resumen</button>
     <button class="admin-tab" onclick="setAdminTab('ventas')">💰 Ventas</button>
@@ -2256,15 +2237,6 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: VENTAS + EXPORTAR (merged) ── -->
   <div class="admin-tab-view" id="adm-tab-ventas">
-    <!-- Filtro de sucursal -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px">
-      <span style="font-size:12px;color:var(--text3);font-weight:700;flex-shrink:0">🏪 Sucursal:</span>
-      <select id="adm-branch-filter" onchange="onAdminBranchChange()" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-size:13px;font-weight:700;outline:none;color-scheme:dark">
-        <option value="all">Todas las sucursales</option>
-        <option value="carro1">🌭 Carro 1 (Original)</option>
-        <option value="carro2">🌭 Carro 2</option>
-      </select>
-    </div>
     <!-- Period selector -->
     <div class="admin-range-row" id="adm-ventas-range-row" style="margin-bottom:10px">
       <button class="admin-range-btn adm-ventas-btn active" onclick="setAdminRange('hoy')">Hoy</button>
@@ -2339,66 +2311,13 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
+    <div id="adm-users-list"></div>
+    <div class="add-user-form">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600">Agregar nuevo usuario al picker</div>
+      <input class="add-user-input" id="new-user-name" placeholder="Nombre (ej: Maria)" maxlength="20"/>
+      <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar usuario</button>
+    </div>
     <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
-
-    <!-- Botones de acción -->
-    <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button onclick="abrirModalNuevoUsuario()"
-        style="flex:1;background:linear-gradient(135deg,var(--green),#1e6e1e);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:800;padding:12px;cursor:pointer">
-        ➕ Nuevo cajero
-      </button>
-    </div>
-
-    <!-- Carro 1 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div class="sec-label" style="margin:0">🌭 Carro 1 (Original)</div>
-      <div id="cnt-carro1" style="font-size:11px;color:var(--text4);font-weight:700">0 cajeros</div>
-    </div>
-    <div id="users-carro1" style="margin-bottom:16px">
-      <div class="admin-empty">Sin cajeros asignados</div>
-    </div>
-
-    <!-- Carro 2 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div class="sec-label" style="margin:0">🌭 Carro 2</div>
-      <div id="cnt-carro2" style="font-size:11px;color:var(--text4);font-weight:700">0 cajeros</div>
-    </div>
-    <div id="users-carro2" style="margin-bottom:16px">
-      <div class="admin-empty">Sin cajeros asignados</div>
-    </div>
-
-    <!-- Sin sucursal asignada -->
-    <div id="users-sin-sucursal-wrap" style="display:none">
-      <div class="sec-label" style="margin-bottom:8px">⚠️ Sin sucursal asignada</div>
-      <div id="users-sin-sucursal" style="margin-bottom:16px"></div>
-    </div>
-  </div>
-
-  <!-- Modal nuevo cajero -->
-  <div class="modal-overlay hidden" id="nuevo-usuario-modal" onclick="if(event.target===this)cerrarModalNuevoUsuario()">
-    <div class="modal-box" style="max-width:340px;width:92vw">
-      <div style="font-size:16px;font-weight:800;margin-bottom:4px">➕ Nuevo cajero</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Se agrega al picker y se le asigna sucursal</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <input id="nu-nombre" type="text" maxlength="20" placeholder="Nombre (ej: Maria)"
-          style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;width:100%"/>
-        <select id="nu-sucursal"
-          style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark">
-          <option value="carro1">🌭 Carro 1 (Original)</option>
-          <option value="carro2">🌭 Carro 2</option>
-        </select>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button onclick="cerrarModalNuevoUsuario()"
-            style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-size:13px;font-weight:700;padding:11px;cursor:pointer">
-            Cancelar
-          </button>
-          <button onclick="guardarNuevoCajero()"
-            style="flex:2;background:linear-gradient(135deg,var(--green),#1e6e1e);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;padding:11px;cursor:pointer">
-            ✅ Crear cajero
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -2922,9 +2841,6 @@ const CIDOP_MEMBERS=['Caro','Ivan','Denisse','Oscar','Piers'];
 const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
-const SK_BRANCH='dk_branch';
-// Sucursal activa del usuario. 'carro1' = carro original, 'carro2' = segundo carro
-let currentUserBranch='carro1';
 
 /* ─── Firebase login helper ─── */
 let fbAuthDb=null;
@@ -3038,30 +2954,13 @@ function renderPickerGrid(activeNames){
 }
 
 function selectPerson(name){
+  // Detener listener de presencia del picker
   if(fbDb)fbDb.ref('presence').off();
   safeStorage.setItem(SK_ROLE,'user');
   safeStorage.removeItem(SK_SESSION);
   safeStorage.setItem(SK_DISPLAY,name);
-  // Leer sucursal asignada al cajero desde Firebase
-  if(fbDb){
-    fbDb.ref('picker_branches/'+name.toLowerCase()).once('value').then(snap=>{
-      const branch=snap.val()||'carro1';
-      currentUserBranch=branch;
-      safeStorage.setItem(SK_BRANCH,branch);
-      document.getElementById('picker-screen').classList.remove('active');
-      bootApp();
-    }).catch(()=>{
-      currentUserBranch='carro1';
-      safeStorage.setItem(SK_BRANCH,'carro1');
-      document.getElementById('picker-screen').classList.remove('active');
-      bootApp();
-    });
-  } else {
-    currentUserBranch='carro1';
-    safeStorage.setItem(SK_BRANCH,'carro1');
-    document.getElementById('picker-screen').classList.remove('active');
-    bootApp();
-  }
+  document.getElementById('picker-screen').classList.remove('active');
+  bootApp();
 }
 
 /* ─── Login ─── */
@@ -3087,9 +2986,6 @@ function doLogin(){
         safeStorage.setItem(SK_SESSION,'1');
         safeStorage.setItem(SK_ROLE,role);
         safeStorage.setItem(SK_DISPLAY,data.display||u);
-        // Cargar sucursal asignada al usuario (si no tiene, se queda en carro1)
-        currentUserBranch=data.branchId||'carro1';
-        safeStorage.setItem(SK_BRANCH,currentUserBranch);
         document.getElementById('login-screen').classList.add('hidden');
         if(role==='admin') bootAdmin();
         else if(role==='inventario') bootInventario();
@@ -3755,9 +3651,6 @@ const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 
 /* ─── Boot app after login ─── */
 function bootApp(){
-  // Restaurar sucursal guardada en sesión previa
-  const savedBranch=safeStorage.getItem(SK_BRANCH);
-  if(savedBranch) currentUserBranch=savedBranch;
   document.getElementById('main-app').style.display='block';
   load();
   loadInvData(); // load ingredients + recipes so descontarInventario works
@@ -4303,7 +4196,6 @@ function agregarGastoCidop(){
   const g={
     id:'g_'+registradoEn,timestamp:registradoEn,registradoEn,
     desc,monto:parseFloat(monto.toFixed(2)),cat,fecha,
-    branchId:currentUserBranch,
     user:safeStorage.getItem(SK_DISPLAY)||'Cajero'
   };
   if(!gastos) gastos=[];
@@ -4557,7 +4449,7 @@ function confirmarCobro(){
   const cash=parseFloat(document.getElementById('cash-input').value)||0;
   const cambio=cash>0?cash-total:null;
   const now=new Date();
-  sales.unshift({id:Date.now(),branchId:currentUserBranch,timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+  sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
   clearOrderSilent();closeCash();
@@ -4978,45 +4870,7 @@ function bootAdmin(){
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
-    migrarBranchId();
-    initBranches();
-    // startMembersListener ya incluye picker_branches listener
   },800);
-}
-
-// ─── Migración única: agrega branchId a documentos sin él ───
-function migrarBranchId(){
-  if(!fbDb)return;
-  const migKey='dk_migration_branch_v1';
-  if(safeStorage.getItem(migKey)==='done')return; // ya se corrió
-  fbDb.ref('sales').once('value').then(snap=>{
-    const updates={};
-    snap.forEach(child=>{
-      if(!child.val().branchId) updates['sales/'+child.key+'/branchId']='carro1';
-    });
-    if(Object.keys(updates).length) fbDb.ref().update(updates).then(()=>console.log('✅ Migración ventas: '+Object.keys(updates).length+' docs'));
-  });
-  fbDb.ref('gastos').once('value').then(snap=>{
-    const updates={};
-    snap.forEach(child=>{
-      if(!child.val().branchId) updates['gastos/'+child.key+'/branchId']='carro1';
-    });
-    if(Object.keys(updates).length) fbDb.ref().update(updates).then(()=>console.log('✅ Migración gastos: '+Object.keys(updates).length+' docs'));
-  });
-  safeStorage.setItem(migKey,'done');
-}
-
-// ─── Crear rama 'branches' en Firebase si no existe ───
-function initBranches(){
-  if(!fbDb)return;
-  fbDb.ref('branches').once('value').then(snap=>{
-    if(!snap.val()){
-      fbDb.ref('branches').set({
-        carro1:{id:'carro1',name:'Carro 1 (Original)',active:true},
-        carro2:{id:'carro2',name:'Carro 2',active:false}
-      });
-    }
-  });
 }
 
 function renderAdmin(){
@@ -5204,164 +5058,118 @@ function renderHeatMap(){
 /* ─── Admin User Management ─── */
 let admAvatarTarget=null;
 let cidopMembersLoaded=false;
-let pickerBranches={}; // { "ivan": "carro1", "maria": "carro2" }
 
+// Start real-time listener on cidop_members so picker is always in sync
 function startMembersListener(){
   if(!fbDb)return;
+  // Detach previous listener first to avoid duplicates
   fbDb.ref('cidop_members').off();
   fbDb.ref('cidop_members').on('value',snap=>{
     const data=snap.val();
     if(data){
       const members=Object.values(data).filter(Boolean);
-      if(members.length){CIDOP_MEMBERS.length=0;members.forEach(m=>CIDOP_MEMBERS.push(m));}
+      if(members.length){
+        CIDOP_MEMBERS.length=0;
+        members.forEach(m=>CIDOP_MEMBERS.push(m));
+      }
     } else {
+      // No data in Firebase yet — save local defaults so they persist
       saveCidopMembers(null);
     }
     cidopMembersLoaded=true;
-    renderAdminUsers();
+    // Always refresh UI with latest members
+    const adminList=document.getElementById('adm-users-list');
+    if(adminList)renderAdminUsersHTML(CIDOP_MEMBERS);
     const pickerScreen=document.getElementById('picker-screen');
-    if(pickerScreen&&pickerScreen.classList.contains('active')) renderPickerGrid(currentActiveNames);
-  });
-  // Listener en tiempo real para asignaciones de sucursal
-  fbDb.ref('picker_branches').on('value',snap=>{
-    pickerBranches=snap.val()||{};
-    renderAdminUsers();
+    if(pickerScreen&&pickerScreen.classList.contains('active'))
+      renderPickerGrid(currentActiveNames);
   });
 }
 
 function renderAdminUsers(){
-  const c1=document.getElementById('users-carro1');
-  const c2=document.getElementById('users-carro2');
-  const sin=document.getElementById('users-sin-sucursal');
-  const sinWrap=document.getElementById('users-sin-sucursal-wrap');
-  const cnt1=document.getElementById('cnt-carro1');
-  const cnt2=document.getElementById('cnt-carro2');
-  if(!c1||!c2)return;
-  const grupo={carro1:[],carro2:[],sin:[]};
-  CIDOP_MEMBERS.forEach(name=>{
-    const b=pickerBranches[name.toLowerCase()]||'carro1';
-    if(b==='carro2') grupo.carro2.push(name);
-    else grupo.carro1.push(name);
-  });
-  if(cnt1) cnt1.textContent=grupo.carro1.length+' cajero'+(grupo.carro1.length!==1?'s':'');
-  if(cnt2) cnt2.textContent=grupo.carro2.length+' cajero'+(grupo.carro2.length!==1?'s':'');
-  renderUserGroup(c1,grupo.carro1,'carro1');
-  renderUserGroup(c2,grupo.carro2,'carro2');
-  if(sinWrap) sinWrap.style.display=grupo.sin.length?'block':'none';
-  if(sin) renderUserGroup(sin,grupo.sin,'');
+  renderAdminUsersHTML(CIDOP_MEMBERS);
 }
 
-function renderUserGroup(container,names,groupBranch){
-  container.innerHTML='';
-  if(!names.length){container.innerHTML='<div class="admin-empty" style="padding:10px 0">Sin cajeros asignados</div>';return;}
-  names.forEach(name=>{
-    const safeId='uav-'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
-    const otherBranch=groupBranch==='carro1'?'carro2':'carro1';
-    const otherLabel=groupBranch==='carro1'?'→ Mover a Carro 2':'→ Mover a Carro 1';
+function renderAdminUsersHTML(members){
+  const list=document.getElementById('adm-users-list');
+  if(!list)return;
+  list.innerHTML='';
+  if(!members.length){
+    list.innerHTML='<div class="admin-empty">Sin usuarios. Agrega uno abajo.</div>';
+    return;
+  }
+  members.forEach((name,i)=>{
+    const safeId='adm-uavatar-'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
     const card=document.createElement('div');
-    card.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px';
+    card.className='user-mgr-card';
+    card.style.animationDelay=(i*.04)+'s';
     card.innerHTML=`
-      <div id="${safeId}" onclick="adminEditAvatar('${name}')" title="Cambiar foto"
-        style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--red),#b01616);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;cursor:pointer;overflow:hidden">
-        ${name.charAt(0).toUpperCase()}
+      <div class="user-mgr-avatar" id="${safeId}" title="Cambiar foto de ${name}">
+        <span class="avatar-letter">${name.charAt(0).toUpperCase()}</span>
+        <div class="avatar-edit-overlay">📷</div>
       </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${name}</div>
-        <div style="font-size:11px;color:var(--text4)">Cajero · picker</div>
+      <div class="user-mgr-info">
+        <div class="user-mgr-name">${name}</div>
+        <div class="user-mgr-sub" id="adm-uprog-${safeId}">Toca la foto para cambiarla</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
-        <button onclick="moverCajero('${name}','${otherBranch}')"
-          style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:6px;color:var(--gold);font-size:10px;font-weight:700;padding:4px 8px;cursor:pointer;white-space:nowrap">
-          ${otherLabel}
-        </button>
-        <button onclick="adminDeleteUser('${name}')"
-          style="background:rgba(224,32,32,.08);border:1px solid rgba(224,32,32,.25);border-radius:6px;color:var(--red);font-size:10px;font-weight:700;padding:4px 8px;cursor:pointer">
-          ✕ Quitar
-        </button>
-      </div>`;
-    container.appendChild(card);
+      <div class="user-mgr-actions">
+        <button class="btn-usr-del" title="Eliminar ${name}">✕</button>
+      </div>
+    `;
+    // Avatar click — works on mobile and desktop
+    const avatarEl=card.querySelector('.user-mgr-avatar');
+    avatarEl.addEventListener('click',()=>adminEditAvatar(name));
+
+    // Delete button
+    const delBtn=card.querySelector('.btn-usr-del');
+    delBtn.addEventListener('click',()=>adminDeleteUser(name,i));
+
+    list.appendChild(card);
+
+    // Load avatar async
     loadAvatar(name,url=>{
       const el=document.getElementById(safeId);
-      if(el&&url) el.innerHTML=`<img src="${url}" style="width:42px;height:42px;border-radius:50%;object-fit:cover;display:block"/>`;
+      if(!el)return;
+      if(url){
+        el.innerHTML=`<img src="${url}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block"/><div class="avatar-edit-overlay">📷</div>`;
+        el.querySelector('.avatar-edit-overlay').style.cssText='position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-size:14px';
+        el.addEventListener('mouseenter',()=>el.querySelector('.avatar-edit-overlay').style.opacity='1');
+        el.addEventListener('mouseleave',()=>el.querySelector('.avatar-edit-overlay').style.opacity='0');
+      }
     });
-  });
-}
-
-function moverCajero(name,newBranch){
-  if(!fbDb){showToast('Sin conexión','red');return;}
-  fbDb.ref('picker_branches/'+name.toLowerCase()).set(newBranch).then(()=>{
-    showToast('✅ '+name+' → '+(newBranch==='carro2'?'Carro 2':'Carro 1'),'green');
-  }).catch(()=>showToast('Error al mover','red'));
-}
-
-function abrirModalNuevoUsuario(){
-  document.getElementById('nuevo-usuario-modal').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('nu-nombre').focus(),200);
-}
-function cerrarModalNuevoUsuario(){
-  document.getElementById('nuevo-usuario-modal').classList.add('hidden');
-  document.getElementById('nu-nombre').value='';
-}
-
-function guardarNuevoCajero(){
-  const nombre=document.getElementById('nu-nombre').value.trim();
-  const branch=document.getElementById('nu-sucursal').value;
-  if(!nombre){showToast('Escribe un nombre','red');return;}
-  if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(nombre.toLowerCase())){showToast('Ese nombre ya existe','red');return;}
-  if(nombre.length>20){showToast('Nombre muy largo (max 20)','red');return;}
-  if(!fbDb){showToast('Sin conexión','red');return;}
-  CIDOP_MEMBERS.push(nombre);
-  const obj={};CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
-  const updates={'cidop_members':obj};
-  updates['picker_branches/'+nombre.toLowerCase()]=branch;
-  fbDb.ref().update(updates).then(()=>{
-    showToast('✅ '+nombre+' creado en '+(branch==='carro2'?'Carro 2':'Carro 1'),'green');
-    logActivity('prod_nuevo','Cajero creado — '+nombre);
-    cerrarModalNuevoUsuario();
-  }).catch(()=>{CIDOP_MEMBERS.pop();showToast('Error al crear','red');});
-}
-
-function adminAddUser(){ abrirModalNuevoUsuario(); }
-
-function adminDeleteUser(name){
-  const idx=CIDOP_MEMBERS.indexOf(name);
-  if(idx<0)return;
-  customConfirm('¿Quitar a "'+name+'" del picker?','Quitar',()=>{
-    if(!fbDb){showToast('Sin conexión','red');return;}
-    CIDOP_MEMBERS.splice(idx,1);
-    const obj={};CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
-    const delUpdates={'cidop_members':obj};
-    delUpdates['picker_branches/'+name.toLowerCase()]=null;
-    fbDb.ref().update(delUpdates)
-      .then(()=>showToast('"'+name+'" quitado','green'))
-      .catch(()=>showToast('Error al eliminar','red'));
   });
 }
 
 function adminEditAvatar(name){
   admAvatarTarget=name;
   const inp=document.getElementById('adm-avatar-input');
-  inp.value='';inp.click();
+  inp.value='';
+  inp.click();
 }
 
 function adminHandleAvatarUpload(e){
   const file=e.target.files[0];
   if(!file||!admAvatarTarget)return;
   const name=admAvatarTarget;
+  const safeId='adm-uavatar-'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const progEl=document.getElementById('adm-uprog-'+safeId);
+  if(progEl){progEl.textContent='Subiendo...';progEl.style.color='var(--text3)';}
+
   const reader=new FileReader();
   reader.onload=ev=>{
     const img=new Image();
     img.onload=()=>{
       const canvas=document.createElement('canvas');
       const MAX=200;let w=img.width,h=img.height;
-      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
+      if(w>h){if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}}
+      else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
       const compressed=canvas.toDataURL('image/jpeg',0.75);
       if(!fbDb){showToast('Sin conexion','red');return;}
       fbDb.ref(getAvatarKey(name)).set(compressed).then(()=>{
         avatarCache[name]=compressed;
-        renderAdminUsers();
+        renderAdminUsersHTML(CIDOP_MEMBERS);
         renderPickerGrid(currentActiveNames);
         showToast('Foto de '+name+' actualizada','green');
         logActivity('prod_edit','Foto actualizada — '+name);
@@ -5374,56 +5182,58 @@ function adminHandleAvatarUpload(e){
   admAvatarTarget=null;
 }
 
-function renderAdminUsersHTML(members){ renderAdminUsers(); }
+function adminAddUser(){
+  const input=document.getElementById('new-user-name');
+  const name=input.value.trim();
+  if(!name){showToast('Escribe un nombre','red');return;}
+  if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(name.toLowerCase())){
+    showToast('Ese nombre ya existe','red');return;
+  }
+  if(name.length>20){showToast('Nombre muy largo (max 20)','red');return;}
+  CIDOP_MEMBERS.push(name);
+  saveCidopMembers(()=>{
+    input.value='';
+    showToast('"'+name+'" agregado al picker','green');
+    logActivity('prod_nuevo','Usuario agregado al picker — '+name);
+  });
+}
+
+function adminDeleteUser(name,idx){
+  customConfirm('Eliminar a "'+name+'" del picker?','Eliminar',()=>{
+    CIDOP_MEMBERS.splice(idx,1);
+    saveCidopMembers(()=>{
+      showToast('"'+name+'" eliminado del picker');
+      logActivity('prod_del','Usuario eliminado del picker — '+name);
+    });
+  });
+}
 
 function saveCidopMembers(cb){
-  if(!fbDb){renderAdminUsers();if(cb)cb();return;}
-  const obj={};CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
-  fbDb.ref('cidop_members').set(obj).then(()=>{if(cb)cb();}).catch(()=>showToast('Error al guardar','red'));
+  if(!fbDb){
+    renderAdminUsersHTML(CIDOP_MEMBERS);
+    if(cb)cb();return;
+  }
+  const obj={};
+  CIDOP_MEMBERS.forEach((m,i)=>{if(m)obj[i]=m;});
+  fbDb.ref('cidop_members').set(obj)
+    .then(()=>{if(cb)cb();})
+    .catch(()=>showToast('Error al guardar','red'));
 }
 
-function loadCidopMembers(){ startMembersListener(); }
-
-let adminSpecificDate=null;
-
-// ─── Sucursal activa en el admin — una sola para todo el panel ───
-let adminBranchFilter='all';
-
-function setAdminBranch(branch){
-  adminBranchFilter=branch;
-  ['all','carro1','carro2'].forEach(b=>{
-    const btn=document.getElementById('branch-btn-'+b);
-    if(!btn)return;
-    const active=b===branch;
-    btn.style.background=active?'var(--gold)':'var(--bg3)';
-    btn.style.color=active?'#111':'var(--text2)';
-    btn.style.borderColor=active?'var(--gold)':'var(--border2)';
-  });
-  renderAdmin();
-  const gastosTab=document.getElementById('adm-tab-gastos');
-  if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
+// Load members once on boot (listener handles updates after)
+function loadCidopMembers(){
+  startMembersListener();
 }
 
-function getAdminBranchFilter(){ return adminBranchFilter; }
-function getAdminGastosBranchFilter(){ return adminBranchFilter; }
-function applyBranchFilter(arr,branchVal){
-  if(!branchVal||branchVal==='all') return arr;
-  return arr.filter(item=>(item.branchId||'carro1')===branchVal);
-}
-function onAdminBranchChange(){ renderAdmin(); }
+let adminSpecificDate=null; // DD/MM/YYYY when a specific day is selected
 
 function getAdminSales(){
-  const branch=getAdminBranchFilter();
-  let base;
-  if(adminSpecificDate) base=sales.filter(s=>s.date===adminSpecificDate);
-  else {
-    const today=toDateKey(new Date());
-    if(adminRange==='hoy') base=sales.filter(s=>s.date===today);
-    else if(adminRange==='semana') base=sales.filter(s=>isSameWeek(s.timestamp));
-    else if(adminRange==='mes') base=sales.filter(s=>isSameMonth(s.timestamp));
-    else base=[...sales];
-  }
-  return applyBranchFilter(base,branch);
+  if(adminSpecificDate) return sales.filter(s=>s.date===adminSpecificDate);
+  const today=toDateKey(new Date());
+  if(adminRange==='hoy') return sales.filter(s=>s.date===today);
+  if(adminRange==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
+  if(adminRange==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
+  return [...sales];
 }
 
 function setAdminSpecificDate(val){
@@ -5626,23 +5436,23 @@ function admGastosMesNow(){
 function setGastosSubPeriod(sp){ gastosSubPeriod=sp; renderGastos(); }
 
 function getGastosFiltrados(){
-  const branch=getAdminGastosBranchFilter();
-  let base;
   if(gastosPeriod==='hoy'){
     const iso=admGastosDiaISO||todayISO();
-    base=gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  } else if(gastosPeriod==='semana'){
+    return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  }
+  if(gastosPeriod==='semana'){
+    // Use selected week (Monday ISO) or default to current week
     const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
     const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
     const domISO=_isoOfDate(domDate);
-    base=gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  } else if(gastosPeriod==='mes'){
-    const ym=admGastosMesYM||todayISO().slice(0,7);
-    base=gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
-  } else {
-    base=[...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   }
-  return applyBranchFilter(base,branch);
+  if(gastosPeriod==='mes'){
+    // Use selected month (YYYY-MM) or default to current month
+    const ym=admGastosMesYM||todayISO().slice(0,7);
+    return gastos.filter(g=>normFecha(g.fecha).slice(0,7)===ym).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+  }
+  return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
 }
 
 function guardarEdicionGasto(g, cambios){
@@ -5756,19 +5566,18 @@ function renderGastos(){
   const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
 
   // Balance: ingresos según periodo activo
-  const branchG=getAdminGastosBranchFilter();
-  let salesFilt=applyBranchFilter(sales,branchG);
+  let salesFilt=sales;
   let perLbl='Histórico';
   if(gastosPeriod==='hoy'){
     const dayKey=toDateKey(new Date(iso+'T12:00:00'));
-    salesFilt=applyBranchFilter(sales.filter(s=>s.date===dayKey),branchG);
+    salesFilt=sales.filter(s=>s.date===dayKey);
     const isToday=iso===todayISO();
     perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
   } else if(gastosPeriod==='semana'){
     const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
     const domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
     const domISO=_isoOfDate(domDate);
-    salesFilt=applyBranchFilter(sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;}),branchG);
+    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const dISO=_isoOfDate(d);return dISO>=lunISO&&dISO<=domISO;});
     const monthNames=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const mon=new Date(lunISO+'T12:00:00');
     const sun=new Date(domDate);
@@ -5776,7 +5585,7 @@ function renderGastos(){
     perLbl=isThisWeek?'Esta semana':'Sem. '+mon.getDate()+' '+monthNames[mon.getMonth()]+' – '+sun.getDate()+' '+monthNames[sun.getMonth()];
   } else if(gastosPeriod==='mes'){
     const ym=admGastosMesYM||todayISO().slice(0,7);
-    salesFilt=applyBranchFilter(sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;}),branchG);
+    salesFilt=sales.filter(s=>{if(!s.timestamp)return false;const d=new Date(s.timestamp);const sISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');return sISO===ym;});
     const [ymY,ymM]=ym.split('-').map(Number);
     const monthNamesL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const isThisMes=ym===todayISO().slice(0,7);
@@ -6945,10 +6754,8 @@ let currentActiveNames=[];
 function openSettings(){
   const name=safeStorage.getItem(SK_DISPLAY)||'—';
   const role=safeStorage.getItem(SK_ROLE)||'user';
-  const branch=safeStorage.getItem(SK_BRANCH)||'carro1';
-  const branchName=branch==='carro2'?'Carro 2':'Carro 1';
   document.getElementById('settings-user-name').textContent=name;
-  document.getElementById('settings-user-role').textContent=(role==='admin'?'Administrador':'Cajero')+' · '+branchName;
+  document.getElementById('settings-user-role').textContent=role==='admin'?'Administrador':'Cajero';
   document.getElementById('avatar-progress').textContent='Toca la foto para cambiarla';
   document.getElementById('avatar-progress').className='avatar-upload-progress';
   // Load avatar
