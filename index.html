@@ -715,6 +715,169 @@ position:sticky;top:0;z-index:20;
 }
 .btn-corte-close:active{background:var(--bg3)}
 
+/* ── CORTE FLUJO DE CAJA ── */
+.corte-section-title{
+  font-size:10px;font-weight:800;color:var(--text4);
+  letter-spacing:.14em;text-transform:uppercase;
+  margin:16px 0 10px;display:flex;align-items:center;gap:7px;
+}
+.corte-section-title::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+.corte-flow-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-md);overflow:hidden;margin-bottom:12px;
+}
+.corte-flow-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 14px;border-bottom:1px solid var(--border);
+}
+.corte-flow-row:last-child{border-bottom:none}
+.corte-flow-lbl{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:7px}
+.corte-flow-val{font-size:14px;font-weight:800}
+.corte-flow-total{
+  background:linear-gradient(135deg,#1e1c0e,#191910);
+  border:1.5px solid rgba(245,200,0,.3);
+  border-radius:var(--radius-md);
+  padding:14px 16px;margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.corte-flow-total-lbl{font-size:13px;color:var(--text2);font-weight:700}
+.corte-flow-total-val{font-size:22px;font-weight:800;color:var(--gold)}
+
+/* ── DENOMINACIONES ── */
+.corte-denom-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius-md);overflow:hidden;margin-bottom:12px;
+}
+.corte-denom-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border-bottom:1px solid var(--border);
+}
+.corte-denom-row:last-child{border-bottom:none}
+.corte-denom-lbl{
+  font-size:13px;font-weight:700;color:var(--text);
+  min-width:52px;flex-shrink:0;
+}
+.corte-denom-x{font-size:13px;color:var(--text4);flex-shrink:0}
+.corte-denom-input{
+  width:60px;background:var(--bg2);border:1.5px solid var(--border2);
+  border-radius:8px;padding:7px 8px;color:var(--text);
+  font-size:14px;font-weight:700;text-align:center;
+  outline:none;transition:border-color .18s;flex-shrink:0;
+  -webkit-appearance:none;
+}
+.corte-denom-input:focus{border-color:var(--gold)}
+.corte-denom-subtotal{
+  flex:1;text-align:right;font-size:13px;
+  font-weight:700;color:var(--text3);
+}
+.corte-denom-subtotal.active{color:#2ab8b8}
+.corte-moneda-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;background:rgba(245,200,0,.04);
+  border-top:1px solid rgba(245,200,0,.15);
+}
+.corte-moneda-lbl{font-size:13px;font-weight:700;color:var(--gold);flex:1}
+.corte-moneda-input{
+  width:90px;background:var(--bg2);border:1.5px solid rgba(245,200,0,.3);
+  border-radius:8px;padding:8px 10px;color:var(--gold);
+  font-size:14px;font-weight:700;text-align:center;
+  outline:none;-webkit-appearance:none;
+}
+.corte-moneda-input:focus{border-color:var(--gold)}
+
+/* ── DIFERENCIA BADGE ── */
+.corte-diff-box{
+  border-radius:var(--radius-md);padding:16px;
+  margin-bottom:14px;display:flex;justify-content:space-between;
+  align-items:center;border:1.5px solid;
+}
+.corte-diff-box.exacto{background:rgba(245,200,0,.07);border-color:rgba(245,200,0,.4)}
+.corte-diff-box.sobra{background:rgba(45,138,45,.1);border-color:rgba(45,138,45,.4)}
+.corte-diff-box.falta{background:rgba(224,32,32,.08);border-color:rgba(224,32,32,.4)}
+.corte-diff-lbl{font-size:13px;font-weight:700}
+.corte-diff-lbl.exacto{color:var(--gold)}
+.corte-diff-lbl.sobra{color:#6fcf6f}
+.corte-diff-lbl.falta{color:#f57474}
+.corte-diff-val{font-size:26px;font-weight:800}
+.corte-diff-val.exacto{color:var(--gold)}
+.corte-diff-val.sobra{color:#6fcf6f}
+.corte-diff-val.falta{color:#f57474}
+
+/* ── BTN GUARDAR CORTE ── */
+.btn-save-corte{
+  width:100%;padding:17px;border-radius:var(--radius-md);border:none;
+  background:linear-gradient(135deg,#1e1c0e,#191910);
+  border:1.5px solid rgba(245,200,0,.5);
+  color:var(--gold);font-size:16px;font-weight:800;cursor:pointer;
+  margin-top:4px;display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .22s;letter-spacing:.5px;
+  box-shadow:0 4px 18px rgba(245,200,0,.1);
+}
+.btn-save-corte:hover{box-shadow:0 6px 26px rgba(245,200,0,.2);transform:translateY(-2px)}
+.btn-save-corte:active{transform:scale(.97)}
+.btn-save-corte:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ── ADMIN CORTES TAB ── */
+.adm-corte-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius-md);margin-bottom:10px;overflow:hidden;
+  animation:fadeSlide .2s ease both;
+}
+.adm-corte-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 15px;cursor:pointer;user-select:none;
+  transition:background .15s;
+}
+.adm-corte-head:hover{background:var(--bg3)}
+.adm-corte-head-left{}
+.adm-corte-date{font-size:13px;font-weight:800;color:var(--text)}
+.adm-corte-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.adm-corte-head-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.adm-corte-diff{font-size:15px;font-weight:800;padding:4px 11px;border-radius:20px}
+.adm-corte-diff.exacto{background:rgba(245,200,0,.12);color:var(--gold)}
+.adm-corte-diff.sobra{background:rgba(45,138,45,.15);color:#6fcf6f}
+.adm-corte-diff.falta{background:rgba(224,32,32,.12);color:#f57474}
+.adm-corte-chev{font-size:14px;color:var(--text4);transition:transform .2s}
+.adm-corte-body{display:none;border-top:1px solid var(--border)}
+.adm-corte-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--border);
+}
+.adm-corte-cell{
+  background:var(--bg2);padding:11px 14px;
+}
+.adm-corte-cell-lbl{font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.adm-corte-cell-val{font-size:15px;font-weight:800;color:var(--text)}
+.adm-corte-prods{padding:10px 14px;border-top:1px solid var(--border)}
+.adm-corte-prods-title{font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.adm-corte-prod-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.adm-corte-prod-row:last-child{border-bottom:none}
+.adm-cortes-stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;
+}
+.adm-corte-stat{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:13px;position:relative;overflow:hidden;
+}
+.adm-corte-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(245,200,0,.3),transparent)}
+.adm-corte-stat-lbl{font-size:10px;color:var(--text4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;font-weight:700}
+.adm-corte-stat-val{font-size:22px;font-weight:800;color:var(--gold)}
+.adm-corte-stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.adm-corte-denom-detail{
+  padding:10px 14px;border-top:1px solid var(--border);
+  background:rgba(245,200,0,.02);
+}
+.adm-corte-denom-detail-title{font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.adm-corte-denom-chips{display:flex;flex-wrap:wrap;gap:6px}
+.adm-corte-denom-chip{
+  font-size:11px;font-weight:700;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:20px;padding:3px 10px;color:var(--text2);
+}
+
 /* ── TOP PRODUCTS ── */
 .top-item{display:flex;flex-direction:column;gap:6px;padding:11px 0;border-bottom:1px solid var(--border)}
 .top-item:last-child{border-bottom:none}
@@ -1915,26 +2078,134 @@ position:sticky;top:0;z-index:20;
 <!-- ===== CORTE ===== -->
 <div id="corte-overlay" class="corte-overlay hidden">
   <div class="corte-modal">
+    <!-- Header -->
     <div class="corte-header">
       <div class="corte-logo">🌭</div>
       <div class="corte-brand">DOGOS KARYTHO</div>
       <div class="corte-fecha" id="corte-fecha"></div>
     </div>
-    <hr class="corte-divider">
+
+    <!-- ── Resumen de ventas ── -->
+    <div class="corte-section-title">📊 Resumen del día</div>
     <div id="corte-resumen-ventas"></div>
-    <hr class="corte-divider">
-    <div class="corte-prod-title">Productos vendidos</div>
+
+    <!-- ── Productos vendidos ── -->
+    <div class="corte-section-title">🌭 Productos vendidos</div>
     <div id="corte-productos"></div>
-    <hr class="corte-divider">
-    <div class="corte-total-row">
-      <div class="corte-total-lbl">TOTAL DEL DIA</div>
-      <div class="corte-total-val" id="corte-total-val">$0</div>
+
+    <!-- ── Flujo de caja ── -->
+    <div class="corte-section-title">💵 Flujo de caja</div>
+
+    <!-- Fondo inicial -->
+    <div class="corte-flow-box" style="margin-bottom:8px">
+      <div class="corte-flow-row" style="background:rgba(245,200,0,.04)">
+        <span class="corte-flow-lbl">💰 Fondo inicial</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px;color:var(--text3);font-weight:700">$</span>
+          <input id="corte-fondo-input" type="number" inputmode="decimal" placeholder="0"
+            style="width:90px;background:var(--bg2);border:1.5px solid rgba(245,200,0,.35);border-radius:8px;padding:7px 8px;color:var(--gold);font-size:15px;font-weight:800;text-align:center;outline:none;-webkit-appearance:none"
+            oninput="recalcCorte()"/>
+        </div>
+      </div>
     </div>
-    <button class="btn-whatsapp" onclick="compartirWhatsApp()">
+
+    <!-- Entradas / Salidas / Esperado -->
+    <div class="corte-flow-box">
+      <div class="corte-flow-row">
+        <span class="corte-flow-lbl">📥 Entradas (ventas)</span>
+        <span class="corte-flow-val" id="corte-entradas" style="color:#2ab8b8">$0.00</span>
+      </div>
+      <div class="corte-flow-row">
+        <span class="corte-flow-lbl">📤 Salidas (gastos)</span>
+        <span class="corte-flow-val" id="corte-salidas" style="color:#f57474">−$0.00</span>
+      </div>
+    </div>
+    <div class="corte-flow-total">
+      <div>
+        <div class="corte-flow-total-lbl">🧮 Total esperado en caja</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px">Fondo + Ventas − Gastos</div>
+      </div>
+      <div class="corte-flow-total-val" id="corte-esperado">$0.00</div>
+    </div>
+
+    <!-- ── Conteo por denominación ── -->
+    <div class="corte-section-title">🔢 Conteo de billetes y monedas</div>
+
+    <div class="corte-denom-box">
+      <!-- Billetes -->
+      <div class="corte-denom-row" style="background:rgba(255,255,255,.02);padding:7px 14px">
+        <span style="font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.1em">Billetes</span>
+      </div>
+      <div class="corte-denom-row" id="cd-1000-row">
+        <span class="corte-denom-lbl">$1,000</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-1000" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-1000-sub">$0</span>
+      </div>
+      <div class="corte-denom-row">
+        <span class="corte-denom-lbl">$500</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-500" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-500-sub">$0</span>
+      </div>
+      <div class="corte-denom-row">
+        <span class="corte-denom-lbl">$200</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-200" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-200-sub">$0</span>
+      </div>
+      <div class="corte-denom-row">
+        <span class="corte-denom-lbl">$100</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-100" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-100-sub">$0</span>
+      </div>
+      <div class="corte-denom-row">
+        <span class="corte-denom-lbl">$50</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-50" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-50-sub">$0</span>
+      </div>
+      <div class="corte-denom-row">
+        <span class="corte-denom-lbl">$20</span>
+        <span class="corte-denom-x">×</span>
+        <input class="corte-denom-input" id="cd-20" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <span class="corte-denom-subtotal" id="cd-20-sub">$0</span>
+      </div>
+      <!-- Morralla -->
+      <div class="corte-moneda-row">
+        <span class="corte-moneda-lbl">🪙 Morralla (total monedas)</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:14px;color:var(--gold);font-weight:700">$</span>
+          <input class="corte-moneda-input" id="cd-monedas" type="number" inputmode="decimal" min="0" placeholder="0.00" oninput="recalcCorte()"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total contado -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg3);border-radius:var(--radius-md);margin-bottom:12px;border:1px solid var(--border2)">
+      <span style="font-size:14px;font-weight:700;color:var(--text2)">💰 Total contado</span>
+      <span style="font-size:24px;font-weight:800;color:var(--text)" id="corte-contado">$0.00</span>
+    </div>
+
+    <!-- Diferencia -->
+    <div class="corte-diff-box exacto" id="corte-diff-box">
+      <div>
+        <div class="corte-diff-lbl exacto" id="corte-diff-lbl">✅ Exacto</div>
+        <div style="font-size:11px;color:var(--text4);margin-top:2px" id="corte-diff-sub">El conteo cuadra perfectamente</div>
+      </div>
+      <div class="corte-diff-val exacto" id="corte-diff-val">$0.00</div>
+    </div>
+
+    <!-- Botones -->
+    <button class="btn-save-corte" id="btn-save-corte" onclick="saveCorte()">
+      💾 Cerrar corte y guardar
+    </button>
+    <button class="btn-whatsapp" onclick="compartirWhatsApp()" style="margin-top:10px">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
       Compartir por WhatsApp
     </button>
-    <button class="btn-corte-close" onclick="closeCorte()">Cerrar</button>
+    <button class="btn-corte-close" onclick="closeCorte()">Cerrar sin guardar</button>
   </div>
 </div>
 
@@ -2133,6 +2404,7 @@ position:sticky;top:0;z-index:20;
     <button class="admin-tab active" onclick="setAdminTab('resumen')">📊 Resumen</button>
     <button class="admin-tab" onclick="setAdminTab('ventas')">💰 Ventas</button>
     <button class="admin-tab" onclick="setAdminTab('gastos')">🧾 Gastos</button>
+    <button class="admin-tab" onclick="setAdminTab('cortes')">🧮 Cortes</button>
     <button class="admin-tab" onclick="setAdminTab('usuarios')">👥 Usuarios</button>
     <button class="admin-tab" onclick="setAdminTab('actividad')">📋 Actividad</button>
   </div>
@@ -2427,6 +2699,49 @@ position:sticky;top:0;z-index:20;
         </div>
       </div>
       <div id="adm-gastos-list"><div class="admin-empty">Sin gastos registrados</div></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CORTES ── -->
+  <div class="admin-tab-view" id="adm-tab-cortes">
+    <!-- Filtro periodo -->
+    <div class="admin-range-row" style="margin-bottom:14px">
+      <button class="admin-range-btn active" onclick="setAdmCortesPeriod('hoy')">Hoy</button>
+      <button class="admin-range-btn" onclick="setAdmCortesPeriod('semana')">Semana</button>
+      <button class="admin-range-btn" onclick="setAdmCortesPeriod('mes')">Mes</button>
+      <button class="admin-range-btn" onclick="setAdmCortesPeriod('todo')">Todo</button>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="adm-cortes-stats">
+      <div class="adm-corte-stat">
+        <div class="adm-corte-stat-lbl">Cortes realizados</div>
+        <div class="adm-corte-stat-val" id="adm-cortes-count">0</div>
+        <div class="adm-corte-stat-sub">en el periodo</div>
+      </div>
+      <div class="adm-corte-stat">
+        <div class="adm-corte-stat-lbl">Diferencia promedio</div>
+        <div class="adm-corte-stat-val" id="adm-cortes-avg-diff">$0</div>
+        <div class="adm-corte-stat-sub" id="adm-cortes-diff-sub">sin datos</div>
+      </div>
+      <div class="adm-corte-stat">
+        <div class="adm-corte-stat-lbl">Cortes exactos</div>
+        <div class="adm-corte-stat-val" id="adm-cortes-exactos">0</div>
+        <div class="adm-corte-stat-sub">diferencia = $0</div>
+      </div>
+      <div class="adm-corte-stat">
+        <div class="adm-corte-stat-lbl">Faltante acumulado</div>
+        <div class="adm-corte-stat-val" id="adm-cortes-faltante" style="color:#f57474">$0</div>
+        <div class="adm-corte-stat-sub">suma de faltantes</div>
+      </div>
+    </div>
+
+    <!-- Lista de cortes -->
+    <div style="font-size:10px;font-weight:700;color:var(--text4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px">
+      📋 Historial de cortes
+    </div>
+    <div id="adm-cortes-list">
+      <div class="admin-empty">Sin cortes registrados</div>
     </div>
   </div>
 
@@ -4771,24 +5086,318 @@ function clearAllSales(){
 }
 
 /* ─── Corte ─── */
-function openCorte(){
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),total=ps.reduce((s,v)=>s+v.total,0),now=new Date();
-  document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-  const avg=ps.length?total/ps.length:0;
-  document.getElementById('corte-resumen-ventas').innerHTML=`<div class="corte-row"><span class="corte-row-lbl">Numero de ventas</span><span class="corte-row-val">${ps.length}</span></div><div class="corte-row"><span class="corte-row-lbl">Ticket promedio</span><span class="corte-row-val">$${avg.toFixed(2)}</span></div><div class="corte-row"><span class="corte-row-lbl">Primera venta</span><span class="corte-row-val">${ps.length?ps[ps.length-1].time:'—'}</span></div><div class="corte-row"><span class="corte-row-lbl">Ultima venta</span><span class="corte-row-val">${ps.length?ps[0].time:'—'}</span></div>`;
-  const counts={},totals={};ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
-  const sp=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('corte-productos').innerHTML=sp.length?sp.map(([name,qty])=>`<div class="corte-prod-row"><span style="color:var(--text2)">${name}</span><span style="color:var(--text3)">${qty} pzas &nbsp;<span style="color:var(--gold);font-weight:800">$${(totals[name]||0).toFixed(2)}</span></span></div>`).join(''):'<div style="color:var(--text4);font-size:13px;padding:8px 0">Sin ventas hoy</div>';
-  document.getElementById('corte-total-val').textContent='$'+total.toFixed(2);
-  document.getElementById('corte-overlay').classList.remove('hidden');
+const SK_FONDO='dk_fondo_v1';
+let cortesHistory=[];
+let admCortesPeriod='hoy';
+
+function _getFondoKey(){return 'fondo_'+todayISO();}
+function _loadFondoHoy(){
+  try{const raw=JSON.parse(safeStorage.getItem(SK_FONDO)||'{}');return parseFloat(raw[_getFondoKey()])||0;}catch{return 0;}
 }
+function _saveFondoHoy(val){
+  try{const raw=JSON.parse(safeStorage.getItem(SK_FONDO)||'{}');raw[_getFondoKey()]=val;safeStorage.setItem(SK_FONDO,JSON.stringify(raw));}catch{}
+  if(fbDb)fbWriteSecure(fbDb.ref('fondo/'+_getFondoKey()),val).catch(()=>{});
+}
+
+function openCorte(){
+  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),totalVentas=ps.reduce((s,v)=>s+v.total,0),now=new Date();
+  // Fecha
+  document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  // Resumen ventas
+  const avg=ps.length?totalVentas/ps.length:0;
+  document.getElementById('corte-resumen-ventas').innerHTML=`
+    <div class="corte-flow-box">
+      <div class="corte-flow-row"><span class="corte-flow-lbl">📊 Número de ventas</span><span class="corte-flow-val">${ps.length}</span></div>
+      <div class="corte-flow-row"><span class="corte-flow-lbl">🎫 Ticket promedio</span><span class="corte-flow-val">$${avg.toFixed(2)}</span></div>
+      <div class="corte-flow-row"><span class="corte-flow-lbl">🕐 Primera venta</span><span class="corte-flow-val">${ps.length?ps[ps.length-1].time:'—'}</span></div>
+      <div class="corte-flow-row"><span class="corte-flow-lbl">🕐 Última venta</span><span class="corte-flow-val">${ps.length?ps[0].time:'—'}</span></div>
+    </div>`;
+  // Productos vendidos
+  const counts={},totals={};
+  ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
+  const sp=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('corte-productos').innerHTML=`<div class="corte-flow-box">${
+    sp.length?sp.map(([name,qty])=>`<div class="corte-prod-row"><span style="color:var(--text2)">${name}</span><span style="color:var(--text3)">${qty} pzas &nbsp;<span style="color:var(--gold);font-weight:800">$${(totals[name]||0).toFixed(2)}</span></span></div>`).join('')
+    :'<div style="color:var(--text4);font-size:13px;padding:10px 14px">Sin ventas hoy</div>'
+  }</div>`;
+  // Flujo: entradas y salidas
+  const todayISO_=todayISO();
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  document.getElementById('corte-entradas').textContent='$'+totalVentas.toFixed(2);
+  document.getElementById('corte-salidas').textContent='−$'+totalGastos.toFixed(2);
+  // Fondo inicial
+  const fondoGuardado=_loadFondoHoy();
+  document.getElementById('corte-fondo-input').value=fondoGuardado||'';
+  // Reset denominaciones
+  ['1000','500','200','100','50','20'].forEach(d=>{
+    const el=document.getElementById('cd-'+d);if(el)el.value='';
+    const sub=document.getElementById('cd-'+d+'-sub');if(sub){sub.textContent='$0';sub.classList.remove('active');}
+  });
+  const monEl=document.getElementById('cd-monedas');if(monEl)monEl.value='';
+  document.getElementById('corte-overlay').classList.remove('hidden');
+  recalcCorte();
+}
+
+function recalcCorte(){
+  const todayISO_=todayISO();
+  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today);
+  const totalVentas=ps.reduce((s,v)=>s+v.total,0);
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  const fondo=parseFloat(document.getElementById('corte-fondo-input').value)||0;
+  // Save fondo
+  if(fondo>0)_saveFondoHoy(fondo);
+  const esperado=fondo+totalVentas-totalGastos;
+  document.getElementById('corte-esperado').textContent='$'+esperado.toFixed(2);
+  // Denominaciones
+  const bills=[1000,500,200,100,50,20];
+  let totalBilletes=0;
+  bills.forEach(b=>{
+    const qty=parseInt(document.getElementById('cd-'+b)?.value)||0;
+    const sub=qty*b;totalBilletes+=sub;
+    const subEl=document.getElementById('cd-'+b+'-sub');
+    if(subEl){subEl.textContent=sub>0?'$'+sub.toLocaleString('es-MX'):'$0';subEl.classList.toggle('active',sub>0);}
+  });
+  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  const totalContado=totalBilletes+monedas;
+  document.getElementById('corte-contado').textContent='$'+totalContado.toFixed(2);
+  // Diferencia
+  const diff=totalContado-esperado;
+  const box=document.getElementById('corte-diff-box');
+  const lbl=document.getElementById('corte-diff-lbl');
+  const sub=document.getElementById('corte-diff-sub');
+  const val=document.getElementById('corte-diff-val');
+  ['exacto','sobra','falta'].forEach(c=>{box.classList.remove(c);lbl.classList.remove(c);val.classList.remove(c);});
+  if(Math.abs(diff)<0.01){
+    box.classList.add('exacto');lbl.classList.add('exacto');val.classList.add('exacto');
+    lbl.textContent='✅ Exacto';sub.textContent='El conteo cuadra perfectamente';
+    val.textContent='$0.00';
+  } else if(diff>0){
+    box.classList.add('sobra');lbl.classList.add('sobra');val.classList.add('sobra');
+    lbl.textContent='⬆️ Sobrante';sub.textContent='Hay más dinero del esperado';
+    val.textContent='+$'+diff.toFixed(2);
+  } else {
+    box.classList.add('falta');lbl.classList.add('falta');val.classList.add('falta');
+    lbl.textContent='⬇️ Faltante';sub.textContent='Hay menos dinero del esperado';
+    val.textContent='−$'+Math.abs(diff).toFixed(2);
+  }
+}
+
+function saveCorte(){
+  const todayISO_=todayISO();
+  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today);
+  const totalVentas=ps.reduce((s,v)=>s+v.total,0);
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  const fondo=parseFloat(document.getElementById('corte-fondo-input').value)||0;
+  const esperado=fondo+totalVentas-totalGastos;
+  const bills=[1000,500,200,100,50,20];
+  const denominaciones={};
+  let totalBilletes=0;
+  bills.forEach(b=>{
+    const qty=parseInt(document.getElementById('cd-'+b)?.value)||0;
+    if(qty>0){denominaciones['b'+b]=qty;totalBilletes+=qty*b;}
+  });
+  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  if(monedas>0)denominaciones.monedas=monedas;
+  const totalContado=totalBilletes+monedas;
+  const diferencia=parseFloat((totalContado-esperado).toFixed(2));
+  const now=new Date();
+  const counts={},totals={};
+  ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
+  const corte={
+    id:'corte_'+Date.now(),
+    ts:Date.now(),
+    fecha:toDateKey(now),
+    fechaISO:todayISO_,
+    hora:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+    user:safeStorage.getItem(SK_DISPLAY)||'Cajero',
+    fondoInicial:fondo,
+    totalVentas:parseFloat(totalVentas.toFixed(2)),
+    totalGastos:parseFloat(totalGastos.toFixed(2)),
+    totalEsperado:parseFloat(esperado.toFixed(2)),
+    totalContado:parseFloat(totalContado.toFixed(2)),
+    diferencia,
+    numVentas:ps.length,
+    ticketPromedio:ps.length?parseFloat((totalVentas/ps.length).toFixed(2)):0,
+    denominaciones,
+    productos:counts,
+    productosTotales:totals
+  };
+  if(fbDb){
+    fbWriteSecure(fbDb.ref('cortes/'+corte.id),corte)
+      .then(()=>showToast('✅ Corte guardado correctamente','green'))
+      .catch(()=>showToast('Corte guardado localmente',''));
+  } else {
+    showToast('Corte guardado localmente','green');
+  }
+  // Local cache
+  try{
+    const local=JSON.parse(safeStorage.getItem('dk_cortes_v1')||'[]');
+    local.unshift(corte);
+    safeStorage.setItem('dk_cortes_v1',JSON.stringify(local.slice(0,60)));
+  }catch{}
+  logActivity('corte',`Corte realizado — Total esperado $${esperado.toFixed(2)} · Contado $${totalContado.toFixed(2)} · Diferencia ${diferencia>=0?'+':''}$${diferencia.toFixed(2)}`);
+  closeCorte();
+}
+
 function closeCorte(){document.getElementById('corte-overlay').classList.add('hidden');}
+
+/* ─── Firebase listener for cortes ─── */
+function startCortesListener(){
+  if(!fbDb)return;
+  fbDb.ref('cortes').orderByChild('ts').limitToLast(200).on('value',snap=>{
+    const d=snap.val()||{};
+    cortesHistory=Object.values(d).sort((a,b)=>b.ts-a.ts);
+    if(document.getElementById('adm-cortes-list'))renderAdmCortes();
+  });
+}
+
+/* ─── Admin: Cortes period + render ─── */
+function setAdmCortesPeriod(p){
+  admCortesPeriod=p;
+  document.querySelectorAll('#adm-tab-cortes .admin-range-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['hoy','semana','mes','todo'][i]===p);
+  });
+  renderAdmCortes();
+}
+
+function _getAdmCortesFiltrados(){
+  const now=new Date();
+  const todayISO_=todayISO();
+  if(admCortesPeriod==='hoy'){
+    return cortesHistory.filter(c=>c.fechaISO===todayISO_);
+  }
+  if(admCortesPeriod==='semana'){
+    const mon=new Date(now);mon.setDate(now.getDate()-((now.getDay()+6)%7));mon.setHours(0,0,0,0);
+    const monISO=localISODate(mon);
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    const sunISO=localISODate(sun);
+    return cortesHistory.filter(c=>c.fechaISO>=monISO&&c.fechaISO<=sunISO);
+  }
+  if(admCortesPeriod==='mes'){
+    const ym=todayISO_.slice(0,7);
+    return cortesHistory.filter(c=>(c.fechaISO||'').slice(0,7)===ym);
+  }
+  return cortesHistory;
+}
+
+function renderAdmCortes(){
+  const list=document.getElementById('adm-cortes-list');if(!list)return;
+  const data=_getAdmCortesFiltrados();
+  // Stats
+  const count=data.length;
+  const exactos=data.filter(c=>Math.abs(c.diferencia||0)<0.01).length;
+  const faltantes=data.filter(c=>(c.diferencia||0)<-0.01);
+  const totalFaltante=faltantes.reduce((s,c)=>s+Math.abs(c.diferencia||0),0);
+  const avgDiff=count?data.reduce((s,c)=>s+(c.diferencia||0),0)/count:0;
+  document.getElementById('adm-cortes-count').textContent=count;
+  document.getElementById('adm-cortes-exactos').textContent=exactos;
+  document.getElementById('adm-cortes-faltante').textContent='$'+totalFaltante.toFixed(2);
+  const avgEl=document.getElementById('adm-cortes-avg-diff');
+  const subEl=document.getElementById('adm-cortes-diff-sub');
+  if(count){
+    avgEl.textContent=(avgDiff>=0?'+':'')+'$'+Math.abs(avgDiff).toFixed(2);
+    avgEl.style.color=avgDiff>0.01?'#6fcf6f':avgDiff<-0.01?'#f57474':'var(--gold)';
+    subEl.textContent=avgDiff>0.01?'promedio sobrante':avgDiff<-0.01?'promedio faltante':'promedio exacto';
+  } else {
+    avgEl.textContent='$0';avgEl.style.color='var(--gold)';subEl.textContent='sin datos';
+  }
+  if(!data.length){list.innerHTML='<div class="admin-empty">Sin cortes en este periodo</div>';return;}
+  const BILLS=[1000,500,200,100,50,20];
+  list.innerHTML='';
+  data.forEach((c,i)=>{
+    const diff=c.diferencia||0;
+    const diffClass=Math.abs(diff)<0.01?'exacto':diff>0?'sobra':'falta';
+    const diffStr=Math.abs(diff)<0.01?'✅ Exacto':diff>0?'+$'+diff.toFixed(2):'−$'+Math.abs(diff).toFixed(2);
+    // Denomination chips
+    const denom=c.denominaciones||{};
+    const chips=BILLS.filter(b=>denom['b'+b]>0).map(b=>`<span class="adm-corte-denom-chip">$${b.toLocaleString()} ×${denom['b'+b]}</span>`).join('')
+      +(denom.monedas>0?`<span class="adm-corte-denom-chip" style="border-color:rgba(245,200,0,.3);color:var(--gold)">🪙 $${(denom.monedas).toFixed(2)}</span>`:'');
+    // Products
+    const prods=Object.entries(c.productos||{}).sort((a,b)=>b[1]-a[1]);
+    const prodHTML=prods.length?prods.map(([n,q])=>`<div class="adm-corte-prod-row"><span style="color:var(--text2)">${n}</span><span style="color:var(--text3)">${q} pzas &nbsp;<span style="color:var(--gold);font-weight:800">$${((c.productosTotales||{})[n]||0).toFixed(2)}</span></span></div>`).join('')
+      :'<div style="font-size:12px;color:var(--text4);padding:6px 0">Sin productos registrados</div>';
+    const card=document.createElement('div');
+    card.className='adm-corte-card';
+    card.style.animationDelay=(i*.03)+'s';
+    card.innerHTML=`
+      <div class="adm-corte-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.adm-corte-chev').style.transform=this.nextElementSibling.style.display==='block'?'rotate(90deg)':''">
+        <div class="adm-corte-head-left">
+          <div class="adm-corte-date">${c.fecha} &nbsp;·&nbsp; ${c.hora}</div>
+          <div class="adm-corte-meta">👤 ${c.user} &nbsp;·&nbsp; ${c.numVentas||0} ventas</div>
+        </div>
+        <div class="adm-corte-head-right">
+          <span class="adm-corte-diff ${diffClass}">${diffStr}</span>
+          <span class="adm-corte-chev">›</span>
+        </div>
+      </div>
+      <div class="adm-corte-body">
+        <div class="adm-corte-grid">
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">💵 Fondo inicial</div>
+            <div class="adm-corte-cell-val">$${(c.fondoInicial||0).toFixed(2)}</div>
+          </div>
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">📥 Entradas</div>
+            <div class="adm-corte-cell-val" style="color:#2ab8b8">$${(c.totalVentas||0).toFixed(2)}</div>
+          </div>
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">📤 Salidas (gastos)</div>
+            <div class="adm-corte-cell-val" style="color:#f57474">$${(c.totalGastos||0).toFixed(2)}</div>
+          </div>
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">🧮 Esperado</div>
+            <div class="adm-corte-cell-val" style="color:var(--gold)">$${(c.totalEsperado||0).toFixed(2)}</div>
+          </div>
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">💰 Contado</div>
+            <div class="adm-corte-cell-val">$${(c.totalContado||0).toFixed(2)}</div>
+          </div>
+          <div class="adm-corte-cell">
+            <div class="adm-corte-cell-lbl">📊 Ticket promedio</div>
+            <div class="adm-corte-cell-val">$${(c.ticketPromedio||0).toFixed(2)}</div>
+          </div>
+        </div>
+        ${chips?`<div class="adm-corte-denom-detail">
+          <div class="adm-corte-denom-detail-title">Desglose del conteo</div>
+          <div class="adm-corte-denom-chips">${chips}</div>
+        </div>`:''}
+        <div class="adm-corte-prods">
+          <div class="adm-corte-prods-title">Productos vendidos</div>
+          ${prodHTML}
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
 function compartirWhatsApp(){
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),total=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date();
+  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),totalVentas=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date();
+  const todayISO_=todayISO();
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  const fondo=parseFloat(document.getElementById('corte-fondo-input')?.value)||0;
+  const esperado=fondo+totalVentas-totalGastos;
+  const bills=[1000,500,200,100,50,20];
+  let totalBilletes=0;
+  bills.forEach(b=>{const qty=parseInt(document.getElementById('cd-'+b)?.value)||0;totalBilletes+=qty*b;});
+  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  const totalContado=totalBilletes+monedas;
+  const diff=totalContado-esperado;
   ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;}));
-  let txt='🌭 *DOGOS KARYTHO*\n📅 '+now.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})+'\n🕐 '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+'\n\n📊 *Resumen del dia*\n• Ventas: '+ps.length+'\n• Ticket promedio: $'+(ps.length?total/ps.length:0).toFixed(2)+'\n\n🌭 *Productos vendidos*\n';
+  let txt='🌭 *DOGOS KARYTHO*\n📅 '+now.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})+'\n🕐 '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})+'\n\n📊 *Resumen del día*\n• Ventas: '+ps.length+'\n• Ticket promedio: $'+(ps.length?totalVentas/ps.length:0).toFixed(2)+'\n\n🌭 *Productos vendidos*\n';
   Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([name,qty])=>{txt+='• '+name+': '+qty+' pzas\n';});
-  txt+='\n💰 *TOTAL: $'+total.toFixed(2)+'*';
+  txt+='\n💵 *Flujo de caja*\n';
+  txt+='• Fondo inicial: $'+fondo.toFixed(2)+'\n';
+  txt+='• Entradas (ventas): $'+totalVentas.toFixed(2)+'\n';
+  txt+='• Salidas (gastos): $'+totalGastos.toFixed(2)+'\n';
+  txt+='• Total esperado: $'+esperado.toFixed(2)+'\n';
+  if(totalContado>0){
+    txt+='• Total contado: $'+totalContado.toFixed(2)+'\n';
+    txt+='• Diferencia: '+(Math.abs(diff)<0.01?'✅ Exacto':diff>0?'⬆️ Sobrante +$'+diff.toFixed(2):'⬇️ Faltante −$'+Math.abs(diff).toFixed(2))+'\n';
+  }
+  txt+='\n💰 *TOTAL VENTAS: $'+totalVentas.toFixed(2)+'*';
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
@@ -4867,6 +5476,7 @@ function bootAdmin(){
     startFbListeners();
     startMembersListener();
     startActivityListener();
+    startCortesListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
@@ -6203,6 +6813,7 @@ function setAdminTab(tab){
     });
   }
   if(tab==='gastos'){renderGastos();}
+  if(tab==='cortes'){renderAdmCortes();}
 }
 
 function setAdminRange(r){
@@ -8868,6 +9479,7 @@ if(savedSession==='1' && savedRole==='admin'){
     startFbListeners();
     startMembersListener();
     startActivityListener();
+    startCortesListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
     loadGastos();
