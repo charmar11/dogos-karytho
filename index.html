@@ -3928,7 +3928,7 @@ function toggleOnlineTooltip(){
   tip.classList.toggle('hidden',!tooltipOpen);
 }
 document.addEventListener('click',e=>{
-  if(tooltipOpen&&!e.target.closest('#online-badge')&&!e.target.closest('#online-tooltip')){
+  if(tooltipOpen&&!e.target.closest('#online-badge')&&!e.target.closest('#online-tooltip')&&!e.target.closest('#btn-agregar-carro')){
     document.getElementById('online-tooltip').classList.add('hidden');
     tooltipOpen=false;
   }
@@ -7504,18 +7504,18 @@ async function createSucursal(){
     
     const copyFrom=document.getElementById('suc-copy-from').value;
     const estructuraVacia={
-      products:{},
-      sales:{},
-      gastos:{},
-      gasto_cats:{},
-      ingredients:{},
-      recipes:{},
-      general_recipe:{},
-      inv_history:{},
-      ing_categories:{},
-      cortes:{},
-      fondo:{},
-      config:{}
+      products:{_init:true},
+      sales:{_init:true},
+      gastos:{_init:true},
+      gasto_cats:{_init:true},
+      ingredients:{_init:true},
+      recipes:{_init:true},
+      general_recipe:{_init:true},
+      inv_history:{_init:true},
+      ing_categories:{_init:true},
+      cortes:{_init:true},
+      fondo:{_init:true},
+      config:{_init:true}
     };
     
     if(copyFrom){
@@ -7532,6 +7532,13 @@ async function createSucursal(){
     estructuraVacia.createdBy=safeStorage.getItem(SK_DISPLAY)||'Admin';
     
     await fbDb.ref('sucursales/'+idFinal).set(estructuraVacia);
+    
+    // Limpiar placeholders _init inmediatamente
+    const limpiaRef=fbDb.ref('sucursales/'+idFinal);
+    const keysConInit=['products','sales','gastos','gasto_cats','ingredients','recipes','general_recipe','inv_history','ing_categories','cortes','fondo','config'];
+    const limpieza={};
+    keysConInit.forEach(k=>limpieza[k]=firebase.database.ServerValue.TIMESTAMP===firebase.database.ServerValue.TIMESTAMP?{}:{});
+    limpiaRef.update(limpieza);
     
     showToast('✅ Sucursal "'+nombre+'" creada','green');
     closeSucursalForm();
@@ -10462,7 +10469,6 @@ function openCreateUserForm(){
 }
 
 /* ─── EXPORTAR FUNCIONES AL SCOPE GLOBAL ─── */
-window.openAddSucursalForm = openAddSucursalForm;
 window.closeSucursalForm = closeSucursalForm;
 window.loadSucursalesList = loadSucursalesList;
 window.loadAdminBranchSelector = loadAdminBranchSelector;
