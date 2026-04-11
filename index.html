@@ -10371,16 +10371,26 @@ function addPickerMember(){
 
 // New user functions
 function openNewUserForm(){
-  document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
-  document.getElementById('newuser-password').value='';
-  document.getElementById('newuser-role').value='user';
+  const nameEl=document.getElementById('newuser-name');
+  if(!nameEl){
+    console.log('Modal newuser-no encontrado');
+    return;
+  }
+  nameEl.value='';
+  const emailEl=document.getElementById('newuser-email');
+  if(emailEl) emailEl.value='';
+  const passEl=document.getElementById('newuser-password');
+  if(passEl) passEl.value='';
+  const roleEl=document.getElementById('newuser-role');
+  if(roleEl) roleEl.value='user';
   newUserRole='user';
-  document.getElementById('newuser-overlay').classList.remove('hidden');
+  const overlay=document.getElementById('newuser-overlay');
+  if(overlay) overlay.classList.remove('hidden');
 }
 
 function closeNewUserForm(){
-  document.getElementById('newuser-overlay').classList.add('hidden');
+  const overlay=document.getElementById('newuser-overlay');
+  if(overlay) overlay.classList.add('hidden');
 }
 
 function closeNewUserOutside(e){
@@ -10571,12 +10581,21 @@ function deleteUserAccount(uid,name){
 }
 
 function openCreateUserForm(){
-  document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
-  document.getElementById('newuser-password').value='';
-  document.getElementById('newuser-role').value='user';
+  const nameEl=document.getElementById('newuser-name');
+  if(!nameEl){
+    console.log('Modal newuser-no encontrado');
+    return;
+  }
+  nameEl.value='';
+  const emailEl=document.getElementById('newuser-email');
+  if(emailEl) emailEl.value='';
+  const passEl=document.getElementById('newuser-password');
+  if(passEl) passEl.value='';
+  const roleEl=document.getElementById('newuser-role');
+  if(roleEl) roleEl.value='user';
   newUserRole='user';
-  document.getElementById('newuser-overlay').classList.remove('hidden');
+  const overlay=document.getElementById('newuser-overlay');
+  if(overlay) overlay.classList.remove('hidden');
 }
 
 /* ─── EXPORTAR FUNCIONES AL SCOPE GLOBAL ─── */
