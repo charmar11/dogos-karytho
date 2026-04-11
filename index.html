@@ -3405,6 +3405,35 @@ function deletePickerMember(name,idx){
 let fbAuthDb=null;
 function loginWithFirebase(user,pass,cb){
   const auth=firebase.auth();
+  const userLower=user.toLowerCase().trim();
+  
+  // Si el usuario parece email, intentar login directo con Firebase Auth
+  if(userLower.includes('@')){
+    auth.signInWithEmailAndPassword(user,pass)
+      .then(cred=>{
+        const uid=cred.user.uid;
+        return fbDb.ref('users/'+uid).once('value').then(snap=>({uid,snap}));
+      })
+      .then(({uid,snap})=>{
+        const data=snap.val();
+        if(!data || !data.role){
+          auth.signOut();
+          cb(null,'Usuario no configurado. Contacta al encargado.');
+          return;
+        }
+        currentUid=uid;
+        safeStorage.setItem(SK_UID,uid);
+        currentBranch=data.branchId||'carro1';
+        safeStorage.setItem(SK_SESSION,'1');
+        safeStorage.setItem(SK_ROLE,data.role);
+        safeStorage.setItem(SK_DISPLAY,data.name||user);
+        cb(data,null);
+      })
+      .catch(()=>{
+        cb(null,'Usuario o contraseña incorrectos');
+      });
+    return;
+  }
   
   // CIDOP va al picker (sin cuenta)
   if(user.toUpperCase()==='CIDOP'){
@@ -3456,11 +3485,15 @@ function loginWithFirebase(user,pass,cb){
     return;
   }
   
-  // Otros usuarios: buscar por nombre en la base de datos
-  fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
+  // Otros usuarios: buscar por nombre o email en la base de datos
+  const userLower=user.toLowerCase();
+  fbDb.ref('users').once('value').then(snap=>{
+    const data=snap.val()||{};
     const users=[];
-    snap.forEach(child=>{
-      users.push({uid:child.key,...child.val()});
+    Object.entries(data).forEach(([uid,val])=>{
+      if(val && (val.name&&val.name.toLowerCase()===userLower || val.email&&val.email.toLowerCase()===userLower)){
+        users.push({uid:uid,...val});
+      }
     });
     
     if(users.length===0){
