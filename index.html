@@ -3171,11 +3171,14 @@ function loginWithFirebase(user,pass,cb){
   auth.signInWithEmailAndPassword(email,pass)
     .then(cred=>{
       const uid=cred.user.uid;
+      currentUid=uid;
+      safeStorage.setItem(SK_UID,uid);
       return fbDb.ref('users/'+uid).once('value');
     })
     .then(snap=>{
       const data=snap.val();
       if(!data){cb(null,'Usuario no configurado');return;}
+      currentBranch=data.branchId||'default';
       cb(data,null);
     })
     .catch(()=>{
@@ -3346,6 +3349,9 @@ function doLogout(){
     safeStorage.removeItem(SK_SESSION);
     safeStorage.removeItem(SK_ROLE);
     safeStorage.removeItem(SK_DISPLAY);
+    safeStorage.removeItem(SK_UID);
+    currentBranch='default';
+    currentUid=null;
     location.reload();
   });
 }
@@ -3356,12 +3362,33 @@ function adminLogout(){
   safeStorage.removeItem(SK_SESSION);
   safeStorage.removeItem(SK_ROLE);
   safeStorage.removeItem(SK_DISPLAY);
+  safeStorage.removeItem(SK_UID);
+  currentBranch='default';
+  currentUid=null;
   location.reload();
 }
 
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
 let fbDb=null,fbConnected=false,fbListening=false;
+let currentBranch='default';
+let currentUid=null;
+
+function getBranchRef(path){
+  if(!fbDb)return null;
+  return fbDb.ref('sucursales/'+currentBranch+'/'+path);
+}
+
+function loadBranchId(uid){
+  return new Promise((resolve)=>{
+    if(!fbDb){currentBranch='default';resolve('default');return;}
+    fbDb.ref('users/'+uid).once('value').then(snap=>{
+      const data=snap.val();
+      currentBranch=data&&data.branchId?data.branchId:'default';
+      resolve(currentBranch);
+    }).catch(()=>{currentBranch='default';resolve('default');});
+  });
+}
 
 /* ─── Firebase config (fija) ─── */
 const FB_CONFIG={
@@ -3741,7 +3768,7 @@ function saveDailyGoal(){
   showToast('Meta guardada: $'+v.toFixed(2),'green');
   // Also push to Firebase so other devices sync
   if(fbDb){
-    fbWriteSecure(fbDb.ref('config/daily_goal'),v).catch(()=>{});
+    fbWriteSecure(getBranchRef('config/daily_goal'),v).catch(()=>{});
   }
 }
 
@@ -3752,7 +3779,7 @@ function clearDailyGoal(){
   if(input)input.value='';
   showToast('Meta eliminada');
   if(fbDb){
-    fbRemoveSecure(fbDb.ref('config/daily_goal')).catch(()=>{});
+    fbRemoveSecure(getBranchRef('config/daily_goal')).catch(()=>{});
   }
 }
 
@@ -3760,7 +3787,7 @@ function startFbListeners(){
   if(!fbDb||fbListening)return;
   fbListening=true;
   // Sync products
-  fbDb.ref('products').on('value',snap=>{
+  getBranchRef('products').on('value',snap=>{
     const data=snap.val();
     if(data){
       products=Object.values(data);
@@ -3772,7 +3799,7 @@ function startFbListeners(){
     }
   });
   // Sync sales
-  fbDb.ref('sales').on('value',snap=>{
+  getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
     sales=data?Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];
     // Update cajero historial if open
@@ -3789,7 +3816,7 @@ function startFbListeners(){
     updateGoalBar();
   });
   // Sync daily goal config from Firebase (override localStorage if found)
-  fbDb.ref('config/daily_goal').on('value',snap=>{
+  getBranchRef('config/daily_goal').on('value',snap=>{
     const v=snap.val();
     if(v&&typeof v==='number'&&v>0){
       safeStorage.setItem(SK_DAILY_GOAL,String(v));
@@ -3808,12 +3835,12 @@ function startFbListeners(){
 function fbSaveProd(){
   if(!fbDb)return;
   const obj={};products.forEach(p=>obj[p.id]=p);
-  fbDb.ref('products').set(obj).catch(()=>{});
+  getBranchRef('products').set(obj).catch(()=>{});
 }
 function fbSaveSales(){
   if(!fbDb)return;
   const obj={};sales.forEach(s=>obj[s.id]=s);
-  fbDb.ref('sales').set(obj).catch(()=>{});
+  getBranchRef('sales').set(obj).catch(()=>{});
 }
 
 /* ─── Activity Log ─── */
@@ -3898,6 +3925,7 @@ const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
 const SK_GASTO_CATS='dk_gasto_cats_v1';
+const SK_UID='dk_uid_v1';
 // Default categories — user can add/edit/delete
 const DEFAULT_GASTO_CATS=[];
 let gastoCats=[];
@@ -3908,7 +3936,7 @@ function loadGastoCats(){
     if(saved&&saved.length) gastoCats=saved;
   }catch{}
   if(fbDb){
-    fbDb.ref('gasto_cats').on('value',snap=>{
+    getBranchRef('gasto_cats').on('value',snap=>{
       const d=snap.val();
       if(d&&Object.keys(d).length>0){
         gastoCats=Object.values(d).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name));
@@ -3922,7 +3950,7 @@ function loadGastoCats(){
 }
 function saveGastoCats(){
   safeStorage.setItem(SK_GASTO_CATS,JSON.stringify(gastoCats));
-  if(fbDb){const obj={};gastoCats.forEach(c=>obj[c.id]=c);fbDb.ref('gasto_cats').set(obj).catch(()=>{});}
+  if(fbDb){const obj={};gastoCats.forEach(c=>obj[c.id]=c);getBranchRef('gasto_cats').set(obj).catch(()=>{});}
 }
 function getCatById(id){return gastoCats.find(c=>c.id===id)||{id,name:id,icon:'📝',color:'#888'};}
 function isInvPaused(){return safeStorage.getItem(SK_INV_PAUSA)==='1';}
@@ -3985,7 +4013,7 @@ function bootApp(){
     loadCidopMembers();
     // Keep ingredients + recipes + generalRecipe synced from Firebase
     if(fbDb){
-      fbDb.ref('ingredients').on('value',snap=>{
+      getBranchRef('ingredients').on('value',snap=>{
         const d=snap.val();
         if(d){
           const vals=Object.values(d);
@@ -3994,8 +4022,8 @@ function bootApp(){
           ingredients=vals.filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
         }
       });
-      fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
-      fbDb.ref('general_recipe').on('value',snap=>{
+      getBranchRef('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
+      getBranchRef('general_recipe').on('value',snap=>{
         const d=snap.val();
         generalRecipe=d?Object.values(d).filter(Boolean):[];
       });
@@ -4520,7 +4548,7 @@ function agregarGastoCidop(){
   document.getElementById('cidop-gasto-monto').value='';
   showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbWriteSecure(fbDb.ref('gastos/'+g.id),g).catch(()=>{});
+    fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});
   }
   renderCidopGastosList();
 }
@@ -4751,7 +4779,7 @@ function renderCidopGastosList(){
   const el=document.getElementById('cidop-gastos-list');if(!el)return;
   const gs=getCidopGastosFiltrados();
   _buildGastosHTML(el, gs, cidopGastosPeriod,
-    (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(fbDb.ref('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
+    (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(getBranchRef('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
     null // CIDOP no tiene edición de fecha
   );
 }
@@ -5096,7 +5124,7 @@ function _loadFondoHoy(){
 }
 function _saveFondoHoy(val){
   try{const raw=JSON.parse(safeStorage.getItem(SK_FONDO)||'{}');raw[_getFondoKey()]=val;safeStorage.setItem(SK_FONDO,JSON.stringify(raw));}catch{}
-  if(fbDb)fbWriteSecure(fbDb.ref('fondo/'+_getFondoKey()),val).catch(()=>{});
+  if(fbDb)fbWriteSecure(getBranchRef('fondo/'+_getFondoKey()),val).catch(()=>{});
 }
 
 function openCorte(){
@@ -5226,7 +5254,7 @@ function saveCorte(){
     productosTotales:totals
   };
   if(fbDb){
-    fbWriteSecure(fbDb.ref('cortes/'+corte.id),corte)
+    fbWriteSecure(getBranchRef('cortes/'+corte.id),corte)
       .then(()=>showToast('✅ Corte guardado correctamente','green'))
       .catch(()=>showToast('Corte guardado localmente',''));
   } else {
@@ -5247,7 +5275,7 @@ function closeCorte(){document.getElementById('corte-overlay').classList.add('hi
 /* ─── Firebase listener for cortes ─── */
 function startCortesListener(){
   if(!fbDb)return;
-  fbDb.ref('cortes').orderByChild('ts').limitToLast(200).on('value',snap=>{
+  getBranchRef('cortes').orderByChild('ts').limitToLast(200).on('value',snap=>{
     const d=snap.val()||{};
     cortesHistory=Object.values(d).sort((a,b)=>b.ts-a.ts);
     if(document.getElementById('adm-cortes-list'))renderAdmCortes();
@@ -5905,7 +5933,7 @@ function loadGastos(){
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
 
   // Realtime listener — Firebase is authoritative after first sync
-  fbDb.ref('gastos').on('value',snap=>{
+  getBranchRef('gastos').on('value',snap=>{
     const d=snap.val();
     if(d&&Object.keys(d).length>0){
       // Firebase has data → use it
@@ -5915,13 +5943,13 @@ function loadGastos(){
       // Firebase empty → push any local gastos up (covers fresh-write race condition)
       const cached=JSON.parse(safeStorage.getItem(SK_GASTOS)||'[]');
       if(cached.length>0){
-        cached.forEach(g=>{if(g.id) fbWriteSecure(fbDb.ref('gastos/'+g.id),g).catch(()=>{});});
+        cached.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
         // Keep in-memory gastos as-is; next snapshot will confirm
         return;
       }
       // Also push any gastos that are in memory but not yet in Firebase (race condition fix)
       if(gastos&&gastos.length>0){
-        gastos.forEach(g=>{if(g.id) fbWriteSecure(fbDb.ref('gastos/'+g.id),g).catch(()=>{});});
+        gastos.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
         return;
       }
       // Truly empty — clear local too
@@ -5951,7 +5979,7 @@ function eliminarGasto(id){
     showToast('Gasto eliminado','green');
     // Remove from Firebase — listener will re-render with confirmed state
     if(fbDb){
-      fbRemoveSecure(fbDb.ref('gastos/'+id)).catch(()=>{
+      fbRemoveSecure(getBranchRef('gastos/'+id)).catch(()=>{
         showToast('Error al eliminar en Firebase','red');
       });
     }
@@ -6070,7 +6098,7 @@ function guardarEdicionGasto(g, cambios){
   if(idx<0)return;
   Object.assign(gastos[idx],cambios);
   safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
-  if(fbDb) fbUpdateSecure(fbDb.ref('gastos/'+g.id),cambios).catch(()=>{});
+  if(fbDb) fbUpdateSecure(getBranchRef('gastos/'+g.id),cambios).catch(()=>{});
   showToast('✅ Gasto actualizado','green');
   renderGastos();
   renderCidopGastosList();
@@ -7418,19 +7446,19 @@ let evLines=[]; // [{productId, qty, ings:[{ingId,qty,mult,active}]}]
 function bootEventos(){
   load(); // Loads products and sales from local cache
   if(fbDb){
-    fbDb.ref('products').on('value',snap=>{
+    getBranchRef('products').on('value',snap=>{
       const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}
     });
-    fbDb.ref('ingredients').on('value',snap=>{
+    getBranchRef('ingredients').on('value',snap=>{
       const d=snap.val();if(!d)return;
       const seen=new Set();
       ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
     });
-    fbDb.ref('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
-    fbDb.ref('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
-    fbDb.ref('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
+    getBranchRef('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
+    getBranchRef('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
+    getBranchRef('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
     // ── Sincronizar ventas en tiempo real (para historial y CIPOD) ──
-    fbDb.ref('sales').on('value',snap=>{
+    getBranchRef('sales').on('value',snap=>{
       const d=snap.val();
       sales=d?Object.values(d).sort((a,b)=>b.timestamp-a.timestamp):[];
       safeStorage.setItem(SK_SALES,JSON.stringify(sales));
@@ -7873,7 +7901,7 @@ function registrarEvento(){
     productosDesc:productos,
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
   };
-  if(fbDb) fbDb.ref('sales/'+sale.id).set(sale).catch(()=>{});
+  if(fbDb) getBranchRef('sales/'+sale.id).set(sale).catch(()=>{});
 
   // Log en historial de inventario (solo referencia, sin tocar stock)
   logInvHistory('consumo',`Evento: ${name} — $${price.toFixed(2)}${productos?' · '+productos:''}`,
@@ -7933,7 +7961,7 @@ function renderEventosHistorial(){
       const newIso=dateInp.value;if(!newIso)return;
       const newTs=new Date(newIso+'T12:00:00').getTime();
       const newDateStr=new Date(newIso+'T12:00:00').toLocaleDateString('es-MX');
-      if(fbDb) fbDb.ref('sales/'+s.id).update({timestamp:newTs,date:newDateStr}).catch(()=>{});
+      if(fbDb) getBranchRef('sales/'+s.id).update({timestamp:newTs,date:newDateStr}).catch(()=>{});
       // Update local sales array
       const idx=sales.findIndex(x=>x.id===s.id);
       if(idx>=0){sales[idx].timestamp=newTs;sales[idx].date=newDateStr;}
@@ -7993,7 +8021,7 @@ function deshacerEvento(saleId){
       }
 
       // 2. Eliminar la venta de Firebase y del array local
-      if(fbDb) fbDb.ref('sales/'+saleId).remove().catch(()=>{});
+      if(fbDb) getBranchRef('sales/'+saleId).remove().catch(()=>{});
       sales=sales.filter(x=>x.id!==saleId);
       safeStorage.setItem(SK_SALES,JSON.stringify(sales));
 
@@ -8066,7 +8094,7 @@ function bootInventario(){
 /* ── Firebase listeners for inventory ── */
 function startInvListeners(){
   if(!fbDb)return;
-  fbDb.ref('ingredients').on('value',snap=>{
+  getBranchRef('ingredients').on('value',snap=>{
     const d=snap.val();
     if(d){
       const vals=Object.values(d);
@@ -8079,13 +8107,13 @@ function startInvListeners(){
       renderInvStock();renderInvEntrySelects();renderInvRecipes();renderInvCostos();
     }
   });
-  fbDb.ref('recipes').on('value',snap=>{
+  getBranchRef('recipes').on('value',snap=>{
     const d=snap.val();
     if(d)recipes=d;
     safeStorage.setItem(SK_REC,JSON.stringify(recipes));
     if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
   });
-  fbDb.ref('general_recipe').on('value',snap=>{
+  getBranchRef('general_recipe').on('value',snap=>{
     const d=snap.val();
     generalRecipe=d?Object.values(d).filter(Boolean):[];
     safeStorage.setItem(SK_GEN_REC,JSON.stringify(generalRecipe));
@@ -8093,13 +8121,13 @@ function startInvListeners(){
       renderGeneralRecipeList();
     }
   });
-  fbDb.ref('inv_history').on('value',snap=>{
+  getBranchRef('inv_history').on('value',snap=>{
     const d=snap.val();
     invHistory=d?Object.values(d).sort((a,b)=>b.ts-a.ts):[];
     safeStorage.setItem(SK_INV_HIST,JSON.stringify(invHistory));
     if(document.getElementById('inv-tab-historial')?.classList.contains('active'))renderInvHistory();
   });
-  fbDb.ref('ing_categories').on('value',snap=>{
+  getBranchRef('ing_categories').on('value',snap=>{
     const d=snap.val();
     ingCategories=d?Object.values(d).filter(Boolean):[];
     safeStorage.setItem(SK_CATS,JSON.stringify(ingCategories));
@@ -8118,25 +8146,25 @@ function loadInvData(){
 function fbSaveIngredients(){
   if(!fbDb)return;
   const obj={};ingredients.forEach(i=>obj[i.id]=i);
-  fbDb.ref('ingredients').set(obj).catch(()=>{});
+  getBranchRef('ingredients').set(obj).catch(()=>{});
 }
 function fbSaveRecipes(){
-  if(!fbDb)return;fbDb.ref('recipes').set(recipes).catch(()=>{});
+  if(!fbDb)return;getBranchRef('recipes').set(recipes).catch(()=>{});
 }
 function fbSaveGeneralRecipe(){
   if(!fbDb)return;
-  fbDb.ref('general_recipe').set(generalRecipe).catch(()=>{});
+  getBranchRef('general_recipe').set(generalRecipe).catch(()=>{});
   safeStorage.setItem(SK_GEN_REC,JSON.stringify(generalRecipe));
 }
 function fbSaveCategories(){
   if(!fbDb)return;
-  fbDb.ref('ing_categories').set(ingCategories).catch(()=>{});
+  getBranchRef('ing_categories').set(ingCategories).catch(()=>{});
   safeStorage.setItem(SK_CATS,JSON.stringify(ingCategories));
 }
 function logInvHistory(type,desc,data={}){
   if(!fbDb)return;
   const now=new Date();
-  fbDb.ref('inv_history').push({
+  getBranchRef('inv_history').push({
     type,desc,data,
     user:safeStorage.getItem(SK_DISPLAY)||'?',
     date:toDateKey(now),
@@ -8430,8 +8458,8 @@ function resetInventarioCompleto(){
   ingredients=ingredients.map(ing=>({...ing,stock:0,totalCostPaid:0,totalQtyBought:0,costPerUnit:0}));
   if(fbDb){
     const obj={};ingredients.forEach(i=>obj[i.id]=i);
-    fbDb.ref('ingredients').set(obj).catch(()=>{});
-    fbDb.ref('inv_history').remove().catch(()=>{});
+    getBranchRef('ingredients').set(obj).catch(()=>{});
+    getBranchRef('inv_history').remove().catch(()=>{});
   }
   safeStorage.setItem(SK_ING,JSON.stringify(ingredients));
   safeStorage.removeItem(SK_INV_HIST);
@@ -9470,11 +9498,33 @@ function descontarInventario(items){
 /* ─── Init ─── */
 const savedSession=safeStorage.getItem(SK_SESSION);
 const savedRole=safeStorage.getItem(SK_ROLE);
+const savedUid=safeStorage.getItem(SK_UID);
+
+async function initSessionBranch(){
+  if(savedUid && fbDb){
+    try{
+      const snap=await fbDb.ref('users/'+savedUid).once('value');
+      const data=snap.val();
+      if(data && data.branchId){
+        currentBranch=data.branchId;
+        currentUid=savedUid;
+      } else {
+        currentBranch='default';
+        currentUid=savedUid;
+      }
+    } catch(e){
+      currentBranch='default';
+      currentUid=savedUid;
+    }
+  }
+}
+
 if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();
   initFirebase(FB_CONFIG);
-  setTimeout(()=>{
+  setTimeout(async ()=>{
+    await initSessionBranch();
     fbListening=false;
     startFbListeners();
     startMembersListener();
@@ -9490,7 +9540,8 @@ if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();loadInvData();
   initFirebase(FB_CONFIG);
-  setTimeout(()=>{
+  setTimeout(async ()=>{
+    await initSessionBranch();
     fbListening=false;
     bootInventario();
   },500);
@@ -9498,7 +9549,11 @@ if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();loadInvData();
   initFirebase(FB_CONFIG);
-  setTimeout(()=>{fbListening=false;bootEventos();},500);
+  setTimeout(async ()=>{
+    await initSessionBranch();
+    fbListening=false;
+    bootEventos();
+  },500);
 } else if(savedSession==='1' && savedRole==='user'){
   document.getElementById('login-screen').classList.add('hidden');
   bootApp();
