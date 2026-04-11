@@ -2224,7 +2224,7 @@ position:sticky;top:0;z-index:20;
 </div><!-- end #main-app -->
 
 <!-- ===== SUCURSAL MODAL ===== -->
-<div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)">
+<div id="sucursal-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeSucursalOutside(event)">
   <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="cash-title">🏪 Nueva Sucursal</div>
@@ -6973,7 +6973,6 @@ function setAdminRange(r){
 /* ══════════════════════════════════════════
    SUCURSALES — Admin
 ══════════════════════════════════════════ */
-console.log('Cargando modulo de sucursales...');
 let sucViewMode='all';
 let sucSelectedBranch='';
 
@@ -7001,18 +7000,12 @@ function loadSucursales(){
 }
 
 function initSucursalesUI(){
-  console.log('Inicializando UI de sucursales...');
   var btn = document.getElementById('btn-agregar-carro');
   if(btn){
-    console.log('Boton encontrado, adjuntando event listener...');
     btn.addEventListener('click', function(e){
-      console.log('Click en boton agregar carro');
       e.preventDefault();
       openAddSucursalForm();
     });
-    console.log('Event listener adjuntado');
-  } else {
-    console.error('ERROR: Boton btn-agregar-carro no encontrado');
   }
 }
 
@@ -7078,10 +7071,6 @@ function loadSucursalesList(){
 }
 
 function openAddSucursalForm(){
-  console.log('Abriendo modal sucursal...');
-  var modal = document.getElementById('sucursal-overlay');
-  console.log('Modal encontrado:', modal);
-  
   document.getElementById('suc-nombre').value='';
   document.getElementById('suc-id').value='';
   document.getElementById('suc-copy-from').value='';
@@ -7104,12 +7093,7 @@ function openAddSucursalForm(){
     });
   }
   
-  if(modal){
-    modal.classList.remove('hidden');
-    console.log('Modal visible');
-  } else {
-    console.error('ERROR: No se encontro el elemento sucrusal-overlay');
-  }
+  document.getElementById('sucursal-overlay').classList.remove('hidden');
 }
 
 function closeSucursalForm(){
