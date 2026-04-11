@@ -5922,7 +5922,8 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
-  setAdminTab('ventas');
+  const lastTab=safeStorage.getItem('dk_admin_tab')||'ventas';
+  setAdminTab(lastTab);
 }
 
 /* ─── Punto de Equilibrio Diario ─── */
@@ -7189,6 +7190,7 @@ function exportarGastos(){
 }
 
 function setAdminTab(tab){
+  safeStorage.setItem('dk_admin_tab', tab);
   // Match each button by its onclick attribute, not by index
   document.querySelectorAll('.admin-tab').forEach(b=>{
     const match=b.getAttribute('onclick')||'';
