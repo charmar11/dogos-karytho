@@ -5907,43 +5907,40 @@ function onAdminBranchChange(){
   const select=document.getElementById('admin-branch-select');
   if(!select)return;
   adminViewBranch=select.value;
-  
-  // Detach any active listeners (consolidated AND single-branch) before switching
+
+  // Detach all active listeners before switching
   if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
   if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
   if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
   window._sucVentasRef=null;window._sucGastosRef=null;
   window._gastosRef=null;window._gastosHandler=null;
 
+  // Show subtle loading state on KPIs — DON'T clear data yet to avoid flash of zeros
+  ['adm-r-ventas','adm-r-gastos','adm-r-neto'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.style.opacity='0.35';el.style.transition='opacity .15s';}
+  });
+
   if(adminViewBranch==='all'){
     currentBranch='carro1';
     fbListening=false;
-    sales=[];products=[];gastos=[];
+    // Attach new listeners — they will update sales/gastos and call renderAdmin() when data arrives
     if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
     if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[];products=[];gastos=[];
+    sales=[];gastos=[];
     if(typeof startFbListeners==='function') startFbListeners();
     if(typeof loadGastos==='function') loadGastos();
   }
-  
-  if(renderAdmin) renderAdmin();
-  
-  // Recargar usuarios si estamos en esa pestaña
+  // renderAdmin() is intentionally NOT called here —
+  // the Firebase listeners will call it once real data arrives, preventing the flash of zeros.
+
+  // Reload users tab if open
   const usuariosTab=document.getElementById('adm-tab-usuarios');
   if(usuariosTab&&usuariosTab.classList.contains('active')){
     loadUsersForAdmin();
-  }
-  
-  if(setAdminTab){
-    const activeTab=document.querySelector('.admin-tab.active');
-    if(activeTab){
-      const match=activeTab.getAttribute('onclick')||'';
-      const tab=match.match(/setAdminTab\('([^']+)'\)/);
-      if(tab) setAdminTab(tab[1]);
-    }
   }
 }
 
@@ -6057,6 +6054,10 @@ function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen){
   setEl('adm-r-neto-pct',(neto>=0?'+':'')+pctGanancia+'% margen');
   const netoCard=document.getElementById('adm-r-neto-card');
   if(netoCard)netoCard.classList.toggle('negative',neto<0);
+  // Restore opacity (was dimmed during branch switch loading)
+  ['adm-r-ventas','adm-r-gastos','adm-r-neto'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.opacity='';
+  });
 
   const metaWrap=document.getElementById('adm-r-meta-wrap');
   if(dailyGoal&&dailyGoal>0&&metaWrap){
@@ -6591,7 +6592,6 @@ function loadVentasConsolidadas(){
 
 function loadGastosConsolidados(){
   if(!fbDb)return;
-  gastos=[];
   if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
   window._sucGastosHandler=function(snap){
     var data=snap.val()||{};
