@@ -1584,55 +1584,9 @@ position:sticky;top:0;z-index:20;
   animation:fadeIn .25s ease;
 }
 .admin-tab-view.active{display:block}
-
-/* ── BRANCH PILLS ── */
-.branch-pills-wrap{
-  padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);
-  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
-}
-.branch-pills-wrap::-webkit-scrollbar{display:none}
-.branch-pill{
-  flex:1;min-width:110px;min-height:44px;padding:10px 14px;
-  background:linear-gradient(135deg,var(--bg3),#1e1e1e);
-  border:1.5px solid var(--border2);border-radius:22px;
-  text-align:center;font-size:13px;font-weight:700;color:var(--text2);
-  cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);
-  white-space:nowrap;user-select:none;display:flex;align-items:center;
-  justify-content:center;gap:6px;position:relative;overflow:hidden;
-}
-.branch-pill::before{
-  content:'';position:absolute;inset:0;
-  background:radial-gradient(circle at 50% 0%,rgba(245,200,0,.06) 0%,transparent 70%);
-  opacity:0;transition:opacity .2s;pointer-events:none;
-}
-.branch-pill:hover{
-  border-color:rgba(245,200,0,.4);transform:translateY(-2px);
-  box-shadow:0 4px 16px rgba(245,200,0,.08);
-}
-.branch-pill:hover::before{opacity:1}
-.branch-pill:active{transform:scale(.95)}
-.branch-pill.active{
-  background:linear-gradient(135deg,var(--gold),#ddb000);
-  border-color:var(--gold);color:#111;font-weight:800;
-  box-shadow:0 4px 18px rgba(245,200,0,.25);
-}
-.branch-pill.active::before{opacity:0}
-.branch-pill-emoji{font-size:16px;line-height:1}
-
-/* ── RESUMEN KPI HERO ── */
-.resumen-kpi-hero{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
-  margin-bottom:14px;
-}
-.resumen-kpi{
-  background:linear-gradient(135deg,#1c1c1c,#191919);
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:16px 14px;position:relative;overflow:hidden;
-  animation:popIn .35s ease both;
-}
-.resumen-kpi::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-}
+.resumen-kpi-hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+.resumen-kpi{background:linear-gradient(135deg,#1c1c1c,#191919);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 14px;position:relative;overflow:hidden;animation:popIn .35s ease both;}
+.resumen-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
 .resumen-kpi.kpi-ventas::before{background:linear-gradient(90deg,transparent,#2ab8b8,transparent)}
 .resumen-kpi.kpi-gastos::before{background:linear-gradient(90deg,transparent,var(--red),transparent)}
 .resumen-kpi.kpi-neto::before{background:linear-gradient(90deg,transparent,#6fcf6f,transparent)}
@@ -1644,59 +1598,25 @@ position:sticky;top:0;z-index:20;
 .resumen-kpi.kpi-gastos .resumen-kpi-val{color:#f57474;text-shadow:0 0 14px rgba(224,32,32,.2)}
 .resumen-kpi.kpi-neto .resumen-kpi-val{color:#6fcf6f;text-shadow:0 0 14px rgba(45,138,45,.25)}
 .resumen-kpi.kpi-neto.negative .resumen-kpi-val{color:#f57474}
-@media(max-width:420px){
-  .resumen-kpi-hero{grid-template-columns:1fr}
-  .resumen-kpi{display:flex;align-items:center;gap:12px;padding:12px 14px}
-  .resumen-kpi-icon{margin-bottom:0;font-size:24px}
-  .resumen-kpi-val{font-size:20px}
-}
-
-/* ── META VS HOY BADGE ── */
-.resumen-meta-bar{
-  background:linear-gradient(135deg,#1c1c1c,#191919);
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:14px 16px;margin-bottom:14px;
-}
+@media(max-width:420px){.resumen-kpi-hero{grid-template-columns:1fr}.resumen-kpi{display:flex;align-items:center;gap:12px;padding:12px 14px}.resumen-kpi-icon{margin-bottom:0;font-size:24px}.resumen-kpi-val{font-size:20px}}
+.resumen-meta-bar{background:linear-gradient(135deg,#1c1c1c,#191919);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:14px;}
 .resumen-meta-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .resumen-meta-lbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
 .resumen-meta-pct{font-size:13px;font-weight:800;color:var(--gold)}
 .resumen-meta-track{background:var(--bg3);border-radius:6px;height:10px;overflow:hidden}
-.resumen-meta-fill{
-  height:100%;border-radius:6px;
-  background:linear-gradient(90deg,var(--red),#f5a623,var(--gold));
-  background-size:200% 100%;transition:width .6s cubic-bezier(.34,1.56,.64,1);
-}
-.resumen-meta-fill.complete{
-  background:linear-gradient(90deg,#2ab8b8,#2d8a2d,var(--gold));
-  animation:goalBarShimmer 1.8s linear infinite;
-}
+.resumen-meta-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--red),#f5a623,var(--gold));background-size:200% 100%;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.resumen-meta-fill.complete{background:linear-gradient(90deg,#2ab8b8,#2d8a2d,var(--gold));animation:goalBarShimmer 1.8s linear infinite;}
 .resumen-meta-amounts{display:flex;justify-content:space-between;margin-top:4px}
 .resumen-meta-cur{font-size:12px;font-weight:800;color:#2ab8b8}
 .resumen-meta-goal{font-size:10px;color:var(--text3)}
-
-/* ── BALANCE CHART CARD ── */
-.resumen-balance-card{
-  background:linear-gradient(135deg,#1c1c1c,#191919);
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:16px 14px 12px;margin-bottom:14px;
-}
+.resumen-balance-card{background:linear-gradient(135deg,#1c1c1c,#191919);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px 14px 12px;margin-bottom:14px;}
 .resumen-balance-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px}
 .resumen-balance-sub{font-size:11px;color:var(--text4);margin-bottom:12px}
 .resumen-balance-wrap{position:relative;height:200px}
-
-/* ── BRANCH COMPARISON ── */
 .branch-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 @media(max-width:380px){.branch-compare-grid{grid-template-columns:1fr}}
-.branch-compare-card{
-  background:linear-gradient(135deg,#1c1c1c,#191919);
-  border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:14px;position:relative;overflow:hidden;
-  animation:fadeSlide .25s ease both;
-}
-.branch-compare-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(42,184,184,.4),transparent);
-}
+.branch-compare-card{background:linear-gradient(135deg,#1c1c1c,#191919);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;position:relative;overflow:hidden;animation:fadeSlide .25s ease both;}
+.branch-compare-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(42,184,184,.4),transparent);}
 .branch-compare-medal{font-size:22px;margin-bottom:4px}
 .branch-compare-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px}
 .branch-compare-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
@@ -2584,14 +2504,14 @@ position:sticky;top:0;z-index:20;
     <button class="btn-admin-logout" onclick="adminLogout()">Salir</button>
   </div>
 
-  <!-- Selector de sucursal estilo pills -->
-  <div class="branch-pills-wrap" id="branch-pills-wrap">
-    <div class="branch-pill active" id="branch-pill-all" onclick="selectBranchPill('all')"><span class="branch-pill-emoji">📊</span> Todas</div>
-    <div class="branch-pill" id="branch-pill-carro1" onclick="selectBranchPill('carro1')"><span class="branch-pill-emoji">🏪</span> Carro 1</div>
-    <div class="branch-pill" id="branch-pill-carro2" onclick="selectBranchPill('carro2')" style="display:none"><span class="branch-pill-emoji">🚗</span> Carro 2</div>
-    <select id="admin-branch-select" onchange="onAdminBranchChange()" style="display:none">
-      <option value="">Cargando...</option>
-    </select>
+  <!-- Selector de sucursal para el admin (Moderno) -->
+  <div style="padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">
+    <div style="position:relative;width:100%">
+      <select id="admin-branch-select" onchange="onAdminBranchChange()" style="width:100%;appearance:none;-webkit-appearance:none;background:linear-gradient(135deg,#232323,#1e1e1e);border:1.5px solid var(--gold);border-radius:12px;padding:12px 16px;color:var(--gold);font-size:15px;font-weight:800;outline:none;cursor:pointer;box-shadow:0 4px 12px rgba(245,200,0,0.1)">
+        <option value="">Cargando sucursales...</option>
+      </select>
+      <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:14px;color:var(--gold)">▼</div>
+    </div>
   </div>
 
   <!-- Admin tabs — 4 tabs now -->
@@ -2607,7 +2527,6 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: RESUMEN ── -->
   <div class="admin-tab-view active" id="adm-tab-resumen">
-
     <!-- ── KPIs Hoy: Ventas / Gastos / Neto ── -->
     <div class="resumen-kpi-hero">
       <div class="resumen-kpi kpi-ventas">
@@ -2629,7 +2548,6 @@ position:sticky;top:0;z-index:20;
         <div class="resumen-kpi-sub" id="adm-r-neto-pct">— margen</div>
       </div>
     </div>
-
     <!-- ── Barra vs Meta diaria ── -->
     <div class="resumen-meta-bar" id="adm-r-meta-wrap" style="display:none">
       <div class="resumen-meta-header">
@@ -2642,26 +2560,6 @@ position:sticky;top:0;z-index:20;
         <span class="resumen-meta-goal" id="adm-r-meta-goal">meta: —</span>
       </div>
     </div>
-
-    <!-- ── Gráfico 7 días: Ventas vs Gastos ── -->
-    <div class="resumen-balance-card">
-      <div class="resumen-balance-title">📊 Balance últimos 7 días</div>
-      <div class="resumen-balance-sub">Ventas vs Gastos vs Neto por día</div>
-      <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#2ab8b8"></div><span style="font-size:11px;color:var(--text2)">Ventas</span></div>
-        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#e05050"></div><span style="font-size:11px;color:var(--text2)">Gastos</span></div>
-        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#6fcf6f"></div><span style="font-size:11px;color:var(--text2)">Neto</span></div>
-      </div>
-      <div class="resumen-balance-wrap"><canvas id="adm-balance-7d-chart"></canvas></div>
-    </div>
-
-    <!-- ── Comparativa entre sucursales ── -->
-    <div id="adm-branch-compare-section" style="display:none">
-      <div class="sec-label">🏆 Comparativa de sucursales · hoy</div>
-      <div class="branch-compare-grid" id="adm-branch-compare-grid"></div>
-    </div>
-
-    <!-- ── Stats históricos ── -->
     <div class="admin-stat-grid">
       <div class="admin-stat"><div class="admin-stat-lbl">Total ventas</div><div class="admin-stat-val" id="adm-total-count">0</div><div class="admin-stat-sub">registradas</div></div>
       <div class="admin-stat"><div class="admin-stat-lbl">Ingresos totales</div><div class="admin-stat-val" id="adm-total-money">$0</div><div class="admin-stat-sub">historico</div></div>
@@ -2847,47 +2745,6 @@ position:sticky;top:0;z-index:20;
         ➕ Agregar usuario con cuenta
       </button>
     </div>
-    
-    <!-- New user modal inside tab -->
-    <div id="newuser-overlay" class="cash-overlay hidden" style="z-index:99999;position:fixed;inset:0">
-      <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh;position:relative;z-index:100000">
-        <div class="modal-close" onclick="closeNewUserForm()" style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:20px;color:var(--text4)">&times;</div>
-        <div class="modal-handle"></div>
-        <div class="cash-title">🔑 Nuevo Usuario</div>
-        <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
-        
-        <div style="margin-bottom:16px">
-          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
-          <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
-            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-        </div>
-        
-        <div style="margin-bottom:16px">
-          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
-          <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
-            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-        </div>
-        
-        <div style="margin-bottom:16px">
-          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
-          <select id="newuser-role" onchange="newUserRole=this.value"
-            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
-            <option value="user">👤 Empleado</option>
-            <option value="admin">🔑 Admin</option>
-            <option value="eventos">🎪 Eventos</option>
-          </select>
-        </div>
-        
-        <div style="display:flex;gap:10px;margin-top:24px">
-          <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-            Cancelar
-          </button>
-          <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-            🔐 Crear usuario
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -3064,6 +2921,24 @@ position:sticky;top:0;z-index:20;
       </select>
     </div>
     
+    <!-- Visualizaciones Consolidadas -->
+    <div id="suc-consolidated-visuals" style="display:none;margin-bottom:16px;">
+      <!-- ── Gráfico 7 días: Ventas vs Gastos ── -->
+      <div class="resumen-balance-card">
+        <div class="resumen-balance-title">📊 Balance últimos 7 días</div>
+        <div class="resumen-balance-sub">Ventas vs Gastos por día</div>
+        <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#2ab8b8"></div><span style="font-size:11px;color:var(--text2)">Ventas</span></div>
+          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#e05050"></div><span style="font-size:11px;color:var(--text2)">Gastos</span></div>
+        </div>
+        <div class="resumen-balance-wrap"><canvas id="adm-balance-7d-chart"></canvas></div>
+      </div>
+      <!-- ── Comparativa entre sucursales ── -->
+      <div id="adm-branch-compare-section">
+        <div class="sec-label">🏆 Comparativa de sucursales · hoy</div>
+        <div class="branch-compare-grid" id="adm-branch-compare-grid"></div>
+      </div>
+    </div>
     <!-- Lista de sucursales -->
     <div id="suc-list">
       <div style="text-align:center;padding:40px 20px;color:var(--text4)">
@@ -3580,35 +3455,6 @@ function deletePickerMember(name,idx){
 let fbAuthDb=null;
 function loginWithFirebase(user,pass,cb){
   const auth=firebase.auth();
-  const userLower=user.toLowerCase().trim();
-  
-  // Si el usuario parece email, intentar login directo con Firebase Auth
-  if(userLower.includes('@')){
-    auth.signInWithEmailAndPassword(user,pass)
-      .then(cred=>{
-        const uid=cred.user.uid;
-        return fbDb.ref('users/'+uid).once('value').then(snap=>({uid,snap}));
-      })
-      .then(({uid,snap})=>{
-        const data=snap.val();
-        if(!data || !data.role){
-          auth.signOut();
-          cb(null,'Usuario no configurado. Contacta al encargado.');
-          return;
-        }
-        currentUid=uid;
-        safeStorage.setItem(SK_UID,uid);
-        currentBranch=data.branchId||'carro1';
-        safeStorage.setItem(SK_SESSION,'1');
-        safeStorage.setItem(SK_ROLE,data.role);
-        safeStorage.setItem(SK_DISPLAY,data.name||user);
-        cb(data,null);
-      })
-      .catch(()=>{
-        cb(null,'Usuario o contraseña incorrectos');
-      });
-    return;
-  }
   
   // CIDOP va al picker (sin cuenta)
   if(user.toUpperCase()==='CIDOP'){
@@ -3660,15 +3506,11 @@ function loginWithFirebase(user,pass,cb){
     return;
   }
   
-  // Otros usuarios: buscar por nombre o email en la base de datos
-  var userLower2=user.toLowerCase();
-  fbDb.ref('users').once('value').then(snap=>{
-    const data=snap.val()||{};
+  // Otros usuarios: buscar por nombre en la base de datos
+  fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
     const users=[];
-    Object.entries(data).forEach(([uid,val])=>{
-      if(val && (val.name&&val.name.toLowerCase()===userLower2 || val.email&&val.email.toLowerCase()===userLower2)){
-        users.push({uid:uid,...val});
-      }
+    snap.forEach(child=>{
+      users.push({uid:child.key,...child.val()});
     });
     
     if(users.length===0){
@@ -3920,19 +3762,21 @@ function openFbSetup(){showToast('Sincronizacion ya configurada','green');}
 
 /* ─── Inicializar Firebase UNA sola vez al cargar la pagina ─── */
 let fbAuthReady=false;
-(async function(){
+(function(){
   try{
     if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
     fbDb=firebase.database();
-    // Establecer persistencia LOCAL inmediatamente
-    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    
-    fbAuthReady=true;
-    // Firebase Auth restaurara cualquier sesion previa automaticamente
-    // (el admin ya inicio sesion antes del reload)
-  }catch(e){
-    fbAuthReady=true;
-  }
+    // Autenticacion anonima silenciosa — requerida por reglas de seguridad
+    firebase.auth().signInAnonymously()
+      .then(()=>{fbAuthReady=true;})
+      .catch(()=>{fbAuthReady=true;});
+    // Mantener sesion activa — re-autenticar si expira
+    firebase.auth().onAuthStateChanged(user=>{
+      if(!user&&fbDb){
+        firebase.auth().signInAnonymously().catch(()=>{});
+      }
+    });
+  }catch(e){fbAuthReady=true;}
 })();
 
 /* ─── Delegacion de eventos para elementos dinamicos ─── */
@@ -6032,9 +5876,9 @@ function loadAdminBranchSelector(){
   
   function doLoad(){
     if(!fbDb){
+      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
       select.value='all';
       adminViewBranch='all';
-      selectBranchPill('all');
       return;
     }
     
@@ -6042,62 +5886,35 @@ function loadAdminBranchSelector(){
       var data=snap.val()||{};
       var keys=Object.keys(data).filter(function(k){return k&&k!=='default';});
       
-      // Update select for compatibility
-      var html='<option value="all">Todas</option>';
+      var html='<option value="all">📊 Todas (consolidado)</option>';
       keys.forEach(function(k){
         var s=data[k];
         var name=(s&&s.name)?s.name:k;
-        html+='<option value="'+k+'">'+name+'</option>';
+        html+='<option value="'+k+'">🏪 '+name+'</option>';
       });
+      
       select.innerHTML=html;
       
-      // Show/hide branch pills based on available branches
-      var pillAll=document.getElementById('branch-pill-all');
-      var pillCarro1=document.getElementById('branch-pill-carro1');
-      var pillCarro2=document.getElementById('branch-pill-carro2');
-      
-      if(keys.length>=2){
-        if(pillCarro2) pillCarro2.style.display='flex';
+      if(currentBranch&&currentBranch!=='default'){
+        select.value=currentBranch;
+        adminViewBranch=currentBranch;
+      } else {
+        select.value='all';
+        adminViewBranch='all';
       }
-      
-      // Determine which branch to select
-      var lastBranch=safeStorage.getItem('dk_admin_branch');
-      var branchToSelect=lastBranch||'all';
-      if(!keys.includes(branchToSelect)&&branchToSelect!=='all'){
-        branchToSelect='all';
-      }
-      
-      select.value=branchToSelect;
-      adminViewBranch=branchToSelect;
-      selectBranchPill(branchToSelect);
-      
     }).catch(function(err){
       console.error('Error cargando selector:',err);
+      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
       select.value='all';
       adminViewBranch='all';
-      selectBranchPill('all');
     });
   }
   
   if(fbDb){
     doLoad();
   } else {
-    select.value='';
+    select.innerHTML='<option value="">Conectando...</option>';
     setTimeout(function(){doLoad();},1000);
-  }
-}
-
-function selectBranchPill(branchId){
-  // Update visual pills using CSS class
-  document.querySelectorAll('.branch-pill').forEach(el=>{
-    const isActive=el.id==='branch-pill-'+branchId;
-    el.classList.toggle('active',isActive);
-  });
-  // Trigger branch change
-  const select=document.getElementById('admin-branch-select');
-  if(select){
-    select.value=branchId;
-    onAdminBranchChange();
   }
 }
 
@@ -6105,29 +5922,41 @@ function onAdminBranchChange(){
   const select=document.getElementById('admin-branch-select');
   if(!select)return;
   adminViewBranch=select.value;
-  // Guardar última sucursal seleccionada
-  safeStorage.setItem('dk_admin_branch', adminViewBranch);
-  // Update visual pills
-  selectBranchPill(adminViewBranch);
-  
-  // Desconectar listener anterior ANTES de cambiar currentBranch
-  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/gastos').off();
-  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/sales').off();
-  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/products').off();
   
   if(adminViewBranch==='all'){
+    // Cargar gastos de todas las sucursales
     currentBranch='carro1';
     fbListening=false;
-    sales=[];products=[];gastos=[];
+    sales=[];
+    products=[];
+    gastos=[];
     loadGastosConsolidados();
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[];products=[];gastos=[];
+    sales=[];
+    products=[];
+    gastos=[];
     if(startFbListeners) startFbListeners();
     if(loadGastos) loadGastos();
   }
+  
   if(renderAdmin) renderAdmin();
+  
+  // Recargar usuarios si estamos en esa pestaña
+  const usuariosTab=document.getElementById('adm-tab-usuarios');
+  if(usuariosTab&&usuariosTab.classList.contains('active')){
+    loadUsersForAdmin();
+  }
+  
+  if(setAdminTab){
+    const activeTab=document.querySelector('.admin-tab.active');
+    if(activeTab){
+      const match=activeTab.getAttribute('onclick')||'';
+      const tab=match.match(/setAdminTab\('([^']+)'\)/);
+      if(tab) setAdminTab(tab[1]);
+    }
+  }
 }
 
 function bootAdmin(){
@@ -6143,33 +5972,13 @@ function bootAdmin(){
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
     }
-    // Always start at Resumen with "all" branches on first login, restore last choice on reload
-    const lastBranch=safeStorage.getItem('dk_admin_branch');
-    const isFirstLogin=!safeStorage.getItem('dk_admin_visited');
-    if(isFirstLogin){
-      adminViewBranch='all';
-      safeStorage.setItem('dk_admin_branch','all');
-    } else if(lastBranch){
-      adminViewBranch=lastBranch;
-    }
-    // Apply pill active state for restored branch
-    document.querySelectorAll('.branch-pill').forEach(el=>{
-      el.classList.toggle('active',el.id==='branch-pill-'+adminViewBranch);
-    });
-    // Restore last tab or default to 'resumen'
-    const lastTab=safeStorage.getItem('dk_admin_tab')||'resumen';
-    setAdminTab(lastTab);
-    // Mark that we've visited admin
-    safeStorage.setItem('dk_admin_visited','1');
     startFbListeners();
     startMembersListener();
     startActivityListener();
     startCortesListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
-    if(adminViewBranch && adminViewBranch!=='all'){
-      loadGastos();
-    }
+    loadGastos();
   },800);
 }
 
@@ -6213,6 +6022,7 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
+  if(typeof renderResumenKPIs==='function') renderResumenKPIs();
   const lastTab=safeStorage.getItem('dk_admin_tab')||'resumen';
   setAdminTab(lastTab);
 }
@@ -6222,30 +6032,44 @@ let admBalanceChart7d=null;
 
 function renderResumenKPIs(){
   const today=todayISO();
-  // Ventas de hoy
-  const salesHoy=sales.filter(s=>s.date===today);
-  const totalVentas=salesHoy.reduce((s,v)=>s+v.total,0);
-  const cnt=salesHoy.length;
+  if(adminViewBranch==='all' && fbDb){
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
+      let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
+      keys.forEach(k=>{
+        const s=data[k];
+        const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+        const sGasObj=s&&s.gastos?s.gastos:{};
+        Object.values(sSalesObj).forEach(v=>{if(v&&v.date===today){tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0); tTickets++;}});
+        Object.values(sGasObj).forEach(g=>{if(g&&g.fecha===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
+      });
+      _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs);
+    });
+  } else {
+    const salesHoy=sales.filter(s=>s.date===today);
+    const tVentas=salesHoy.reduce((s,v)=>s+v.total,0);
+    const tTickets=salesHoy.length;
+    const gastosHoy=gastos.filter(g=>g.fecha===today);
+    const tGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length);
+  }
+}
+
+function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen){
   const avgTicket=cnt?totalVentas/cnt:0;
-  // Gastos de hoy
-  const gastosHoy=gastos.filter(g=>g.fecha===today);
-  const totalGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
-  // Neto
   const neto=totalVentas-totalGastos;
   const pctGanancia=totalVentas>0?Math.round((neto/totalVentas)*100):0;
-
-  // Update DOM
   const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
   setEl('adm-r-ventas','$'+totalVentas.toFixed(0));
   setEl('adm-r-ventas-cnt',cnt+' ticket'+(cnt===1?'':'s')+' · ~$'+avgTicket.toFixed(0)+'/c/u');
   setEl('adm-r-gastos','$'+totalGastos.toFixed(0));
-  setEl('adm-r-gastos-cnt',gastosHoy.length+' registro'+(gastosHoy.length===1?'':'s'));
+  setEl('adm-r-gastos-cnt',gasLen+' registro'+(gasLen===1?'':'s'));
   setEl('adm-r-neto','$'+neto.toFixed(0));
   setEl('adm-r-neto-pct',(neto>=0?'+':'')+pctGanancia+'% margen');
   const netoCard=document.getElementById('adm-r-neto-card');
   if(netoCard)netoCard.classList.toggle('negative',neto<0);
 
-  // Barra vs meta
   const metaWrap=document.getElementById('adm-r-meta-wrap');
   if(dailyGoal&&dailyGoal>0&&metaWrap){
     metaWrap.style.display='';
@@ -6262,85 +6086,86 @@ function renderResumenKPIs(){
 
 function renderBalanceChart7d(){
   const canvas=document.getElementById('adm-balance-7d-chart');
-  if(!canvas)return;
-  // Build last 7 days
-  const days=[];
-  for(let i=6;i>=0;i--){
-    const d=new Date();d.setDate(d.getDate()-i);
-    days.push(d.toISOString().slice(0,10));
-  }
-  const labels=days.map(d=>{
-    const dt=new Date(d+'T12:00:00');
-    return dt.toLocaleDateString('es-MX',{weekday:'short',day:'numeric'});
-  });
-  const ventasPorDia=days.map(d=>sales.filter(s=>s.date===d).reduce((s,v)=>s+v.total,0));
-  const gastosPorDia=days.map(d=>gastos.filter(g=>g.fecha===d).reduce((s,g)=>s+(parseFloat(g.monto)||0),0));
-  const netoPorDia=days.map((d,i)=>ventasPorDia[i]-gastosPorDia[i]);
-
-  if(admBalanceChart7d)admBalanceChart7d.destroy();
-  const ctx=canvas.getContext('2d');
-  admBalanceChart7d=new Chart(ctx,{
-    type:'bar',
-    data:{
-      labels,
-      datasets:[
-        {label:'Ventas',data:ventasPorDia,backgroundColor:'rgba(42,184,184,.75)',borderColor:'#2ab8b8',borderWidth:1.5,borderRadius:5},
-        {label:'Gastos',data:gastosPorDia,backgroundColor:'rgba(224,80,80,.65)',borderColor:'#e05050',borderWidth:1.5,borderRadius:5},
-        {label:'Neto',data:netoPorDia,backgroundColor:netoPorDia.map(v=>v>=0?'rgba(111,207,111,.6)':'rgba(224,80,80,.4)'),borderColor:netoPorDia.map(v=>v>=0?'#6fcf6f':'#e05050'),borderWidth:1.5,borderRadius:5}
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.parsed.y.toFixed(0)}}},
-      scales:{
-        x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true}
-      }
+  const vis=document.getElementById('suc-consolidated-visuals');
+  if(!canvas||!vis)return;
+  if(typeof sucViewMode === 'undefined' || sucViewMode!=='all'){vis.style.display='none';return;}
+  vis.style.display='';
+  if(!fbDb)return;
+  fbDb.ref('sucursales').once('value').then(snap=>{
+    const data=snap.val()||{};
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
+    const days=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      days.push(d.toISOString().slice(0,10));
     }
-  });
+    const labels=days.map(d=>new Date(d+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric'}));
+    const ventasPorDia=days.map(()=>0);
+    const gastosPorDia=days.map(()=>0);
+    keys.forEach(bid=>{
+      const s=data[bid];
+      const salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+      const gasObj=s&&s.gastos?s.gastos:{};
+      days.forEach((d,i)=>{
+        Object.values(salesObj).forEach(v=>{if(v&&v.date===d) ventasPorDia[i]+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);});
+        Object.values(gasObj).forEach(g=>{if(g&&g.fecha===d) gastosPorDia[i]+=(parseFloat(g.monto)||0);});
+      });
+    });
+    if(admBalanceChart7d)admBalanceChart7d.destroy();
+    const ctx=canvas.getContext('2d');
+    admBalanceChart7d=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {label:'Ventas',data:ventasPorDia,backgroundColor:'rgba(42,184,184,.75)',borderColor:'#2ab8b8',borderWidth:1.5,borderRadius:5},
+          {label:'Gastos',data:gastosPorDia,backgroundColor:'rgba(224,80,80,.65)',borderColor:'#e05050',borderWidth:1.5,borderRadius:5}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.parsed.y.toFixed(0)}}},
+        scales:{
+          x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+          y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true}
+        }
+      }
+    });
+  }).catch(e=>{console.log('Error chart',e);});
 }
 
 function renderBranchComparison(){
-  const section=document.getElementById('adm-branch-compare-section');
   const grid=document.getElementById('adm-branch-compare-grid');
-  if(!section||!grid)return;
-  // Only show when viewing "all" branches
-  if(adminViewBranch!=='all'){section.style.display='none';return;}
-  if(!fbDb){section.style.display='none';return;}
+  if(!grid)return;
+  if(typeof sucViewMode === 'undefined' || sucViewMode!=='all'){return;}
+  if(!fbDb){return;}
   const today=todayISO();
   const medals=['🥇','🥈','🥉'];
-  // Get list of branch IDs from selector
-  const select=document.getElementById('admin-branch-select');
-  if(!select)return;
-  const branchIds=Array.from(select.options).map(o=>o.value).filter(v=>v&&v!=='all');
-  if(branchIds.length<2){section.style.display='none';return;}
-  section.style.display='';
-
-  // Fetch today's sales per branch
-  const promises=branchIds.map(bid=>
-    fbDb.ref('sucursales/'+bid+'/sales').orderByChild('date').equalTo(today)
-      .once('value').then(snap=>{
-        const data=snap.val()||{};
-        const arr=Object.values(data);
-        const total=arr.reduce((s,v)=>s+(v.total||0),0);
-        const cnt=arr.length;
-        return {bid,total,cnt,avg:cnt?total/cnt:0};
-      }).catch(()=>({bid,total:0,cnt:0,avg:0}))
-  );
-
-  Promise.all(promises).then(results=>{
+  fbDb.ref('sucursales').once('value').then(snap=>{
+    const data=snap.val()||{};
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
+    if(keys.length<2){grid.innerHTML='';return;}
+    let results=[];
+    keys.forEach(bid=>{
+      const s=data[bid];
+      const salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+      const arr=Object.values(salesObj).filter(v=>v&&v.date===today);
+      const total=arr.reduce((sum,v)=>sum+((typeof v.total==='number')?v.total:(parseFloat(v.total)||0)),0);
+      const cnt=arr.length;
+      results.push({bid,name:s.name||bid,total,cnt,avg:cnt?total/cnt:0});
+    });
     results.sort((a,b)=>b.total-a.total);
-    const branchLabels={'carro1':'🏪 Carro 1','carro2':'🚗 Carro 2'};
     grid.innerHTML=results.map((r,i)=>`
       <div class="branch-compare-card">
         <div class="branch-compare-medal">${medals[i]||'🏅'}</div>
-        <div class="branch-compare-name">${branchLabels[r.bid]||r.bid}</div>
+        <div class="branch-compare-name">${r.name}</div>
         <div class="branch-compare-row"><span class="branch-compare-lbl">Ventas hoy</span><span class="branch-compare-val" style="color:#2ab8b8">$${r.total.toFixed(0)}</span></div>
         <div class="branch-compare-row"><span class="branch-compare-lbl">Tickets</span><span class="branch-compare-val">${r.cnt}</span></div>
         <div class="branch-compare-row"><span class="branch-compare-lbl">Ticket prom.</span><span class="branch-compare-val" style="color:var(--gold)">$${r.avg.toFixed(0)}</span></div>
       </div>`).join('');
   });
 }
+
 /* ─── Punto de Equilibrio Diario ─── */
 let peSelectedProductId=''; // '' = use historical average
 
@@ -6720,7 +6545,6 @@ function loadGastos(){
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
 
   // Realtime listener — Firebase is authoritative after first sync
-  getBranchRef('gastos').off();
   getBranchRef('gastos').on('value',snap=>{
     const d=snap.val();
     if(d&&Object.keys(d).length>0){
@@ -6728,7 +6552,19 @@ function loadGastos(){
       gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
       safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
     } else {
-      // Firebase empty for this branch — gastos are only in Firebase, never push from local
+      // Firebase empty → push any local gastos up (covers fresh-write race condition)
+      const cached=JSON.parse(safeStorage.getItem(SK_GASTOS)||'[]');
+      if(cached.length>0){
+        cached.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
+        // Keep in-memory gastos as-is; next snapshot will confirm
+        return;
+      }
+      // Also push any gastos that are in memory but not yet in Firebase (race condition fix)
+      if(gastos&&gastos.length>0){
+        gastos.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
+        return;
+      }
+      // Truly empty — clear local too
       gastos=[];
       safeStorage.setItem(SK_GASTOS,'[]');
     }
@@ -6772,15 +6608,7 @@ function loadGastosConsolidados(){
       }
       loaded++;
       if(loaded===keys.length){
-        var seen={};
-        var unique=[];
-        allGastos.forEach(function(g){
-          if(g&&g.id&&!seen[g.id]){
-            seen[g.id]=true;
-            unique.push(g);
-          }
-        });
-        gastos=unique.sort(function(a,b){return b.timestamp-a.timestamp;});
+        gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
         safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
         var admTab=document.getElementById('adm-tab-gastos');
         if(admTab&&admTab.classList.contains('active')) renderGastos();
@@ -7709,11 +7537,11 @@ function setAdminTab(tab){
   if(tab==='sucursales'){
     loadSucursales();
     loadSucursalesList();
+    if(typeof renderBalanceChart7d==='function') renderBalanceChart7d();
+    if(typeof renderBranchComparison==='function') renderBranchComparison();
   }
   if(tab==='resumen'){
-    renderResumenKPIs();
-    renderBalanceChart7d();
-    renderBranchComparison();
+    if(typeof renderResumenKPIs==='function') renderResumenKPIs();
   }
 }
 
@@ -7797,12 +7625,16 @@ function setSucView(mode){
     if(select)select.value=sucSelectedBranch;
   }
   loadSucursalesList();
+  if(typeof renderBalanceChart7d==='function') renderBalanceChart7d();
+  if(typeof renderBranchComparison==='function') renderBranchComparison();
 }
 
 function onSucBranchChange(){
   const sel=document.getElementById('suc-branch-select');
   if(sel)sucSelectedBranch=sel.value;
   loadSucursalesList();
+  if(typeof renderBalanceChart7d==='function') renderBalanceChart7d();
+  if(typeof renderBranchComparison==='function') renderBranchComparison();
 }
 
 function isValidObject(val){
@@ -10800,54 +10632,36 @@ function addPickerMember(){
 
 // New user functions
 function openNewUserForm(){
-  const nameEl=document.getElementById('newuser-name');
-  if(!nameEl){
-    console.log('Modal newuser-no encontrado');
-    return;
-  }
-  nameEl.value='';
-  const emailEl=document.getElementById('newuser-email');
-  if(emailEl) emailEl.value='';
-  const passEl=document.getElementById('newuser-password');
-  if(passEl) passEl.value='';
-  const roleEl=document.getElementById('newuser-role');
-  if(roleEl) roleEl.value='user';
+  document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
+  document.getElementById('newuser-password').value='';
+  document.getElementById('newuser-role').value='user';
   newUserRole='user';
-  const overlay=document.getElementById('newuser-overlay');
-  if(overlay) overlay.classList.remove('hidden');
+  document.getElementById('newuser-overlay').classList.remove('hidden');
 }
 
 function closeNewUserForm(){
-  const overlay=document.getElementById('newuser-overlay');
-  if(overlay) overlay.classList.add('hidden');
+  document.getElementById('newuser-overlay').classList.add('hidden');
 }
 
 function closeNewUserOutside(e){
-  // Solo cerrar al hacer click en la X del modal, nunca al hacer click fuera
-  if(e.target.classList.contains('modal-close'))closeNewUserForm();
+  if(e.target.id==='newuser-overlay')closeNewUserForm();
 }
 
 function createNewUser(){
-  const nameEl=document.getElementById('newuser-name');
-  const name=nameEl ? nameEl.value.trim() : '';
-  const emailEl=document.getElementById('newuser-email');
-  let email=emailEl ? emailEl.value.trim() : '';
-  const passEl=document.getElementById('newuser-password');
-  const password=passEl ? passEl.value : '';
+  const name=document.getElementById('newuser-name').value.trim();
+  const email=document.getElementById('newuser-email').value.trim();
+  const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
-  if(!email) email=name.toLowerCase().replace(/[^a-z0-9]/g,'').replace(/ /g,'')+'@karytho.com';
-  if(!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
+  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
   
   const btn=document.getElementById('btn-create-user');
-  if(btn){
-    btn.disabled=true;
-    btn.textContent='Creando...';
-  }
+  btn.disabled=true;
+  btn.textContent='Creando...';
   
-  const secondaryApp=firebase.initializeApp(FB_CONFIG,'secondary');
-    secondaryApp.auth().createUserWithEmailAndPassword(email,password)
+  firebase.auth().createUserWithEmailAndPassword(email,password)
     .then(cred=>{
       return fbDb.ref('users/'+cred.user.uid).set({
         name:name,
@@ -10858,12 +10672,6 @@ function createNewUser(){
       });
     })
     .then(()=>{
-      return secondaryApp.auth().signOut();
-    })
-    .then(()=>{
-      return secondaryApp.delete();
-    })
-    .then(()=>{
       showToast('Usuario creado exitosamente','green');
       closeNewUserForm();
       loadUsersForAdmin();
@@ -10872,13 +10680,10 @@ function createNewUser(){
       let msg='Error al crear usuario';
       if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso';
       showToast(msg,'red');
-      secondaryApp.auth().signOut().then(()=>secondaryApp.delete()).catch(()=>{});
     })
     .finally(()=>{
-      if(btn){
-        btn.disabled=false;
-        btn.textContent='🔐 Crear usuario';
-      }
+      btn.disabled=false;
+      btn.textContent='🔐 Crear usuario';
     });
 }
 
@@ -10891,18 +10696,17 @@ function loadUsersForAdmin(){
   
   container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Cargando...</div>';
   
+  if(adminViewBranch==='carro1'){
+    desc.textContent='Miembros del selector de turno (sin cuenta)';
+    addSection.style.display='none';
+    loadPickerMembers();
+    return;
+  }
+  
   if(!adminViewBranch||adminViewBranch==='all'){
     container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona una sucursal para ver sus usuarios</div>';
     addSection.style.display='none';
     return;
-  }
-  
-  if(adminViewBranch==='carro1'){
-    desc.textContent='Usuarios con cuenta';
-    addSection.style.display='block';
-  } else {
-    desc.textContent='Usuarios con cuenta de esta sucursal';
-    addSection.style.display='block';
   }
   
   desc.textContent='Usuarios con cuenta de esta sucursal';
@@ -11005,10 +10809,10 @@ function removePickerMember(idx,name){
 }
 
 function deleteUserAccount(uid,name){
-  customConfirm('¿Eliminar al usuario "'+name+'"?\n\nNota: La cuenta de Auth debe eliminarse desde la Consola de Firebase.','Eliminar',async ()=>{
+  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
     try{
       await fbDb.ref('users/'+uid).remove();
-      showToast('Usuario eliminado de DB','green');
+      showToast('Usuario eliminado','green');
       loadUsersForAdmin();
     } catch(e){
       showToast('Error al eliminar','red');
@@ -11017,21 +10821,12 @@ function deleteUserAccount(uid,name){
 }
 
 function openCreateUserForm(){
-  const nameEl=document.getElementById('newuser-name');
-  if(!nameEl){
-    console.log('Modal newuser-no encontrado');
-    return;
-  }
-  nameEl.value='';
-  const emailEl=document.getElementById('newuser-email');
-  if(emailEl) emailEl.value='';
-  const passEl=document.getElementById('newuser-password');
-  if(passEl) passEl.value='';
-  const roleEl=document.getElementById('newuser-role');
-  if(roleEl) roleEl.value='user';
+  document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
+  document.getElementById('newuser-password').value='';
+  document.getElementById('newuser-role').value='user';
   newUserRole='user';
-  const overlay=document.getElementById('newuser-overlay');
-  if(overlay) overlay.classList.remove('hidden');
+  document.getElementById('newuser-overlay').classList.remove('hidden');
 }
 
 /* ─── EXPORTAR FUNCIONES AL SCOPE GLOBAL ─── */
@@ -11057,7 +10852,6 @@ window.openNewUserForm = openNewUserForm;
 window.closeNewUserForm = closeNewUserForm;
 window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
-window.doLogin = doLogin;
 </script>
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
@@ -11083,6 +10877,52 @@ window.doLogin = doLogin;
       </button>
       <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
         💾 Agregar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NEW USER MODAL ===== -->
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">🔑 Nuevo Usuario</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
+      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
+      <select id="newuser-role" onchange="newUserRole=this.value"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="user">👤 Empleado</option>
+        <option value="admin">🔑 Admin</option>
+        <option value="eventos">🎪 Eventos</option>
+      </select>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        🔐 Crear usuario
       </button>
     </div>
   </div>
