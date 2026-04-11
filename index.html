@@ -2659,12 +2659,18 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
-    <div style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:var(--text)">👥 Miembros del Picker</div>
-        <button onclick="openAddPickerMemberForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:12px" id="users-section-desc">
+        Selecciona una sucursal para ver sus usuarios
       </div>
-      <div id="adm-picker-members-list" class="admin-empty">Cargando...</div>
+      <div id="users-list-container">
+        <div style="text-align:center;padding:40px;color:var(--text4)">Cargando...</div>
+      </div>
+    </div>
+    <div id="users-add-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <button onclick="openCreateUserForm()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;width:100%">
+        ➕ Agregar usuario con cuenta
+      </button>
     </div>
   </div>
 
@@ -3358,29 +3364,90 @@ function deletePickerMember(name,idx){
 let fbAuthDb=null;
 function loginWithFirebase(user,pass,cb){
   const auth=firebase.auth();
-  const emailMap={
-    'CIDOP':'cidop@karytho.com',
+  
+  // CIDOP va al picker (sin cuenta)
+  if(user.toUpperCase()==='CIDOP'){
+    auth.signInWithEmailAndPassword('cidop@karytho.com',pass)
+      .then(cred=>{
+        const uid=cred.user.uid;
+        currentUid=uid;
+        safeStorage.setItem(SK_UID,uid);
+        return fbDb.ref('users/'+uid).once('value');
+      })
+      .then(snap=>{
+        const data=snap.val();
+        currentBranch=data&&data.branchId?data.branchId:'carro1';
+        safeStorage.setItem(SK_ROLE,'user');
+        safeStorage.setItem(SK_DISPLAY,'CIDOP');
+        safeStorage.removeItem(SK_SESSION);
+        showPicker();
+      })
+      .catch(()=>{
+        cb(null,'Usuario o contraseña incorrectos');
+      });
+    return;
+  }
+  
+  // ADMIN y EVENTOS van directo
+  const specialEmails={
     'ADMIN':'admin@karytho.com',
     'EVENTOS':'eventos@karytho.com'
   };
-  const email=emailMap[user.toUpperCase()];
-  if(!email){cb(null,'Usuario o contraseña incorrectos');return;}
-  auth.signInWithEmailAndPassword(email,pass)
-    .then(cred=>{
-      const uid=cred.user.uid;
-      currentUid=uid;
-      safeStorage.setItem(SK_UID,uid);
-      return fbDb.ref('users/'+uid).once('value');
-    })
-    .then(snap=>{
-      const data=snap.val();
-      if(!data){cb(null,'Usuario no configurado');return;}
-      currentBranch=data.branchId||'default';
-      cb(data,null);
-    })
-    .catch(()=>{
-      cb(null,'Usuario o contraseña incorrectos');
+  const specialEmail=specialEmails[user.toUpperCase()];
+  
+  if(specialEmail){
+    auth.signInWithEmailAndPassword(specialEmail,pass)
+      .then(cred=>{
+        const uid=cred.user.uid;
+        currentUid=uid;
+        safeStorage.setItem(SK_UID,uid);
+        return fbDb.ref('users/'+uid).once('value');
+      })
+      .then(snap=>{
+        const data=snap.val();
+        if(!data){cb(null,'Usuario no configurado');return;}
+        currentBranch=data.branchId||'carro1';
+        cb(data,null);
+      })
+      .catch(()=>{
+        cb(null,'Usuario o contraseña incorrectos');
+      });
+    return;
+  }
+  
+  // Otros usuarios: buscar por nombre en la base de datos
+  fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
+    const users=[];
+    snap.forEach(child=>{
+      users.push({uid:child.key,...child.val()});
     });
+    
+    if(users.length===0){
+      cb(null,'Usuario no encontrado. Contacta al encargado.');
+      return;
+    }
+    
+    if(users.length>1){
+      cb(null,'Hay varios usuarios con ese nombre.');
+      return;
+    }
+    
+    const userData=users[0];
+    auth.signInWithEmailAndPassword(userData.email,pass)
+      .then(()=>{
+        currentUid=userData.uid;
+        safeStorage.setItem(SK_UID,currentUid);
+        currentBranch=userData.branchId||'carro1';
+        cb(userData,null);
+      })
+      .catch(err=>{
+        if(err.code==='auth/wrong-password'){
+          cb(null,'Contraseña incorrecta');
+        } else {
+          cb(null,'Error al iniciar sesión');
+        }
+      });
+  }).catch(()=>cb(null,'Error al buscar usuario'));
 }
 
 function backToLogin(){
@@ -5736,6 +5803,13 @@ function onAdminBranchChange(){
   if(startFbListeners) startFbListeners();
   if(loadGastos) loadGastos();
   if(renderAdmin) renderAdmin();
+  
+  // Recargar usuarios si estamos en esa pestaña
+  const usuariosTab=document.getElementById('adm-tab-usuarios');
+  if(usuariosTab&&usuariosTab.classList.contains('active')){
+    loadUsersForAdmin();
+  }
+  
   if(setAdminTab){
     const activeTab=document.querySelector('.admin-tab.active');
     if(activeTab){
@@ -7089,7 +7163,7 @@ function setAdminTab(tab){
     const dateRow=document.querySelector('.date-picker-row');
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
-  if(tab==='usuarios')loadFirebaseUsers();
+  if(tab==='usuarios')loadUsersForAdmin();
   if(tab==='actividad'){
     renderActivityLog();
     if(fbDb) fbDb.ref('presence').once('value',snap=>{
@@ -10225,14 +10299,14 @@ function createNewUser(){
         name:name,
         email:email,
         role:newUserRole,
-        branchId:currentBranch||'default',
+        branchId:adminViewBranch||'default',
         createdAt:Date.now()
       });
     })
     .then(()=>{
       showToast('Usuario creado exitosamente','green');
       closeNewUserForm();
-      loadFirebaseUsers();
+      loadUsersForAdmin();
     })
     .catch(err=>{
       let msg='Error al crear usuario';
@@ -10243,6 +10317,150 @@ function createNewUser(){
       btn.disabled=false;
       btn.textContent='🔐 Crear usuario';
     });
+}
+
+// Usuarios del admin por sucursal
+function loadUsersForAdmin(){
+  const container=document.getElementById('users-list-container');
+  const desc=document.getElementById('users-section-desc');
+  const addSection=document.getElementById('users-add-section');
+  if(!container)return;
+  
+  container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Cargando...</div>';
+  
+  // Si es carro1, mostrar miembros del picker
+  if(adminViewBranch==='carro1'){
+    desc.textContent='Miembros del selector de turno (sin cuenta)';
+    addSection.style.display='none';
+    loadPickerMembers();
+    return;
+  }
+  
+  // Para otras sucursales, mostrar usuarios con cuenta
+  if(!adminViewBranch||adminViewBranch==='all'){
+    container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona una sucursal para ver sus usuarios</div>';
+    addSection.style.display='none';
+    return;
+  }
+  
+  desc.textContent='Usuarios con cuenta de esta sucursal';
+  addSection.style.display='block';
+  
+  if(!fbDb){
+    container.innerHTML='<div class="admin-empty">Sin conexión</div>';
+    return;
+  }
+  
+  fbDb.ref('users').orderByChild('branchId').equalTo(adminViewBranch).once('value').then(snap=>{
+    const data=snap.val()||{};
+    const users=Object.entries(data).map(([uid,u])=>({uid,...u}));
+    
+    if(users.length===0){
+      container.innerHTML='<div class="admin-empty" style="padding:30px">Sin usuarios en esta sucursal</div>';
+      return;
+    }
+    
+    let html='<div style="display:flex;flex-direction:column;gap:10px">';
+    users.forEach((u,i)=>{
+      const roleLabel=u.role==='admin'?'🔑 Admin':u.role==='eventos'?'🎪 Eventos':'👤 Empleado';
+      const roleColor=u.role==='admin'?'var(--gold)':u.role==='eventos'?'var(--green)':'var(--text3)';
+      const avatarColor=['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'][i%6];
+      const initial=(u.name||'?').charAt(0).toUpperCase();
+      
+      html+=`<div class="form-card" style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0">${initial}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${u.name||'Sin nombre'}</div>
+          <div style="font-size:12px;color:${roleColor}">${roleLabel}</div>
+          <div style="font-size:11px;color:var(--text4)">${u.email||''}</div>
+        </div>
+        <button onclick="deleteUserAccount('${u.uid}','${u.name}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px;color:var(--text3);cursor:pointer;font-size:14px">✕</button>
+      </div>`;
+    });
+    html+='</div>';
+    container.innerHTML=html;
+  }).catch(()=>{
+    container.innerHTML='<div class="admin-empty">Error al cargar usuarios</div>';
+  });
+}
+
+function loadPickerMembers(){
+  const container=document.getElementById('users-list-container');
+  if(!container)return;
+  
+  if(!fbDb){
+    container.innerHTML='<div class="admin-empty">Sin conexión</div>';
+    return;
+  }
+  
+  fbDb.ref('cidop_members').once('value').then(snap=>{
+    const data=snap.val()||{};
+    let members=Object.values(data).filter(Boolean);
+    
+    if(members.length===0){
+      members=CIDOP_MEMBERS.slice();
+    } else {
+      CIDOP_MEMBERS.length=0;
+      members.forEach(m=>CIDOP_MEMBERS.push(m));
+    }
+    
+    if(members.length===0){
+      container.innerHTML='<div class="admin-empty" style="padding:30px">Sin miembros en el picker</div>';
+      return;
+    }
+    
+    const colors=['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e'];
+    
+    let html='<div style="display:flex;flex-direction:column;gap:10px">';
+    members.forEach((name,i)=>{
+      const color=colors[i%colors.length];
+      const initial=name.charAt(0).toUpperCase();
+      
+      html+=`<div class="form-card" style="padding:14px;display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0">${initial}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${name}</div>
+          <div style="font-size:12px;color:var(--text3)">Sin cuenta · Picker</div>
+        </div>
+        <button onclick="removePickerMember('${i}','${name}')" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px;color:var(--text3);cursor:pointer;font-size:14px">✕</button>
+      </div>`;
+    });
+    html+='</div>';
+    container.innerHTML=html;
+  }).catch(()=>{
+    container.innerHTML='<div class="admin-empty">Error al cargar miembros</div>';
+  });
+}
+
+function removePickerMember(idx,name){
+  customConfirm('¿Eliminar a "'+name+'" del picker?','Eliminar',()=>{
+    CIDOP_MEMBERS.splice(idx,1);
+    saveCidopMembers(()=>{
+      showToast('"'+name+'" eliminado','green');
+      loadPickerMembers();
+    });
+  });
+}
+
+function deleteUserAccount(uid,name){
+  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
+    try{
+      await fbDb.ref('users/'+uid).remove();
+      showToast('Usuario eliminado','green');
+      loadUsersForAdmin();
+    } catch(e){
+      showToast('Error al eliminar','red');
+    }
+  });
+}
+
+function openCreateUserForm(){
+  document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
+  document.getElementById('newuser-password').value='';
+  document.getElementById('newuser-role').value='user';
+  newUserRole='user';
+  document.getElementById('newuser-overlay').classList.remove('hidden');
 }
 
 </script>
