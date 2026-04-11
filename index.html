@@ -3504,24 +3504,7 @@ function loginWithFirebase(user,pass,cb){
     });
     
     if(users.length===0){
-      // Fallback: intentar directamente con nombre@kraytho.com (usuarios creados desde el panel)
-      const emailBase=user.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-      const kraythoEmail=emailBase+'@kraytho.com';
-      auth.signInWithEmailAndPassword(kraythoEmail,pass)
-        .then(cred=>{
-          const uid=cred.user.uid;
-          currentUid=uid;
-          safeStorage.setItem(SK_UID,uid);
-          return fbDb.ref('users/'+uid).once('value');
-        })
-        .then(snap=>{
-          const data=snap.val();
-          currentBranch=(data&&data.branchId)||'carro1';
-          cb(data||{name:user,role:'user'},null);
-        })
-        .catch(()=>{
-          cb(null,'Usuario no encontrado. Contacta al encargado.');
-        });
+      cb(null,'Usuario no encontrado. Contacta al encargado.');
       return;
     }
     
@@ -5930,23 +5913,23 @@ function onAdminBranchChange(){
   if(!select)return;
   adminViewBranch=select.value;
   
+  // Detach any active consolidated listeners before switching
+  if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
+  if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
+  window._sucVentasRef=null;window._sucGastosRef=null;
+
   if(adminViewBranch==='all'){
-    // Cargar ventas y gastos de TODAS las sucursales
     currentBranch='carro1';
     fbListening=false;
-    sales=[];
-    products=[];
-    gastos=[];
-    if(typeof loadVentasConsolidadas === 'function') loadVentasConsolidadas();
-    if(typeof loadGastosConsolidados === 'function') loadGastosConsolidados();
+    sales=[];products=[];gastos=[];
+    if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
+    if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[];
-    products=[];
-    gastos=[];
-    if(typeof startFbListeners === 'function') startFbListeners();
-    if(typeof loadGastos === 'function') loadGastos();
+    sales=[];products=[];gastos=[];
+    if(typeof startFbListeners==='function') startFbListeners();
+    if(typeof loadGastos==='function') loadGastos();
   }
   
   if(renderAdmin) renderAdmin();
@@ -6560,19 +6543,7 @@ function loadGastos(){
       gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
       safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     } else {
-      // Firebase empty → push any local gastos up (covers fresh-write race condition)
-      const cached=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch)||'[]');
-      if(cached.length>0){
-        cached.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
-        // Keep in-memory gastos as-is; next snapshot will confirm
-        return;
-      }
-      // Also push any gastos that are in memory but not yet in Firebase (race condition fix)
-      if(gastos&&gastos.length>0){
-        gastos.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
-        return;
-      }
-      // Truly empty — clear local too
+      // Firebase empty — clear local cache too (do NOT push local up, to avoid cross-branch contamination)
       gastos=[];
       safeStorage.setItem('dk_gastos_'+currentBranch,'[]');
     }
@@ -6590,81 +6561,77 @@ function loadGastos(){
 function loadVentasConsolidadas(){
   if(!fbDb)return;
   sales=[];
-  fbDb.ref('sucursales').once('value').then(function(snap){
+  if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
+  window._sucVentasHandler=function(snap){
     var data=snap.val()||{};
     var keys=Object.keys(data).filter(function(k){return k&&k!=='default'&&k!=='';});
     var allSales=[];
     keys.forEach(function(k){
-       var s=data[k];
-       var salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
-       var branchSales=Object.values(salesObj);
-       // Add branch origin indicator just in case
-       branchSales.forEach(function(sale){
-          sale.branchOrigin = k;
-          allSales.push(sale);
-       });
+      var s=data[k];
+      var salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+      Object.values(salesObj).forEach(function(sale){
+        sale.branchOrigin=k;
+        allSales.push(sale);
+      });
     });
-    // Sort all desc by timestamp
     allSales.sort(function(a,b){return b.timestamp-a.timestamp;});
     sales=allSales;
-    // Notify UI that sales data is ready (since startFbListeners normally does this)
-    if(document.getElementById('admin-screen')?.classList.contains('active')) renderAdmin();
-  }).catch(function(e){console.warn('Error loadVentasConsolidadas',e);});
+    if(document.getElementById('admin-screen')&&document.getElementById('admin-screen').classList.contains('active')){
+      renderAdmin();
+      var gastosTab=document.getElementById('adm-tab-gastos');
+      if(gastosTab&&gastosTab.classList.contains('active'))renderGastos();
+    }
+    if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
+  };
+  window._sucVentasRef=fbDb.ref('sucursales');
+  window._sucVentasRef.on('value',window._sucVentasHandler);
 }
 
 function loadGastosConsolidados(){
   if(!fbDb)return;
   gastos=[];
-  
-  fbDb.ref('sucursales').once('value').then(function(snap){
+  if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
+  window._sucGastosHandler=function(snap){
     var data=snap.val()||{};
-    var keys=Object.keys(data).filter(function(k){return k&&k!=='default';});
-    
+    var keys=Object.keys(data).filter(function(k){return k&&k!=='default'&&k!=='';});
     var allGastos=[];
-    var loaded=0;
-    
-    if(keys.length===0){
-      gastos=[];
-      renderGastos();
-      return;
-    }
-    
     keys.forEach(function(branchId){
       var branchGastos=data[branchId]&&data[branchId].gastos;
       if(branchGastos){
         Object.values(branchGastos).forEach(function(g){
-          if(g&&g.id){
-            g._branchId=branchId;
-            allGastos.push(g);
-          }
+          if(g&&g.id){var gc=Object.assign({},g);gc._branchId=branchId;allGastos.push(gc);}
         });
       }
-      loaded++;
-      if(loaded===keys.length){
-        gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
-        safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-        var admTab=document.getElementById('adm-tab-gastos');
-        if(admTab&&admTab.classList.contains('active')) renderGastos();
-      }
     });
-  }).catch(function(err){
-    console.error('Error cargando gastos consolidados:',err);
-  });
+    gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
+    var admTab=document.getElementById('adm-tab-gastos');
+    if(admTab&&admTab.classList.contains('active'))renderGastos();
+    var resTab=document.getElementById('adm-tab-resumen');
+    if(resTab&&resTab.classList.contains('active'))renderAdmin();
+  };
+  window._sucGastosRef=fbDb.ref('sucursales');
+  window._sucGastosRef.on('value',window._sucGastosHandler);
 }
+
 
 // agregarGasto moved to CIPOD (agregarGastoCidop)
 
 function eliminarGasto(id){
-  customConfirm('¿Eliminar este gasto?','Eliminar',()=>{
-    // Remove optimistically from local array immediately
+  customConfirm('\u00bfEliminar este gasto?','Eliminar',()=>{
+    // Find gasto to know which branch it belongs to (in consolidated mode it has _branchId)
+    const gastoObj=gastos.find(g=>g.id===id);
+    // Remove optimistically from local array
     gastos=gastos.filter(g=>g.id!==id);
-    safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+    if(adminViewBranch!=='all'){
+      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+    }
     renderGastos();
     renderCidopGastosList();
     showToast('Gasto eliminado','green');
-    // Remove from Firebase — listener will re-render with confirmed state
+    // Remove from Firebase — use correct branch
     if(fbDb){
-      fbRemoveSecure(getBranchRef('gastos/'+id)).catch(()=>{
+      const targetBranch=(gastoObj&&gastoObj._branchId)||currentBranch;
+      fbRemoveSecure(fbDb.ref('sucursales/'+targetBranch+'/gastos/'+id)).catch(()=>{
         showToast('Error al eliminar en Firebase','red');
       });
     }
@@ -8093,7 +8060,7 @@ function renderAdminVentas(ps){
       byW[key].byDay[s.date].total+=s.total;byW[key].byDay[s.date].count++;
       (s.items||[]).forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');byW[key].prods[k]=(byW[key].prods[k]||0)+it.qty;});
     });
-    const weeks=Object.entries(byW).sort((a,b)=>new Date(a[0])-new Date(b[0]));
+    const weeks=Object.entries(byW).sort((a,b)=>new Date(b[0])-new Date(a[0]));
     const frag=document.createDocumentFragment();
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
@@ -8105,7 +8072,7 @@ function renderAdminVentas(ps){
       const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
       const daysRows=Object.entries(g.byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,d])=>`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 12px;border-top:1px solid var(--border)"><span style="color:var(--text3)">${date} <span style="color:var(--text4)">(${d.count} venta${d.count!==1?'s':''})</span></span><span style="color:var(--gold);font-weight:700">$${d.total.toFixed(2)}</span></div>`).join('');
       frag.appendChild(makeCard(
-        `<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${idx+1}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wLabel}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
+        `<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${weeks.length-idx}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wLabel}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
         subLabel('Productos')+prodsHTML(prods)+subLabel('Por día')+daysRows
       ));
     });
@@ -10666,6 +10633,7 @@ function addPickerMember(){
 // New user functions
 function openNewUserForm(){
   document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10682,14 +10650,12 @@ function closeNewUserOutside(e){
 
 function createNewUser(){
   const name=document.getElementById('newuser-name').value.trim();
+  const email=document.getElementById('newuser-email').value.trim();
   const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
+  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
-  
-  // Generar email automáticamente con dominio kraytho.com
-  const emailBase=name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-  const email=emailBase+'@kraytho.com';
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
@@ -10856,6 +10822,7 @@ function deleteUserAccount(uid,name){
 
 function openCreateUserForm(){
   document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10925,6 +10892,12 @@ window.openCreateUserForm = openCreateUserForm;
     <div style="margin-bottom:16px">
       <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
       <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
+      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
     </div>
     
