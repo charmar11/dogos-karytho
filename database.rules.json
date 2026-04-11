@@ -1,138 +1,100 @@
 {
   "rules": {
-    "global": {
-      "config": {
-        ".read": "auth != null && auth.token.role == 'admin'",
-        ".write": "auth != null && auth.token.role == 'admin'"
-      },
-      "cats": {
-        ".read": "auth != null",
-        ".write": "auth != null && auth.token.role == 'admin'"
-      }
-    },
+    ".read": "auth != null",
+    ".write": "auth != null",
+    
     "users": {
       "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || auth.token.role == 'admin' || (auth.token.role == 'admin_local' && auth.token.sucursal == data.child('sucursal').val()))",
-        ".write": "auth != null && (auth.uid == $uid || auth.token.role == 'admin' || (auth.token.role == 'admin_local' && auth.token.sucursal == data.child('sucursal').val()))"
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
       }
     },
-    "invitations": {
-      ".read": "auth != null && auth.token.role == 'admin'",
-      ".write": "auth != null && auth.token.role == 'admin'"
+    
+    "presence": {
+      "$sessionId": {
+        ".write": "auth != null"
+      }
     },
+    
     "activity_log": {
       ".read": "auth != null && auth.token.role == 'admin'",
+      ".write": "auth != null",
+      ".indexOn": ["ts"]
+    },
+    
+    "cidop_members": {
+      ".read": "auth != null",
       ".write": "auth != null"
     },
-    "presence": {
-      ".write": "false"
-    },
+    
     "sucursales": {
-      "$sucursal": {
-        ".validate": "auth.token.role == 'admin' || auth.token.sucursal == $sucursal",
-        "config": {
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.sucursal == $sucursal)",
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')"
-        },
+      "$branchId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        
         "products": {
           ".read": "auth != null",
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'eventos')"
+          ".write": "auth != null"
         },
+        
         "sales": {
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.sucursal == $sucursal || auth.token.role == 'eventos')",
-          "$saleId": {
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.sucursal == $sucursal)"
-          }
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["timestamp", "date"]
         },
+        
         "gastos": {
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')",
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')"
+          ".read": "auth != null",
+          ".write": "auth != null"
         },
+        
+        "gasto_cats": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        
+        "ingredients": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        
+        "recipes": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        
+        "general_recipe": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        
+        "inv_history": {
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["ts"]
+        },
+        
+        "ing_categories": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        
         "cortes": {
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')",
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')"
+          ".read": "auth != null",
+          ".write": "auth != null",
+          ".indexOn": ["ts"]
         },
+        
         "fondo": {
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')",
-          "$fecha": {
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'cajero')"
-          }
+          ".read": "auth != null",
+          ".write": "auth != null"
         },
-        "inventario": {
-          "ingredients": {
-            ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')",
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')"
-          },
-          "recipes": {
-            ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')",
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')"
-          },
-          "general_recipe": {
-            ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')",
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')"
-          },
-          "inv_history": {
-            ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')",
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')"
-          },
-          "ing_categories": {
-            ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')",
-            ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')"
-          }
+        
+        "config": {
+          ".read": "auth != null",
+          ".write": "auth != null"
         }
       }
-    },
-    "default": {
-      "products": { 
-        ".read": "auth != null", 
-        ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'eventos')" 
-      },
-      "sales": { 
-        ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'eventos')", 
-        ".write": "auth != null" 
-      },
-      "gastos": { 
-        ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')", 
-        ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')" 
-      },
-      "config": { 
-        ".read": "auth != null && (auth.token.role == 'admin' || auth.token.sucursal == 'default')", 
-        ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')" 
-      },
-      "cortes": { 
-        ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')", 
-        ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')" 
-      },
-      "fondo": { 
-        ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local')", 
-        "$fecha": { 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'cajero')" 
-        } 
-      },
-      "inventario": {
-        "ingredients": { 
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')", 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')" 
-        },
-        "recipes": { 
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')", 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')" 
-        },
-        "general_recipe": { 
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')", 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')" 
-        },
-        "inv_history": { 
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')", 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')" 
-        },
-        "ing_categories": { 
-          ".read": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')", 
-          ".write": "auth != null && (auth.token.role == 'admin' || auth.token.role == 'admin_local' || auth.token.role == 'inventario')" 
-        }
-      }
-    },
-    ".read": "auth != null",
-    ".write": "auth != null && auth.token.role == 'admin'"
+    }
   }
 }
