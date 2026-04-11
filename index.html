@@ -6316,6 +6316,7 @@ function loadGastos(){
   try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
 
   // Realtime listener — Firebase is authoritative after first sync
+  getBranchRef('gastos').off();
   getBranchRef('gastos').on('value',snap=>{
     const d=snap.val();
     if(d&&Object.keys(d).length>0){
