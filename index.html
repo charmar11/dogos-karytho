@@ -5838,6 +5838,7 @@ function onAdminBranchChange(){
     fbListening=false;
     sales=[];
     products=[];
+    if(fbDb) getBranchRef('gastos').off();
     gastos=[];
     loadGastosConsolidados();
   } else {
@@ -5845,6 +5846,7 @@ function onAdminBranchChange(){
     fbListening=false;
     sales=[];
     products=[];
+    if(fbDb) getBranchRef('gastos').off();
     gastos=[];
     if(startFbListeners) startFbListeners();
     if(loadGastos) loadGastos();
@@ -6377,7 +6379,15 @@ function loadGastosConsolidados(){
       }
       loaded++;
       if(loaded===keys.length){
-        gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
+        var seen={};
+        var unique=[];
+        allGastos.forEach(function(g){
+          if(g&&g.id&&!seen[g.id]){
+            seen[g.id]=true;
+            unique.push(g);
+          }
+        });
+        gastos=unique.sort(function(a,b){return b.timestamp-a.timestamp;});
         safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
         var admTab=document.getElementById('adm-tab-gastos');
         if(admTab&&admTab.classList.contains('active')) renderGastos();
