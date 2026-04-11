@@ -10985,6 +10985,8 @@ async function buildReporteData(){
 }
 
 async function enviarReporteWhatsApp(){
+  // Marcar inmediatamente para evitar doble envio si hay multiples tabs o llamadas simultaneas
+  safeStorage.setItem(SK_REPORTE_SENT,todayISO());
   try{
     const msgEncoded=await buildReporteData();
     const url='https://api.callmebot.com/whatsapp.php?phone='+CALLMEBOT_PHONE+'&text='+msgEncoded+'&apikey='+CALLMEBOT_APIKEY;
