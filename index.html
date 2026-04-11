@@ -4007,7 +4007,10 @@ function bootApp(){
   loadGastoCats();
   if(typeof loadGastos==='function') loadGastos();
   const displayName=safeStorage.getItem(SK_DISPLAY)||'Usuario';
-  setTimeout(()=>{
+  setTimeout(async ()=>{
+    if(!currentBranch || currentBranch==='default'){
+      await initSessionBranch();
+    }
     startFbListeners(); // registra productos, ventas y meta diaria
     startPresence(displayName);
     loadCidopMembers();
@@ -5500,7 +5503,10 @@ function bootAdmin(){
   if(_lsGoal>0) _applyGoal(_lsGoal);
   renderAdmin();
   fbListening=false;
-  setTimeout(()=>{
+  setTimeout(async ()=>{
+    if(!currentBranch || currentBranch==='default'){
+      await initSessionBranch();
+    }
     startFbListeners();
     startMembersListener();
     startActivityListener();
@@ -7445,28 +7451,6 @@ let evLines=[]; // [{productId, qty, ings:[{ingId,qty,mult,active}]}]
 
 function bootEventos(){
   load(); // Loads products and sales from local cache
-  if(fbDb){
-    getBranchRef('products').on('value',snap=>{
-      const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}
-    });
-    getBranchRef('ingredients').on('value',snap=>{
-      const d=snap.val();if(!d)return;
-      const seen=new Set();
-      ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
-    });
-    getBranchRef('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
-    getBranchRef('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
-    getBranchRef('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
-    // ── Sincronizar ventas en tiempo real (para historial y CIPOD) ──
-    getBranchRef('sales').on('value',snap=>{
-      const d=snap.val();
-      sales=d?Object.values(d).sort((a,b)=>b.timestamp-a.timestamp):[];
-      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-      // Actualizar historial si está abierto
-      const evHistTab=document.getElementById('ev-tab-historial');
-      if(evHistTab&&evHistTab.classList.contains('active')) renderEventosHistorial();
-    });
-  }
   // Set today's date
   const today=new Date();
   const dateInput=document.getElementById('ev-date');
@@ -7474,10 +7458,35 @@ function bootEventos(){
 
   document.getElementById('eventos-screen').classList.add('active');
   // Restore date default
-  setTimeout(()=>{
+  setTimeout(async ()=>{
+    if(!currentBranch || currentBranch==='default'){
+      await initSessionBranch();
+    }
+    if(fbDb){
+      getBranchRef('products').on('value',snap=>{
+        const d=snap.val();if(d){products=Object.values(d).filter(Boolean);}
+      });
+      getBranchRef('ingredients').on('value',snap=>{
+        const d=snap.val();if(!d)return;
+        const seen=new Set();
+        ingredients=Object.values(d).filter(i=>i&&i.id&&!seen.has(i.id)&&seen.add(i.id));
+      });
+      getBranchRef('recipes').on('value',snap=>{const d=snap.val();if(d)recipes=d;});
+      getBranchRef('general_recipe').on('value',snap=>{const d=snap.val();generalRecipe=d?Object.values(d).filter(Boolean):[];});
+      getBranchRef('ing_categories').on('value',snap=>{const d=snap.val();ingCategories=d?Object.values(d).filter(Boolean):[];});
+      // ── Sincronizar ventas en tiempo real (para historial y CIPOD) ──
+      getBranchRef('sales').on('value',snap=>{
+        const d=snap.val();
+        sales=d?Object.values(d).sort((a,b)=>b.timestamp-a.timestamp):[];
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        // Actualizar historial si está abierto
+        const evHistTab=document.getElementById('ev-tab-historial');
+        if(evHistTab&&evHistTab.classList.contains('active')) renderEventosHistorial();
+      });
+    }
     const gf=document.getElementById('ev-date');
     if(gf) gf.value=toDateKey(new Date());
-  },200);
+  },300);
 }
 
 function eventosLogout(){
@@ -9556,7 +9565,11 @@ if(savedSession==='1' && savedRole==='admin'){
   },500);
 } else if(savedSession==='1' && savedRole==='user'){
   document.getElementById('login-screen').classList.add('hidden');
-  bootApp();
+  initFirebase(FB_CONFIG);
+  setTimeout(async ()=>{
+    await initSessionBranch();
+    bootApp();
+  },500);
 } else if(savedRole==='user' && !savedSession){
   showPicker();
 } else {
