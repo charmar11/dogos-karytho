@@ -1645,6 +1645,26 @@ position:sticky;top:0;z-index:20;
 }
 .btn-add-user:active{transform:scale(.97)}
 
+.user-mgr-card{
+  display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;animation:fadeIn .25s ease both;
+}
+.user-mgr-avatar{
+  width:42px;height:42px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.avatar-letter{font-size:18px;font-weight:800;color:var(--text)}
+.user-mgr-info{flex:1;min-width:0}
+.user-mgr-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-mgr-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.user-mgr-actions{display:flex;gap:6px}
+.btn-usr-del{
+  width:32px;height:32px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.btn-usr-del:hover{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+
 /* ══ INVENTARIO PANEL ══ */
 .inv-screen{
   position:fixed;inset:0;z-index:800;background:var(--bg);
@@ -2631,12 +2651,24 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
-    <div id="adm-users-list"></div>
-    <div class="add-user-form">
-      <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600">Agregar nuevo usuario al picker</div>
-      <input class="add-user-input" id="new-user-name" placeholder="Nombre (ej: Maria)" maxlength="20"/>
-      <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar usuario</button>
+    <!-- Sección: Usuarios con cuenta -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">🔑 Usuarios con cuenta</div>
+        <button onclick="openNewUserForm()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
+      </div>
+      <div id="adm-firebase-users-list" class="admin-empty">Cargando...</div>
     </div>
+    
+    <!-- Sección: Miembros del Picker -->
+    <div style="margin-bottom:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">👤 Miembros del Picker</div>
+        <button onclick="openAddPickerMemberForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
+      </div>
+      <div id="adm-picker-members-list" class="admin-empty">Cargando...</div>
+    </div>
+    
     <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
   </div>
 
@@ -3234,6 +3266,97 @@ const CIDOP_MEMBERS=['Caro','Ivan','Denisse','Oscar','Piers'];
 const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
+
+let newUserRole='user';
+let firebaseUsers=[];
+
+function loadFirebaseUsers(){
+  if(!fbDb)return;
+  fbDb.ref('users').once('value').then(snap=>{
+    const data=snap.val()||{};
+    firebaseUsers=Object.entries(data).map(([uid,u])=>({uid,...u}));
+    renderFirebaseUsersList();
+  });
+}
+
+function renderFirebaseUsersList(){
+  const fbList=document.getElementById('adm-firebase-users-list');
+  const pickerList=document.getElementById('adm-picker-members-list');
+  
+  if(fbList){
+    if(firebaseUsers.length===0){
+      fbList.innerHTML='<div class="admin-empty">Sin usuarios con cuenta</div>';
+    } else {
+      let html='';
+      firebaseUsers.forEach((u,i)=>{
+        const roleLabel=u.role==='admin'?'🔑 Admin':u.role==='eventos'?'🎪 Eventos':'👤 Empleado';
+        const roleColor=u.role==='admin'?'var(--gold)':u.role==='eventos'?'var(--green)':'var(--text3)';
+        html+=`
+          <div class="user-mgr-card" style="animation-delay:${i*.04}s">
+            <div class="user-mgr-avatar" title="${u.name||'Usuario'}">
+              <span class="avatar-letter">${(u.name||'?').charAt(0).toUpperCase()}</span>
+            </div>
+            <div class="user-mgr-info">
+              <div class="user-mgr-name">${u.name||'Sin nombre'}</div>
+              <div class="user-mgr-sub" style="color:${roleColor}">${roleLabel} · ${u.branchId||'Sin sucursal'}</div>
+            </div>
+            <div class="user-mgr-actions">
+              <button class="btn-usr-del" title="Eliminar" onclick="deleteFirebaseUser('${u.uid}','${u.name}')">✕</button>
+            </div>
+          </div>
+        `;
+      });
+      fbList.innerHTML=html;
+    }
+  }
+  
+  if(pickerList){
+    if(CIDOP_MEMBERS.length===0){
+      pickerList.innerHTML='<div class="admin-empty">Sin miembros en el picker</div>';
+    } else {
+      let html='';
+      CIDOP_MEMBERS.forEach((name,i)=>{
+        html+=`
+          <div class="user-mgr-card" style="animation-delay:${i*.04}s">
+            <div class="user-mgr-avatar" title="${name}">
+              <span class="avatar-letter">${name.charAt(0).toUpperCase()}</span>
+            </div>
+            <div class="user-mgr-info">
+              <div class="user-mgr-name">${name}</div>
+              <div class="user-mgr-sub">Sin cuenta · Picker</div>
+            </div>
+            <div class="user-mgr-actions">
+              <button class="btn-usr-del" title="Eliminar" onclick="deletePickerMember('${name}',${i})">✕</button>
+            </div>
+          </div>
+        `;
+      });
+      pickerList.innerHTML=html;
+    }
+  }
+}
+
+function deleteFirebaseUser(uid,name){
+  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
+    try{
+      await fbDb.ref('users/'+uid).remove();
+      showToast('Usuario eliminado','green');
+      loadFirebaseUsers();
+    } catch(err){
+      showToast('Error al eliminar usuario','red');
+    }
+  });
+}
+
+function deletePickerMember(name,idx){
+  customConfirm('¿Eliminar a "'+name+'" del picker?','Eliminar',()=>{
+    CIDOP_MEMBERS.splice(idx,1);
+    saveCidopMembers(()=>{
+      showToast('"'+name+'" eliminado del picker','green');
+      loadFirebaseUsers();
+    });
+  });
+}
 
 /* ─── Firebase login helper ─── */
 let fbAuthDb=null;
@@ -9884,5 +10007,170 @@ if(savedSession==='1' && savedRole==='admin'){
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
 
-<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script></body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script>
+
+<!-- ===== PICKER MEMBER MODAL ===== -->
+<div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">👤 Agregar al Picker</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Agrega una persona al selector de turno (sin cuenta)</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="pickermember-name" placeholder="Ej: Caro"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closePickerMemberForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Agregar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NEW USER MODAL ===== -->
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">🔑 Nuevo Usuario</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
+      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
+      <select id="newuser-role" onchange="newUserRole=this.value"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="user">👤 Empleado</option>
+        <option value="admin">🔑 Admin</option>
+        <option value="eventos">🎪 Eventos</option>
+      </select>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        🔐 Crear usuario
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Picker member functions
+function openAddPickerMemberForm(){
+  document.getElementById('pickermember-name').value='';
+  document.getElementById('pickermember-overlay').classList.remove('hidden');
+}
+
+function closePickerMemberForm(){
+  document.getElementById('pickermember-overlay').classList.add('hidden');
+}
+
+function closePickerMemberOutside(e){
+  if(e.target.id==='pickermember-overlay')closePickerMemberForm();
+}
+
+function addPickerMember(){
+  const name=document.getElementById('pickermember-name').value.trim();
+  if(!name){showToast('Escribe un nombre','red');return;}
+  if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(name.toLowerCase())){
+    showToast('Ese nombre ya existe','red');return;
+  }
+  CIDOP_MEMBERS.push(name);
+  saveCidopMembers(()=>{
+    closePickerMemberForm();
+    showToast('"'+name+'" agregado al picker','green');
+    loadFirebaseUsers();
+  });
+}
+
+// New user functions
+function openNewUserForm(){
+  document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
+  document.getElementById('newuser-password').value='';
+  document.getElementById('newuser-role').value='user';
+  newUserRole='user';
+  document.getElementById('newuser-overlay').classList.remove('hidden');
+}
+
+function closeNewUserForm(){
+  document.getElementById('newuser-overlay').classList.add('hidden');
+}
+
+function closeNewUserOutside(e){
+  if(e.target.id==='newuser-overlay')closeNewUserForm();
+}
+
+function createNewUser(){
+  const name=document.getElementById('newuser-name').value.trim();
+  const email=document.getElementById('newuser-email').value.trim();
+  const password=document.getElementById('newuser-password').value;
+  
+  if(!name){showToast('Escribe un nombre','red');return;}
+  if(!email||!email.includes('@')){showToast('Ingresa un correo válido','red');return;}
+  if(!password||password.length<6){showToast('La contraseña debe tener al menos 6 caracteres','red');return;}
+  
+  const btn=document.getElementById('btn-create-user');
+  btn.disabled=true;
+  btn.textContent='Creando...';
+  
+  firebase.auth().createUserWithEmailAndPassword(email,password)
+    .then(cred=>{
+      return fbDb.ref('users/'+cred.user.uid).set({
+        name:name,
+        email:email,
+        role:newUserRole,
+        branchId:currentBranch||'default',
+        createdAt:Date.now()
+      });
+    })
+    .then(()=>{
+      showToast('Usuario creado exitosamente','green');
+      closeNewUserForm();
+      loadFirebaseUsers();
+    })
+    .catch(err=>{
+      let msg='Error al crear usuario';
+      if(err.code==='auth/email-already-in-use')msg='El correo ya está en uso';
+      showToast(msg,'red');
+    })
+    .finally(()=>{
+      btn.disabled=false;
+      btn.textContent='🔐 Crear usuario';
+    });
+}
+
+// Update setAdminTab to call loadFirebaseUsers
+const _origSetAdminTab=setAdminTab;
+setAdminTab=function(tab){
+  _origSetAdminTab(tab);
+  if(tab==='usuarios')loadFirebaseUsers();
+};
+</script>
+</body>
 </html>
