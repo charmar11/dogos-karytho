@@ -2209,6 +2209,53 @@ position:sticky;top:0;z-index:20;
   </div>
 </div>
 
+<!-- ===== SUCURSAL MODAL ===== -->
+<div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">🏪 Nueva Sucursal</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo carro/ubicación</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre del carro *</label>
+      <input type="text" id="suc-nombre" placeholder="Ej: Carro Principal, Carro FEXI..."
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"
+        oninput="document.getElementById('suc-id').value=this.value.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'')"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">ID único (automático)</label>
+      <input type="text" id="suc-id" placeholder="Se genera automáticamente"
+        style="width:100%;background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text3);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark" readonly/>
+      <div style="font-size:10px;color:var(--text4);margin-top:4px">ID usado para identificar la sucursal internamente</div>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Copiar menú de productos existente</label>
+      <select id="suc-copy-from" onchange="onSucCopyFromChange()"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="">— Empezar desde cero —</option>
+        <option value="default">Carro1 (principal)</option>
+      </select>
+      <div style="font-size:10px;color:var(--text4);margin-top:4px">Copia los productos, recetas e ingredientes de otra sucursal</div>
+    </div>
+    
+    <div id="suc-copy-info" style="display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:12px;color:var(--green);font-weight:700">✓ Se copiarán:</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" id="suc-copy-details">Productos, recetas, ingredientes...</div>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeSucursalForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createSucursal()" id="btn-create-suc" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Crear Sucursal
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== INGREDIENT MODAL ===== -->
 <div class="install-banner hidden" id="install-banner">
   <span class="install-icon">📲</span>
@@ -2405,6 +2452,7 @@ position:sticky;top:0;z-index:20;
     <button class="admin-tab" onclick="setAdminTab('ventas')">💰 Ventas</button>
     <button class="admin-tab" onclick="setAdminTab('gastos')">🧾 Gastos</button>
     <button class="admin-tab" onclick="setAdminTab('cortes')">🧮 Cortes</button>
+    <button class="admin-tab" onclick="setAdminTab('sucursales')">🏪 Sucursales</button>
     <button class="admin-tab" onclick="setAdminTab('usuarios')">👥 Usuarios</button>
     <button class="admin-tab" onclick="setAdminTab('actividad')">📋 Actividad</button>
   </div>
@@ -2742,6 +2790,36 @@ position:sticky;top:0;z-index:20;
     </div>
     <div id="adm-cortes-list">
       <div class="admin-empty">Sin cortes registrados</div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SUCURSALES ── -->
+  <div class="admin-tab-view" id="adm-tab-sucursales">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:800;color:var(--text)">🏪 Gestión de Sucursales</div>
+      <button onclick="openAddSucursalForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer">
+        + Agregar Carro
+      </button>
+    </div>
+    
+    <!-- Selector de vista -->
+    <div class="form-card" style="margin-bottom:14px;padding:14px 16px">
+      <div style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ver estadísticas de:</div>
+      <div style="display:flex;gap:8px">
+        <button id="suc-view-all" class="admin-range-btn active" onclick="setSucView('all')" style="flex:1">📊 Todas consolidadas</button>
+        <button id="suc-view-branch" class="admin-range-btn" onclick="setSucView('branch')" style="flex:1">📍 Por sucursal</button>
+      </div>
+      <select id="suc-branch-select" onchange="onSucBranchChange()" style="display:none;width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;margin-top:10px;color-scheme:dark">
+        <option value="">Selecciona una sucursal...</option>
+      </select>
+    </div>
+    
+    <!-- Lista de sucursales -->
+    <div id="suc-list">
+      <div style="text-align:center;padding:40px 20px;color:var(--text4)">
+        <div style="font-size:32px;margin-bottom:8px">🏪</div>
+        <div>Cargando sucursales...</div>
+      </div>
     </div>
   </div>
 
@@ -6848,6 +6926,10 @@ function setAdminTab(tab){
   }
   if(tab==='gastos'){renderGastos();}
   if(tab==='cortes'){renderAdmCortes();}
+  if(tab==='sucursales'){
+    loadSucursales();
+    loadSucursalesList();
+  }
 }
 
 function setAdminRange(r){
@@ -6885,6 +6967,202 @@ function setAdminRange(r){
   renderAdminChart(ps,r);
   renderAdminVTop(ps);
   renderAdminVentas(ps);
+}
+
+/* ══════════════════════════════════════════
+   SUCURSALES — Admin
+══════════════════════════════════════════ */
+let sucViewMode='all';
+let sucSelectedBranch='';
+
+function loadSucursales(){
+  if(!fbDb)return;
+  const select=document.getElementById('suc-branch-select');
+  if(!select)return;
+  fbDb.ref('sucursales').once('value').then(snap=>{
+    const data=snap.val()||{};
+    const keys=Object.keys(data);
+    select.innerHTML='<option value="">Selecciona una sucursal...</option>';
+    keys.forEach(k=>{
+      const s=data[k];
+      const name=s.name||k;
+      const opt=document.createElement('option');
+      opt.value=k;
+      opt.textContent=name+(k===currentBranch?' (actual)':'');
+      select.appendChild(opt);
+    });
+    if(currentBranch){
+      select.value=currentBranch;
+      sucSelectedBranch=currentBranch;
+    }
+  });
+}
+
+function setSucView(mode){
+  sucViewMode=mode;
+  document.getElementById('suc-view-all').classList.toggle('active',mode==='all');
+  document.getElementById('suc-view-branch').classList.toggle('active',mode==='branch');
+  document.getElementById('suc-branch-select').style.display=mode==='branch'?'':'none';
+  if(mode==='branch'){
+    onSucBranchChange();
+  }
+}
+
+function onSucBranchChange(){
+  sucSelectedBranch=document.getElementById('suc-branch-select').value;
+}
+
+function loadSucursalesList(){
+  if(!fbDb)return;
+  const list=document.getElementById('suc-list');
+  if(!list)return;
+  
+  list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:32px;margin-bottom:8px">🏪</div><div>Cargando sucursales...</div></div>';
+  
+  fbDb.ref('sucursales').once('value').then(snap=>{
+    const data=snap.val()||{};
+    const keys=Object.keys(data);
+    
+    if(keys.length===0){
+      list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
+      return;
+    }
+    
+    let html='<div style="display:flex;flex-direction:column;gap:12px">';
+    keys.forEach(k=>{
+      const s=data[k];
+      const name=s.name||k;
+      const isCurrent=k===currentBranch;
+      const isOnline=isCurrent?'🟢':'⚪';
+      
+      html+=`<div class="form-card" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--text)">${name}</div>
+              <div style="font-size:11px;color:var(--text4)">ID: ${k}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 8px;border-radius:20px;background:rgba(42,184,184,.15);color:#2ab8b8">ACTUAL</span>':''}
+            <span style="font-size:16px">${isOnline}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">Estructura: products, sales, gastos, ingredientes, recetas...</div>
+      </div>`;
+    });
+    html+='</div>';
+    list.innerHTML=html;
+  }).catch(()=>{
+    list.innerHTML='<div class="admin-empty">Error al cargar sucursales</div>';
+  });
+}
+
+function openAddSucursalForm(){
+  document.getElementById('suc-nombre').value='';
+  document.getElementById('suc-id').value='';
+  document.getElementById('suc-copy-from').value='';
+  document.getElementById('suc-copy-info').style.display='none';
+  
+  if(fbDb){
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const keys=Object.keys(data);
+      const select=document.getElementById('suc-copy-from');
+      select.innerHTML='<option value="">— Empezar desde cero —</option>';
+      keys.forEach(k=>{
+        const s=data[k];
+        const name=s.name||k;
+        const opt=document.createElement('option');
+        opt.value=k;
+        opt.textContent=name+(k===currentBranch?' (actual)':'');
+        select.appendChild(opt);
+      });
+    });
+  }
+  
+  document.getElementById('sucursal-overlay').classList.remove('hidden');
+}
+
+function closeSucursalForm(){
+  document.getElementById('sucursal-overlay').classList.add('hidden');
+}
+
+function closeSucursalOutside(e){
+  if(e.target.id==='sucursal-overlay')closeSucursalForm();
+}
+
+function onSucCopyFromChange(){
+  const from=document.getElementById('suc-copy-from').value;
+  const info=document.getElementById('suc-copy-info');
+  if(from){
+    info.style.display='';
+    document.getElementById('suc-copy-details').textContent='Productos, variaciones, extras, recetas, ingredientes, categorías, recetas generales...';
+  } else {
+    info.style.display='none';
+  }
+}
+
+async function createSucursal(){
+  const nombre=document.getElementById('suc-nombre').value.trim();
+  if(!nombre){showToast('Escribe el nombre del carro','red');return;}
+  
+  const btn=document.getElementById('btn-create-suc');
+  btn.textContent='Creando...';btn.disabled=true;
+  
+  const idSugerido=nombre.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+  const idFinal=idSugerido||'sucursal_'+Date.now();
+  
+  try{
+    const existenteSnap=await fbDb.ref('sucursales/'+idFinal).once('value');
+    if(existenteSnap.exists()){
+      showToast('Ya existe una sucursal con ese ID','red');
+      btn.textContent='💾 Crear Sucursal';btn.disabled=false;
+      return;
+    }
+    
+    const copyFrom=document.getElementById('suc-copy-from').value;
+    const estructuraVacia={
+      products:{},
+      sales:{},
+      gastos:{},
+      gasto_cats:{},
+      ingredients:{},
+      recipes:{},
+      general_recipe:{},
+      inv_history:{},
+      ing_categories:{},
+      cortes:{},
+      fondo:{},
+      config:{}
+    };
+    
+    if(copyFrom){
+      const copySnap=await fbDb.ref('sucursales/'+copyFrom).once('value');
+      const data=copySnap.val()||{};
+      const copiar=['products','ingredients','recipes','general_recipe','ing_categories','gasto_cats'];
+      copiar.forEach(key=>{
+        if(data[key])estructuraVacia[key]=data[key];
+      });
+    }
+    
+    estructuraVacia.name=nombre;
+    estructuraVacia.createdAt=Date.now();
+    estructuraVacia.createdBy=safeStorage.getItem(SK_DISPLAY)||'Admin';
+    
+    await fbDb.ref('sucursales/'+idFinal).set(estructuraVacia);
+    
+    showToast('✅ Sucursal "'+nombre+'" creada','green');
+    closeSucursalForm();
+    loadSucursales();
+    loadSucursalesList();
+  } catch(err){
+    showToast('Error al crear sucursal','red');
+    console.error(err);
+  }
+  
+  btn.textContent='💾 Crear Sucursal';btn.disabled=false;
 }
 
 function renderAdminChart(ps,r){
