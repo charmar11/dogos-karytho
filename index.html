@@ -2209,6 +2209,19 @@ position:sticky;top:0;z-index:20;
   </div>
 </div>
 
+<!-- ===== INGREDIENT MODAL ===== -->
+<div class="install-banner hidden" id="install-banner">
+  <span class="install-icon">📲</span>
+  <div class="install-text">
+    <div class="install-title">Instalar como app</div>
+    <div class="install-sub">Agrega a pantalla de inicio para usar sin internet</div>
+  </div>
+  <button class="btn-install" id="btn-install">Instalar</button>
+  <button class="btn-install-later" onclick="document.getElementById('install-banner').classList.add('hidden')">✕</button>
+</div>
+
+</div><!-- end #main-app -->
+
 <!-- ===== SUCURSAL MODAL ===== -->
 <div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)">
   <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
@@ -2235,7 +2248,6 @@ position:sticky;top:0;z-index:20;
       <select id="suc-copy-from" onchange="onSucCopyFromChange()"
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
         <option value="">— Empezar desde cero —</option>
-        <option value="default">Carro1 (principal)</option>
       </select>
       <div style="font-size:10px;color:var(--text4);margin-top:4px">Copia los productos, recetas e ingredientes de otra sucursal</div>
     </div>
@@ -2255,19 +2267,6 @@ position:sticky;top:0;z-index:20;
     </div>
   </div>
 </div>
-
-<!-- ===== INGREDIENT MODAL ===== -->
-<div class="install-banner hidden" id="install-banner">
-  <span class="install-icon">📲</span>
-  <div class="install-text">
-    <div class="install-title">Instalar como app</div>
-    <div class="install-sub">Agrega a pantalla de inicio para usar sin internet</div>
-  </div>
-  <button class="btn-install" id="btn-install">Instalar</button>
-  <button class="btn-install-later" onclick="document.getElementById('install-banner').classList.add('hidden')">✕</button>
-</div>
-
-</div><!-- end #main-app -->
 
 <!-- ===== CUSTOM CONFIRM — outside all containers ===== -->
 <div class="confirm-overlay hidden" id="confirm-overlay">
