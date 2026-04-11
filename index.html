@@ -3496,39 +3496,34 @@ function loginWithFirebase(user,pass,cb){
     return;
   }
   
-  // Otros usuarios: buscar por nombre en la base de datos
-  fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
-    const users=[];
-    snap.forEach(child=>{
-      users.push({uid:child.key,...child.val()});
+  // Otros usuarios: construir email automaticamente desde el nombre
+  // "Juan Perez" -> "juan.perez@karytho.com"
+  // Autenticar primero, luego leer perfil (evita query anonima bloqueada por reglas DB)
+  const autoEmail=user.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,'.').replace(/[^a-z0-9.]/g,'')+'@karytho.com';
+
+  auth.signInWithEmailAndPassword(autoEmail,pass)
+    .then(cred=>{
+      const uid=cred.user.uid;
+      currentUid=uid;
+      safeStorage.setItem(SK_UID,uid);
+      return fbDb.ref('users/'+uid).once('value');
+    })
+    .then(snap=>{
+      const data=snap.val();
+      if(!data){cb(null,'Usuario no configurado. Contacta al encargado.');return;}
+      currentBranch=data.branchId||'carro1';
+      cb(data,null);
+    })
+    .catch(err=>{
+      const c=err.code||'';
+      if(c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-credential'||c==='auth/invalid-email'){
+        cb(null,'Usuario o contraseña incorrectos');
+      } else {
+        cb(null,'Error al iniciar sesión');
+      }
     });
-    
-    if(users.length===0){
-      cb(null,'Usuario no encontrado. Contacta al encargado.');
-      return;
-    }
-    
-    if(users.length>1){
-      cb(null,'Hay varios usuarios con ese nombre.');
-      return;
-    }
-    
-    const userData=users[0];
-    auth.signInWithEmailAndPassword(userData.email,pass)
-      .then(()=>{
-        currentUid=userData.uid;
-        safeStorage.setItem(SK_UID,currentUid);
-        currentBranch=userData.branchId||'carro1';
-        cb(userData,null);
-      })
-      .catch(err=>{
-        if(err.code==='auth/wrong-password'){
-          cb(null,'Contraseña incorrecta');
-        } else {
-          cb(null,'Error al iniciar sesión');
-        }
-      });
-  }).catch(()=>cb(null,'Error al buscar usuario'));
 }
 
 function backToLogin(){
@@ -10661,10 +10656,10 @@ function createNewUser(){
   if(!name){showToast('Escribe un nombre','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
   
-  // Auto-build email from name: "Juan Perez" -> "juan.perez@kraytho.com"
+  // Auto-build email from name: "Juan Perez" -> "juan.perez@karytho.com"
   const email=name.toLowerCase().replace(/\s+/g,'.')
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9.]/g,'')+'@kraytho.com';
+    .replace(/[^a-z0-9.]/g,'')+'@karytho.com';
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
@@ -10915,7 +10910,7 @@ window.openCreateUserForm = openCreateUserForm;
     </div>
     
     <div style="margin-bottom:4px;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
-      <span style="font-size:11px;color:var(--text3)">📧 Correo auto: <b style="color:var(--gold)">nombre@kraytho.com</b></span>
+      <span style="font-size:11px;color:var(--text3)">📧 Correo auto: <b style="color:var(--gold)">nombre@karytho.com</b></span>
     </div>
     
     <div style="margin-bottom:16px">
