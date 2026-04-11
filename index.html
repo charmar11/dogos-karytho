@@ -5913,10 +5913,12 @@ function onAdminBranchChange(){
   if(!select)return;
   adminViewBranch=select.value;
   
-  // Detach any active consolidated listeners before switching
+  // Detach any active listeners (consolidated AND single-branch) before switching
   if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
   if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
+  if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
   window._sucVentasRef=null;window._sucGastosRef=null;
+  window._gastosRef=null;window._gastosHandler=null;
 
   if(adminViewBranch==='all'){
     currentBranch='carro1';
@@ -6531,12 +6533,15 @@ let admGastosMesYM=''; // YYYY-MM seleccionado
 
 function loadGastos(){
   if(!fbDb){return;}
-  // Firebase is the single source of truth for gastos.
+  // Detach previous single-branch gastos listener to avoid accumulating duplicates
+  if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
+  window._gastosRef=null;window._gastosHandler=null;
+
   // Show cached version instantly, then sync with Firebase.
   try{gastos=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch))||[];}catch{gastos=[];}
 
   // Realtime listener — Firebase is authoritative after first sync
-  getBranchRef('gastos').on('value',snap=>{
+  window._gastosHandler=function(snap){
     const d=snap.val();
     if(d&&Object.keys(d).length>0){
       // Firebase has data → use it
@@ -6555,7 +6560,9 @@ function loadGastos(){
     // Update break-even widget if resumen is open
     const resTab=document.getElementById('adm-tab-resumen');
     if(resTab&&resTab.classList.contains('active')) renderPuntoEquilibrio();
-  });
+  };
+  window._gastosRef=getBranchRef('gastos');
+  window._gastosRef.on('value',window._gastosHandler);
 }
 
 function loadVentasConsolidadas(){
@@ -10633,7 +10640,6 @@ function addPickerMember(){
 // New user functions
 function openNewUserForm(){
   document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10650,19 +10656,32 @@ function closeNewUserOutside(e){
 
 function createNewUser(){
   const name=document.getElementById('newuser-name').value.trim();
-  const email=document.getElementById('newuser-email').value.trim();
   const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
-  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
+  
+  // Auto-build email from name: "Juan Perez" -> "juan.perez@kraytho.com"
+  const email=name.toLowerCase().replace(/\s+/g,'.')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9.]/g,'')+'@kraytho.com';
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
   btn.textContent='Creando...';
   
-  firebase.auth().createUserWithEmailAndPassword(email,password)
+  // Use a secondary Firebase app so the admin session is NOT interrupted
+  const SECONDARY_APP_NAME='admin-user-creator';
+  let secondaryApp;
+  try{
+    secondaryApp=firebase.app(SECONDARY_APP_NAME);
+  }catch(e){
+    secondaryApp=firebase.initializeApp(FB_CONFIG,SECONDARY_APP_NAME);
+  }
+  
+  secondaryApp.auth().createUserWithEmailAndPassword(email,password)
     .then(cred=>{
+      // Write user record using main admin fbDb (admin is still signed in)
       return fbDb.ref('users/'+cred.user.uid).set({
         name:name,
         email:email,
@@ -10672,13 +10691,15 @@ function createNewUser(){
       });
     })
     .then(()=>{
-      showToast('Usuario creado exitosamente','green');
+      // Sign out of secondary app so it doesn't linger
+      secondaryApp.auth().signOut().catch(()=>{});
+      showToast('Usuario creado: '+email,'green');
       closeNewUserForm();
       loadUsersForAdmin();
     })
     .catch(err=>{
       let msg='Error al crear usuario';
-      if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso';
+      if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso ('+email+')';
       showToast(msg,'red');
     })
     .finally(()=>{
@@ -10822,7 +10843,6 @@ function deleteUserAccount(uid,name){
 
 function openCreateUserForm(){
   document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10895,10 +10915,8 @@ window.openCreateUserForm = openCreateUserForm;
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
     </div>
     
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
-      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    <div style="margin-bottom:4px;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+      <span style="font-size:11px;color:var(--text3)">📧 Correo auto: <b style="color:var(--gold)">nombre@kraytho.com</b></span>
     </div>
     
     <div style="margin-bottom:16px">
