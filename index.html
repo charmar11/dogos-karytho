@@ -5867,7 +5867,7 @@ function bootAdmin(){
   if(_lsGoal>0) _applyGoal(_lsGoal);
   renderAdmin();
   fbListening=false;
-  loadAdminBranchSelector();
+  setTimeout(function(){loadAdminBranchSelector();},1500);
   setTimeout(async ()=>{
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
@@ -6572,9 +6572,49 @@ function addGastoCat(){
 function renderGastos(){
   _initAdmGastosDia();
   const iso=admGastosDiaISO||todayISO();
-  const gs=getGastosFiltrados();
-  const totalGasto=gs.reduce((s,g)=>s+g.monto,0);
+  
+  // Filtrar por sucursal si no es 'all'
+  var gs;
+  if(adminViewBranch&&adminViewBranch!=='all'){
+    // Cargar gastos de la sucursal seleccionada
+    gs=[];
+    if(fbDb){
+      fbDb.ref('sucursales/'+adminViewBranch+'/gastos').once('value').then(function(snap){
+        var d=snap.val()||{};
+        var gastosSuc=Object.values(d).filter(Boolean);
+        gs=filtrarGastosPorPeriodo(gastosSuc,iso);
+        _renderGastosContent(gs,iso);
+      }).catch(function(){});
+    }
+    return;
+  }
+  
+  gs=getGastosFiltrados();
+  _renderGastosContent(gs,iso);
+}
 
+function filtrarGastosPorPeriodo(gastosArr,iso){
+  if(gastosPeriod==='hoy'){
+    return gastosArr.filter(function(g){return normFecha(g.fecha)===iso;}).sort(function(a,b){return(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp);});
+  }
+  if(gastosPeriod==='semana'){
+    var lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
+    var domDate=new Date(lunISO+'T12:00:00');domDate.setDate(domDate.getDate()+6);
+    var domISO=_isoOfDate(domDate);
+    return gastosArr.filter(function(g){var f=normFecha(g.fecha);return f>=lunISO&&f<=domISO;}).sort(function(a,b){return(b.fecha||'').localeCompare(a.fecha||'');});
+  }
+  if(gastosPeriod==='mes'){
+    var ym=admGastosMesYM||todayISO().slice(0,7);
+    return gastosArr.filter(function(g){return normFecha(g.fecha).slice(0,7)===ym;}).sort(function(a,b){return(b.fecha||'').localeCompare(a.fecha||'');});
+  }
+  return [...gastosArr].sort(function(a,b){return(b.fecha||'').localeCompare(a.fecha||'');});
+}
+
+function _renderGastosContent(gs,iso){
+  if(gs.length===0){gs=[];}
+  
+  const totalGasto=gs.reduce(function(s,g){return s+g.monto;},0);
+  
   // Balance: ingresos según periodo activo
   let salesFilt=sales;
   let perLbl='Histórico';
