@@ -3504,7 +3504,24 @@ function loginWithFirebase(user,pass,cb){
     });
     
     if(users.length===0){
-      cb(null,'Usuario no encontrado. Contacta al encargado.');
+      // Fallback: intentar directamente con nombre@kraytho.com (usuarios creados desde el panel)
+      const emailBase=user.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+      const kraythoEmail=emailBase+'@kraytho.com';
+      auth.signInWithEmailAndPassword(kraythoEmail,pass)
+        .then(cred=>{
+          const uid=cred.user.uid;
+          currentUid=uid;
+          safeStorage.setItem(SK_UID,uid);
+          return fbDb.ref('users/'+uid).once('value');
+        })
+        .then(snap=>{
+          const data=snap.val();
+          currentBranch=(data&&data.branchId)||'carro1';
+          cb(data||{name:user,role:'user'},null);
+        })
+        .catch(()=>{
+          cb(null,'Usuario no encontrado. Contacta al encargado.');
+        });
       return;
     }
     
@@ -8076,7 +8093,7 @@ function renderAdminVentas(ps){
       byW[key].byDay[s.date].total+=s.total;byW[key].byDay[s.date].count++;
       (s.items||[]).forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');byW[key].prods[k]=(byW[key].prods[k]||0)+it.qty;});
     });
-    const weeks=Object.entries(byW).sort((a,b)=>new Date(b[0])-new Date(a[0]));
+    const weeks=Object.entries(byW).sort((a,b)=>new Date(a[0])-new Date(b[0]));
     const frag=document.createDocumentFragment();
     const hdr=document.createElement('div');
     hdr.style.cssText='display:flex;justify-content:space-between;margin-bottom:8px;padding:0 2px';
@@ -8088,7 +8105,7 @@ function renderAdminVentas(ps){
       const prods=Object.entries(g.prods).sort((a,b)=>b[1]-a[1]);
       const daysRows=Object.entries(g.byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,d])=>`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 12px;border-top:1px solid var(--border)"><span style="color:var(--text3)">${date} <span style="color:var(--text4)">(${d.count} venta${d.count!==1?'s':''})</span></span><span style="color:var(--gold);font-weight:700">$${d.total.toFixed(2)}</span></div>`).join('');
       frag.appendChild(makeCard(
-        `<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${weeks.length-idx}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wLabel}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
+        `<div><span style="font-size:11px;font-weight:800;color:var(--gold)">Semana ${idx+1}</span><span style="font-size:11px;color:var(--text4);margin-left:8px">${wLabel}</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:800;color:var(--gold)">$${g.total.toFixed(2)}</span><span class="_chev" style="font-size:14px;color:var(--text3);transition:transform .2s">›</span></div>`,
         subLabel('Productos')+prodsHTML(prods)+subLabel('Por día')+daysRows
       ));
     });
@@ -10649,7 +10666,6 @@ function addPickerMember(){
 // New user functions
 function openNewUserForm(){
   document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10666,12 +10682,14 @@ function closeNewUserOutside(e){
 
 function createNewUser(){
   const name=document.getElementById('newuser-name').value.trim();
-  const email=document.getElementById('newuser-email').value.trim();
   const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
-  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
+  
+  // Generar email automáticamente con dominio kraytho.com
+  const emailBase=name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  const email=emailBase+'@kraytho.com';
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
@@ -10838,7 +10856,6 @@ function deleteUserAccount(uid,name){
 
 function openCreateUserForm(){
   document.getElementById('newuser-name').value='';
-  document.getElementById('newuser-email').value='';
   document.getElementById('newuser-password').value='';
   document.getElementById('newuser-role').value='user';
   newUserRole='user';
@@ -10908,12 +10925,6 @@ window.openCreateUserForm = openCreateUserForm;
     <div style="margin-bottom:16px">
       <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
       <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
-      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
     </div>
     
