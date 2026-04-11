@@ -10233,83 +10233,7 @@ if(savedSession==='1' && savedRole==='admin'){
 } else {
   setTimeout(()=>document.getElementById('login-user').focus(),300);
 }
-</script>
-<!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
-<div id="goal-celebration" style="display:none"></div>
 
-<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script>
-
-<!-- ===== PICKER MEMBER MODAL ===== -->
-<div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="cash-title">👤 Agregar al Picker</div>
-    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Agrega una persona al selector de turno (sin cuenta)</div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
-      <input type="text" id="pickermember-name" placeholder="Ej: Caro"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-top:24px">
-      <button onclick="closePickerMemberForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-        Cancelar
-      </button>
-      <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        💾 Agregar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== NEW USER MODAL ===== -->
-<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="cash-title">🔑 Nuevo Usuario</div>
-    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
-      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
-      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
-      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
-      <select id="newuser-role" onchange="newUserRole=this.value"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
-        <option value="user">👤 Empleado</option>
-        <option value="admin">🔑 Admin</option>
-        <option value="eventos">🎪 Eventos</option>
-      </select>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-top:24px">
-      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-        Cancelar
-      </button>
-      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        🔐 Crear usuario
-      </button>
-    </div>
-  </div>
-</div>
-
-<script>
 // Picker member functions
 function openAddPickerMemberForm(){
   document.getElementById('pickermember-name').value='';
@@ -10362,8 +10286,8 @@ function createNewUser(){
   const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
-  if(!email||!email.includes('@')){showToast('Ingresa un correo válido','red');return;}
-  if(!password||password.length<6){showToast('La contraseña debe tener al menos 6 caracteres','red');return;}
+  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
+  if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
@@ -10386,7 +10310,7 @@ function createNewUser(){
     })
     .catch(err=>{
       let msg='Error al crear usuario';
-      if(err.code==='auth/email-already-in-use')msg='El correo ya está en uso';
+      if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso';
       showToast(msg,'red');
     })
     .finally(()=>{
@@ -10404,7 +10328,6 @@ function loadUsersForAdmin(){
   
   container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Cargando...</div>';
   
-  // Si es carro1, mostrar miembros del picker
   if(adminViewBranch==='carro1'){
     desc.textContent='Miembros del selector de turno (sin cuenta)';
     addSection.style.display='none';
@@ -10412,7 +10335,6 @@ function loadUsersForAdmin(){
     return;
   }
   
-  // Para otras sucursales, mostrar usuarios con cuenta
   if(!adminViewBranch||adminViewBranch==='all'){
     container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona una sucursal para ver sus usuarios</div>';
     addSection.style.display='none';
@@ -10423,7 +10345,7 @@ function loadUsersForAdmin(){
   addSection.style.display='block';
   
   if(!fbDb){
-    container.innerHTML='<div class="admin-empty">Sin conexión</div>';
+    container.innerHTML='<div class="admin-empty">Sin conexion</div>';
     return;
   }
   
@@ -10465,7 +10387,7 @@ function loadPickerMembers(){
   if(!container)return;
   
   if(!fbDb){
-    container.innerHTML='<div class="admin-empty">Sin conexión</div>';
+    container.innerHTML='<div class="admin-empty">Sin conexion</div>';
     return;
   }
   
@@ -10552,7 +10474,92 @@ window.renderSucursalCard = renderSucursalCard;
 window.isValidObject = isValidObject;
 window.safeGetKeys = safeGetKeys;
 window.safeGetValues = safeGetValues;
-
+window.loadUsersForAdmin = loadUsersForAdmin;
+window.loadPickerMembers = loadPickerMembers;
+window.removePickerMember = removePickerMember;
+window.deleteUserAccount = deleteUserAccount;
+window.addPickerMember = addPickerMember;
+window.openAddPickerMemberForm = openAddPickerMemberForm;
+window.closePickerMemberForm = closePickerMemberForm;
+window.openNewUserForm = openNewUserForm;
+window.closeNewUserForm = closeNewUserForm;
+window.createNewUser = createNewUser;
+window.openCreateUserForm = openCreateUserForm;
 </script>
+<!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
+<div id="goal-celebration" style="display:none"></div>
+
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script>
+
+<!-- ===== PICKER MEMBER MODAL ===== -->
+<div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">👤 Agregar al Picker</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Agrega una persona al selector de turno (sin cuenta)</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="pickermember-name" placeholder="Ej: Caro"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closePickerMemberForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Agregar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NEW USER MODAL ===== -->
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">🔑 Nuevo Usuario</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
+      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
+      <select id="newuser-role" onchange="newUserRole=this.value"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="user">👤 Empleado</option>
+        <option value="admin">🔑 Admin</option>
+        <option value="eventos">🎪 Eventos</option>
+      </select>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        🔐 Crear usuario
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
