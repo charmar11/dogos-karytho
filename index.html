@@ -2796,7 +2796,7 @@ position:sticky;top:0;z-index:20;
   <div class="admin-tab-view" id="adm-tab-sucursales">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:16px;font-weight:800;color:var(--text)">🏪 Gestión de Sucursales</div>
-      <button onclick="openAddSucursalForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer">
+      <button id="btn-agregar-carro" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer">
         + Agregar Carro
       </button>
     </div>
@@ -5580,6 +5580,7 @@ function bootAdmin(){
   if(_lsGoal>0) _applyGoal(_lsGoal);
   renderAdmin();
   fbListening=false;
+  initSucursalesUI();
   setTimeout(async ()=>{
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
@@ -6971,6 +6972,7 @@ function setAdminRange(r){
 /* ══════════════════════════════════════════
    SUCURSALES — Admin
 ══════════════════════════════════════════ */
+console.log('Cargando modulo de sucursales...');
 let sucViewMode='all';
 let sucSelectedBranch='';
 
@@ -6995,6 +6997,22 @@ function loadSucursales(){
       sucSelectedBranch=currentBranch;
     }
   });
+}
+
+function initSucursalesUI(){
+  console.log('Inicializando UI de sucursales...');
+  var btn = document.getElementById('btn-agregar-carro');
+  if(btn){
+    console.log('Boton encontrado, adjuntando event listener...');
+    btn.addEventListener('click', function(e){
+      console.log('Click en boton agregar carro');
+      e.preventDefault();
+      openAddSucursalForm();
+    });
+    console.log('Event listener adjuntado');
+  } else {
+    console.error('ERROR: Boton btn-agregar-carro no encontrado');
+  }
 }
 
 function setSucView(mode){
