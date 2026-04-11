@@ -3645,12 +3645,12 @@ function getBranchRef(path){
 
 function loadBranchId(uid){
   return new Promise((resolve)=>{
-    if(!fbDb){currentBranch='default';resolve('default');return;}
+    if(!fbDb){currentBranch='carro1';resolve('carro1');return;}
     fbDb.ref('users/'+uid).once('value').then(snap=>{
       const data=snap.val();
-      currentBranch=data&&data.branchId?data.branchId:'default';
+      currentBranch=(data&&data.branchId&&data.branchId!=='default')?data.branchId:'carro1';
       resolve(currentBranch);
-    }).catch(()=>{currentBranch='default';resolve('default');});
+    }).catch(()=>{currentBranch='carro1';resolve('carro1');});
   });
 }
 
@@ -7533,12 +7533,13 @@ async function createSucursal(){
     
     await fbDb.ref('sucursales/'+idFinal).set(estructuraVacia);
     
-    // Limpiar placeholders _init inmediatamente
-    const limpiaRef=fbDb.ref('sucursales/'+idFinal);
+    // Limpiar placeholders _init inmediatamente usando null (elimina la propiedad)
     const keysConInit=['products','sales','gastos','gasto_cats','ingredients','recipes','general_recipe','inv_history','ing_categories','cortes','fondo','config'];
     const limpieza={};
-    keysConInit.forEach(k=>limpieza[k]=firebase.database.ServerValue.TIMESTAMP===firebase.database.ServerValue.TIMESTAMP?{}:{});
-    limpiaRef.update(limpieza);
+    keysConInit.forEach(function(k){
+      limpieza[k]=null;
+    });
+    await fbDb.ref('sucursales/'+idFinal).update(limpieza);
     
     showToast('✅ Sucursal "'+nombre+'" creada','green');
     closeSucursalForm();
@@ -10179,15 +10180,15 @@ async function initSessionBranch(){
     try{
       const snap=await fbDb.ref('users/'+savedUid).once('value');
       const data=snap.val();
-      if(data && data.branchId){
+      if(data && data.branchId && data.branchId!=='default'){
         currentBranch=data.branchId;
         currentUid=savedUid;
       } else {
-        currentBranch='default';
+        currentBranch='carro1';
         currentUid=savedUid;
       }
     } catch(e){
-      currentBranch='default';
+      currentBranch='carro1';
       currentUid=savedUid;
     }
   }
