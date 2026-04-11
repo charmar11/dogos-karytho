@@ -1645,6 +1645,26 @@ position:sticky;top:0;z-index:20;
 }
 .btn-add-user:active{transform:scale(.97)}
 
+.user-mgr-card{
+  display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;animation:fadeIn .25s ease both;
+}
+.user-mgr-avatar{
+  width:42px;height:42px;border-radius:50%;background:var(--bg3);border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.avatar-letter{font-size:18px;font-weight:800;color:var(--text)}
+.user-mgr-info{flex:1;min-width:0}
+.user-mgr-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-mgr-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.user-mgr-actions{display:flex;gap:6px}
+.btn-usr-del{
+  width:32px;height:32px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.btn-usr-del:hover{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+
 /* ══ INVENTARIO PANEL ══ */
 .inv-screen{
   position:fixed;inset:0;z-index:800;background:var(--bg);
@@ -1754,15 +1774,6 @@ position:sticky;top:0;z-index:20;
   <div class="login-logo">🌭</div>
   <div class="picker-title">¿Quién eres?</div>
   <div class="picker-sub">Toca tu nombre para entrar</div>
-  
-  <!-- Selector de sucursal -->
-  <div style="margin-bottom:16px;width:100%;max-width:280px">
-    <select id="picker-sucursal" onchange="onPickerSucursalChange()"
-      style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
-      <option value="">Cargando...</option>
-    </select>
-  </div>
-  
   <div class="picker-grid" id="picker-grid"></div>
 </div>
 
@@ -2233,7 +2244,7 @@ position:sticky;top:0;z-index:20;
 </div><!-- end #main-app -->
 
 <!-- ===== SUCURSAL MODAL ===== -->
-<div id="sucursal-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeSucursalOutside(event)">
+<div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)">
   <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="cash-title">🏪 Nueva Sucursal</div>
@@ -2273,80 +2284,6 @@ position:sticky;top:0;z-index:20;
       </button>
       <button onclick="createSucursal()" id="btn-create-suc" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
         💾 Crear Sucursal
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== NEW USER MODAL ===== -->
-<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="cash-title">👤 Nuevo Usuario</div>
-    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea una cuenta para un empleado o encargado</div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre completo *</label>
-      <input type="text" id="newu-name" placeholder="Ej: María García"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
-      <input type="password" id="newu-pass" placeholder="Mínimo 6 caracteres"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Sucursal / Carro *</label>
-      <select id="newu-branch"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
-        <option value="">— Seleccionar sucursal —</option>
-      </select>
-    </div>
-    
-    <div style="margin-bottom:20px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol *</label>
-      <div style="display:flex;gap:10px">
-        <button id="newu-role-user" onclick="setNewUserRole('user')" style="flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:8px;padding:12px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
-          👤 Empleado
-        </button>
-        <button id="newu-role-admin" onclick="setNewUserRole('admin')" style="flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:8px;padding:12px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
-          🔑 Encargado
-        </button>
-      </div>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-top:24px">
-      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-        Cancelar
-      </button>
-      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        💾 Crear Usuario
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== PICKER MEMBER MODAL ===== -->
-<div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-handle"></div>
-    <div class="cash-title">👤 Agregar al Picker</div>
-    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Agrega una persona al selector de turno (sin cuenta)</div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
-      <input type="text" id="pickermember-name" placeholder="Ej: Caro"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-top:24px">
-      <button onclick="closePickerMemberForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-        Cancelar
-      </button>
-      <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        💾 Agregar
       </button>
     </div>
   </div>
@@ -2714,19 +2651,13 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
-    <div class="form-card" style="margin-bottom:16px;padding:14px">
-      <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px">🔐 Usuarios del Sistema</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Crea las cuentas de ADMIN, CIDOP y EVENTOS para login</div>
-      <button class="btn-add-user" onclick="createSystemUsers()" style="background:var(--gold);color:#111;font-weight:800">⚡ Crear usuarios del sistema</button>
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:800;color:var(--text)">👥 Miembros del Picker</div>
+        <button onclick="openAddPickerMemberForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
+      </div>
+      <div id="adm-picker-members-list" class="admin-empty">Cargando...</div>
     </div>
-    
-    <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn-add-user" onclick="openNewUserForm()" style="background:var(--green);color:#111;font-weight:800">➕ Crear nuevo usuario</button>
-      <button class="btn-add-user" onclick="openAddPickerMemberForm()" style="background:var(--blue);color:#fff;font-weight:800">👤 Agregar al picker</button>
-    </div>
-    
-    <div id="adm-users-list"></div>
-    <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -2886,7 +2817,7 @@ position:sticky;top:0;z-index:20;
   <div class="admin-tab-view" id="adm-tab-sucursales">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:16px;font-weight:800;color:var(--text)">🏪 Gestión de Sucursales</div>
-      <button onclick="openAddSucursalForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer">
+      <button id="btn-agregar-carro" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer">
         + Agregar Carro
       </button>
     </div>
@@ -3324,6 +3255,97 @@ const SK_SESSION='dk_session';
 const SK_ROLE='dk_role';
 const SK_DISPLAY='dk_display';
 
+let newUserRole='user';
+let firebaseUsers=[];
+
+function loadFirebaseUsers(){
+  if(!fbDb)return;
+  fbDb.ref('users').once('value').then(snap=>{
+    const data=snap.val()||{};
+    firebaseUsers=Object.entries(data).map(([uid,u])=>({uid,...u}));
+    renderFirebaseUsersList();
+  });
+}
+
+function renderFirebaseUsersList(){
+  const fbList=document.getElementById('adm-firebase-users-list');
+  const pickerList=document.getElementById('adm-picker-members-list');
+  
+  if(fbList){
+    if(firebaseUsers.length===0){
+      fbList.innerHTML='<div class="admin-empty">Sin usuarios con cuenta</div>';
+    } else {
+      let html='';
+      firebaseUsers.forEach((u,i)=>{
+        const roleLabel=u.role==='admin'?'🔑 Admin':u.role==='eventos'?'🎪 Eventos':'👤 Empleado';
+        const roleColor=u.role==='admin'?'var(--gold)':u.role==='eventos'?'var(--green)':'var(--text3)';
+        html+=`
+          <div class="user-mgr-card" style="animation-delay:${i*.04}s">
+            <div class="user-mgr-avatar" title="${u.name||'Usuario'}">
+              <span class="avatar-letter">${(u.name||'?').charAt(0).toUpperCase()}</span>
+            </div>
+            <div class="user-mgr-info">
+              <div class="user-mgr-name">${u.name||'Sin nombre'}</div>
+              <div class="user-mgr-sub" style="color:${roleColor}">${roleLabel} · ${u.branchId||'Sin sucursal'}</div>
+            </div>
+            <div class="user-mgr-actions">
+              <button class="btn-usr-del" title="Eliminar" onclick="deleteFirebaseUser('${u.uid}','${u.name}')">✕</button>
+            </div>
+          </div>
+        `;
+      });
+      fbList.innerHTML=html;
+    }
+  }
+  
+  if(pickerList){
+    if(CIDOP_MEMBERS.length===0){
+      pickerList.innerHTML='<div class="admin-empty">Sin miembros en el picker</div>';
+    } else {
+      let html='';
+      CIDOP_MEMBERS.forEach((name,i)=>{
+        html+=`
+          <div class="user-mgr-card" style="animation-delay:${i*.04}s">
+            <div class="user-mgr-avatar" title="${name}">
+              <span class="avatar-letter">${name.charAt(0).toUpperCase()}</span>
+            </div>
+            <div class="user-mgr-info">
+              <div class="user-mgr-name">${name}</div>
+              <div class="user-mgr-sub">Sin cuenta · Picker</div>
+            </div>
+            <div class="user-mgr-actions">
+              <button class="btn-usr-del" title="Eliminar" onclick="deletePickerMember('${name}',${i})">✕</button>
+            </div>
+          </div>
+        `;
+      });
+      pickerList.innerHTML=html;
+    }
+  }
+}
+
+function deleteFirebaseUser(uid,name){
+  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
+    try{
+      await fbDb.ref('users/'+uid).remove();
+      showToast('Usuario eliminado','green');
+      loadFirebaseUsers();
+    } catch(err){
+      showToast('Error al eliminar usuario','red');
+    }
+  });
+}
+
+function deletePickerMember(name,idx){
+  customConfirm('¿Eliminar a "'+name+'" del picker?','Eliminar',()=>{
+    CIDOP_MEMBERS.splice(idx,1);
+    saveCidopMembers(()=>{
+      showToast('"'+name+'" eliminado del picker','green');
+      loadFirebaseUsers();
+    });
+  });
+}
+
 /* ─── Firebase login helper ─── */
 let fbAuthDb=null;
 function loginWithFirebase(user,pass,cb){
@@ -3333,74 +3355,23 @@ function loginWithFirebase(user,pass,cb){
     'ADMIN':'admin@karytho.com',
     'EVENTOS':'eventos@karytho.com'
   };
-  
-  const emailFijo=emailMap[user.toUpperCase()];
-  
-  if(emailFijo){
-    auth.signInWithEmailAndPassword(emailFijo,pass)
-      .then(cred=>{
-        const uid=cred.user.uid;
-        currentUid=uid;
-        safeStorage.setItem(SK_UID,uid);
-        return fbDb.ref('users/'+uid).once('value');
-      })
-      .then(snap=>{
-        const data=snap.val();
-        if(!data){cb(null,'Usuario no configurado');return;}
-        currentBranch=data.branchId||'default';
-        cb(data,null);
-      })
-      .catch(()=>{
-        cb(null,'Usuario o contraseña incorrectos');
-      });
-  } else {
-    fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
-      const users=[];
-      snap.forEach(child=>{
-        users.push({uid:child.key,...child.val()});
-      });
-      
-      if(users.length===0){
-        fbDb.ref('users').orderByChild('email').equalTo(user+'@default.karytho.local').once('value').then(snap2=>{
-          snap2.forEach(child=>{
-            users.push({uid:child.key,...child.val()});
-          });
-          if(users.length===0){
-            cb(null,'Usuario no encontrado. Contacta al encargado.');
-          } else {
-            tryLoginUser(users[0],pass,cb);
-          }
-        }).catch(()=>cb(null,'Error al buscar usuario'));
-        return;
-      }
-      
-      if(users.length>1){
-        cb(null,'Hay varios usuarios con ese nombre. Usa tu email completo.');
-        return;
-      }
-      
-      tryLoginUser(users[0],pass,cb);
-    }).catch(()=>cb(null,'Error al buscar usuario'));
-  }
-}
-
-function tryLoginUser(userData,pass,cb){
-  const auth=firebase.auth();
-  auth.signInWithEmailAndPassword(userData.email,pass)
+  const email=emailMap[user.toUpperCase()];
+  if(!email){cb(null,'Usuario o contraseña incorrectos');return;}
+  auth.signInWithEmailAndPassword(email,pass)
     .then(cred=>{
-      currentUid=cred.user.uid;
-      safeStorage.setItem(SK_UID,currentUid);
-      currentBranch=userData.branchId||'default';
-      cb(userData,null);
+      const uid=cred.user.uid;
+      currentUid=uid;
+      safeStorage.setItem(SK_UID,uid);
+      return fbDb.ref('users/'+uid).once('value');
     })
-    .catch(err=>{
-      if(err.code==='auth/wrong-password'){
-        cb(null,'Contraseña incorrecta');
-      } else if(err.code==='auth/user-not-found'){
-        cb(null,'Usuario no encontrado');
-      } else {
-        cb(null,'Error al iniciar sesión');
-      }
+    .then(snap=>{
+      const data=snap.val();
+      if(!data){cb(null,'Usuario no configurado');return;}
+      currentBranch=data.branchId||'default';
+      cb(data,null);
+    })
+    .catch(()=>{
+      cb(null,'Usuario o contraseña incorrectos');
     });
 }
 
@@ -5721,6 +5692,7 @@ function bootAdmin(){
   if(_lsGoal>0) _applyGoal(_lsGoal);
   renderAdmin();
   fbListening=false;
+  initSucursalesUI();
   setTimeout(async ()=>{
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
@@ -5924,6 +5896,7 @@ let cidopMembersLoaded=false;
 // Start real-time listener on cidop_members so picker is always in sync
 function startMembersListener(){
   if(!fbDb)return;
+  // Detach previous listener first to avoid duplicates
   fbDb.ref('cidop_members').off();
   fbDb.ref('cidop_members').on('value',snap=>{
     const data=snap.val();
@@ -5934,45 +5907,16 @@ function startMembersListener(){
         members.forEach(m=>CIDOP_MEMBERS.push(m));
       }
     } else {
-      // Firebase vacío — guardar los miembros locales por defecto
-      if(CIDOP_MEMBERS.length>0){
-        saveCidopMembers(null);
-      }
+      // No data in Firebase yet — save local defaults so they persist
+      saveCidopMembers(null);
     }
     cidopMembersLoaded=true;
-    // Refresh UI
+    // Always refresh UI with latest members
+    const adminList=document.getElementById('adm-users-list');
+    if(adminList)renderAdminUsersHTML(CIDOP_MEMBERS);
     const pickerScreen=document.getElementById('picker-screen');
     if(pickerScreen&&pickerScreen.classList.contains('active'))
       renderPickerGrid(currentActiveNames);
-  });
-}
-
-function openAddPickerMemberForm(){
-  document.getElementById('pickermember-name').value='';
-  document.getElementById('pickermember-overlay').classList.remove('hidden');
-}
-
-function closePickerMemberForm(){
-  document.getElementById('pickermember-overlay').classList.add('hidden');
-}
-
-function closePickerMemberOutside(e){
-  if(e.target.id==='pickermember-overlay')closePickerMemberForm();
-}
-
-function addPickerMember(){
-  const name=document.getElementById('pickermember-name').value.trim();
-  if(!name){showToast('Escribe un nombre','red');return;}
-  if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(name.toLowerCase())){
-    showToast('Ese nombre ya existe','red');return;
-  }
-  if(name.length>20){showToast('Nombre muy largo (max 20)','red');return;}
-  CIDOP_MEMBERS.push(name);
-  saveCidopMembers(()=>{
-    closePickerMemberForm();
-    showToast('"'+name+'" agregado al picker','green');
-    logActivity('picker_add','Agregado al picker — '+name);
-    loadFirebaseUsers();
   });
 }
 
@@ -7082,10 +7026,9 @@ function setAdminTab(tab){
     const dateRow=document.querySelector('.date-picker-row');
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
-  if(tab==='usuarios'){loadFirebaseUsers();}
+  if(tab==='usuarios')loadFirebaseUsers();
   if(tab==='actividad'){
     renderActivityLog();
-    // Refresh online list from Firebase
     if(fbDb) fbDb.ref('presence').once('value',snap=>{
       const data=snap.val()||{};
       const sessions=Object.entries(data).map(([sid,u])=>({...u,_sid:sid}));
@@ -7140,6 +7083,7 @@ function setAdminRange(r){
 /* ══════════════════════════════════════════
    SUCURSALES — Admin
 ══════════════════════════════════════════ */
+console.log('Cargando modulo de sucursales...');
 let sucViewMode='all';
 let sucSelectedBranch='';
 
@@ -7147,31 +7091,33 @@ function loadSucursales(){
   if(!fbDb)return;
   const select=document.getElementById('suc-branch-select');
   if(!select)return;
-  
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data).filter(k=>k!=='default');
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
     select.innerHTML='<option value="">Selecciona una sucursal...</option>';
     keys.forEach(k=>{
       const s=data[k];
       const name=s.name||k;
       const opt=document.createElement('option');
       opt.value=k;
-      opt.textContent=name+(k===currentBranch?' (actual)':'');
+      opt.textContent=name;
       select.appendChild(opt);
     });
-    
-    if(currentBranch&&currentBranch!=='default'&&keys.includes(currentBranch)){
+    if(currentBranch&&currentBranch!=='default'){
       select.value=currentBranch;
       sucSelectedBranch=currentBranch;
     }
-    
-    loadSucursalesList();
-  }).catch(err=>{
-    console.error('Error cargando sucursales:',err);
-    const list=document.getElementById('suc-list');
-    if(list)list.innerHTML='<div class="admin-empty">Error al cargar. Revisa tu conexión.</div>';
   });
+}
+
+function initSucursalesUI(){
+  var btn = document.getElementById('btn-agregar-carro');
+  if(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      openAddSucursalForm();
+    });
+  }
 }
 
 function setSucView(mode){
@@ -7179,23 +7125,18 @@ function setSucView(mode){
   const btnAll=document.getElementById('suc-view-all');
   const btnBranch=document.getElementById('suc-view-branch');
   const select=document.getElementById('suc-branch-select');
-  
   if(btnAll)btnAll.classList.toggle('active',mode==='all');
   if(btnBranch)btnBranch.classList.toggle('active',mode==='branch');
   if(select)select.style.display=mode==='branch'?'':'none';
-  
   if(mode==='branch'&&!sucSelectedBranch){
     sucSelectedBranch=currentBranch&&currentBranch!=='default'?currentBranch:'';
     if(select)select.value=sucSelectedBranch;
   }
-  
   loadSucursalesList();
 }
 
 function onSucBranchChange(){
-  const select=document.getElementById('suc-branch-select');
-  if(!select)return;
-  sucSelectedBranch=select.value;
+  sucSelectedBranch=document.getElementById('suc-branch-select').value;
   loadSucursalesList();
 }
 
@@ -7204,75 +7145,83 @@ function loadSucursalesList(){
   const list=document.getElementById('suc-list');
   if(!list)return;
   
-  list.innerHTML='<div style="text-align:center;padding:20px;color:var(--text4)">Cargando...</div>';
+  list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:32px;margin-bottom:8px">🏪</div><div>Cargando...</div></div>';
   
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const allKeys=Object.keys(data);
-    const keys=allKeys.filter(k=>k!=='default');
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
     
     if(keys.length===0){
-      list.innerHTML=`
-        <div class="form-card" style="text-align:center;padding:30px">
-          <div style="font-size:40px;margin-bottom:12px">🏪</div>
-          <div style="font-size:14px;color:var(--text2);margin-bottom:8px">No hay sucursales</div>
-          <div style="font-size:12px;color:var(--text4)">Crea tu primera sucursal con el botón de arriba</div>
-        </div>
-      `;
+      list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
       return;
     }
     
     const targetBranch=sucViewMode==='branch'&&sucSelectedBranch?sucSelectedBranch:null;
-    
-    let html='';
     const branchesToShow=targetBranch?[targetBranch]:keys;
+    
+    let html='<div style="display:flex;flex-direction:column;gap:12px">';
     
     branchesToShow.forEach(k=>{
       if(!data[k])return;
       const s=data[k];
       const name=s.name||k;
-      const fecha=s.createdAt?new Date(s.createdAt).toLocaleDateString('es-MX'):'N/A';
-      const creador=s.createdBy||'Admin';
       const isCurrent=k===currentBranch;
+      const salesData=s.data||s.sales||{};
+      const salesCount=Object.keys(salesData).length;
+      const productos=s.products?Object.keys(s.products).length:0;
       
-      html+=`
-        <div class="form-card" style="margin-bottom:10px;padding:16px">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+      let totalVentas=0;
+      Object.values(salesData).forEach(sale=>{
+        if(sale&&sale.total)totalVentas+=parseFloat(sale.total);
+      });
+      
+      html+=`<div class="form-card" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:44px;height:44px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
             <div>
-              <div style="font-size:15px;font-weight:800;color:var(--text)">🏪 ${name}</div>
-              <div style="font-size:11px;color:var(--text4);margin-top:4px">ID: ${k}</div>
-              ${isCurrent?'<div style="font-size:10px;color:var(--gold);margin-top:4px">⭐ Sucursal actual</div>':''}
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button onclick="openAddSucursalForm();setTimeout(()=>{document.getElementById(\'suc-copy-from\').value=\'${k}\';onSucCopyFromChange();},100)" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text2);cursor:pointer">
-                📋 Duplicar
-              </button>
+              <div style="font-size:15px;font-weight:800;color:var(--text)">${name}</div>
+              <div style="font-size:11px;color:var(--text4)">ID: ${k}</div>
             </div>
           </div>
-          <div style="font-size:11px;color:var(--text3)">
-            Creada: ${fecha} · Por: ${creador}
-          </div>
-          ${targetBranch?`<div style="margin-top:10px;padding:10px;background:var(--bg2);border-radius:8px;font-size:12px">
-            <strong>Vista activa:</strong> Mostrando datos de ${name}
-          </div>`:''}
+          ${isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(245,200,0,.2);color:var(--gold)">⭐ ACTUAL</span>':''}
         </div>
-      `;
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">${salesCount}</div>
+            <div style="font-size:10px;color:var(--text4)">Ventas</div>
+          </div>
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">$${totalVentas.toFixed(0)}</div>
+            <div style="font-size:10px;color:var(--text4)">Total</div>
+          </div>
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">${productos}</div>
+            <div style="font-size:10px;color:var(--text4)">Productos</div>
+          </div>
+        </div>
+      </div>`;
     });
     
-    if(!targetBranch){
-      html+=`<div style="font-size:12px;color:var(--text4);text-align:center;margin-top:10px">
-        Ve arriba para cambiar entre vista consolidada o por sucursal
-      </div>`;
+    html+='</div>';
+    
+    if(sucViewMode==='all'&&keys.length>1){
+      html=`<div style="margin-bottom:12px;padding:12px;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:10px;text-align:center">
+        <div style="font-size:12px;color:var(--gold)">📊 Vista consolidada: ${keys.length} sucursales</div>
+      </div>`+html;
     }
     
     list.innerHTML=html;
-  }).catch(err=>{
-    console.error(err);
+  }).catch(()=>{
     list.innerHTML='<div class="admin-empty">Error al cargar sucursales</div>';
   });
 }
 
 function openAddSucursalForm(){
+  console.log('Abriendo modal sucursal...');
+  var modal = document.getElementById('sucursal-overlay');
+  console.log('Modal encontrado:', modal);
+  
   document.getElementById('suc-nombre').value='';
   document.getElementById('suc-id').value='';
   document.getElementById('suc-copy-from').value='';
@@ -7282,7 +7231,6 @@ function openAddSucursalForm(){
     fbDb.ref('sucursales').once('value').then(snap=>{
       const data=snap.val()||{};
       const keys=Object.keys(data);
-      
       const select=document.getElementById('suc-copy-from');
       select.innerHTML='<option value="">— Empezar desde cero —</option>';
       keys.forEach(k=>{
@@ -7293,25 +7241,15 @@ function openAddSucursalForm(){
         opt.textContent=name+(k===currentBranch?' (actual)':'');
         select.appendChild(opt);
       });
-      
-      const userSelect=document.getElementById('newu-branch');
-      if(userSelect){
-        const currentVal=userSelect.value;
-        userSelect.innerHTML='<option value="">— Seleccionar sucursal —</option>';
-        keys.forEach(k=>{
-          const s=data[k];
-          const name=s.name||k;
-          const opt=document.createElement('option');
-          opt.value=k;
-          opt.textContent=name;
-          userSelect.appendChild(opt);
-        });
-        if(currentVal)userSelect.value=currentVal;
-      }
     });
   }
   
-  document.getElementById('sucursal-overlay').classList.remove('hidden');
+  if(modal){
+    modal.classList.remove('hidden');
+    console.log('Modal visible');
+  } else {
+    console.error('ERROR: No se encontro el elemento sucrusal-overlay');
+  }
 }
 
 function closeSucursalForm(){
@@ -7386,292 +7324,12 @@ async function createSucursal(){
     closeSucursalForm();
     loadSucursales();
     loadSucursalesList();
-    
-    const userSelect=document.getElementById('newu-branch');
-    if(userSelect&&!userSelect.classList.contains('hidden')){
-      fbDb.ref('sucursales').once('value').then(snap=>{
-        const data=snap.val()||{};
-        const keys=Object.keys(data);
-        userSelect.innerHTML='<option value="">— Seleccionar sucursal —</option>';
-        keys.forEach(k=>{
-          const s=data[k];
-          const name=s.name||k;
-          const opt=document.createElement('option');
-          opt.value=k;
-          opt.textContent=name;
-          userSelect.appendChild(opt);
-        });
-        userSelect.value=idFinal;
-      });
-    }
   } catch(err){
     showToast('Error al crear sucursal','red');
     console.error(err);
   }
   
   btn.textContent='💾 Crear Sucursal';btn.disabled=false;
-}
-
-let newUserRole='user';
-
-function openNewUserForm(){
-  document.getElementById('newu-name').value='';
-  document.getElementById('newu-pass').value='';
-  document.getElementById('newu-branch').value='';
-  setNewUserRole('user');
-  
-  if(fbDb){
-    fbDb.ref('sucursales').once('value').then(snap=>{
-      const data=snap.val()||{};
-      const keys=Object.keys(data);
-      const select=document.getElementById('newu-branch');
-      select.innerHTML='<option value="">— Seleccionar sucursal —</option>';
-      keys.forEach(k=>{
-        const s=data[k];
-        const name=s.name||k;
-        const opt=document.createElement('option');
-        opt.value=k;
-        opt.textContent=name;
-        select.appendChild(opt);
-      });
-    });
-  }
-  
-  document.getElementById('newuser-overlay').classList.remove('hidden');
-}
-
-function closeNewUserForm(){
-  document.getElementById('newuser-overlay').classList.add('hidden');
-}
-
-function closeNewUserOutside(e){
-  if(e.target.id==='newuser-overlay')closeNewUserForm();
-}
-
-function setNewUserRole(role){
-  newUserRole=role;
-  const btnUser=document.getElementById('newu-role-user');
-  const btnAdmin=document.getElementById('newu-role-admin');
-  if(role==='user'){
-    btnUser.style.background='rgba(245,200,0,.2)';
-    btnUser.style.borderColor='var(--gold)';
-    btnUser.style.color='var(--gold)';
-    btnAdmin.style.background='var(--bg3)';
-    btnAdmin.style.borderColor='var(--border2)';
-    btnAdmin.style.color='var(--text2)';
-  } else {
-    btnAdmin.style.background='rgba(245,200,0,.2)';
-    btnAdmin.style.borderColor='var(--gold)';
-    btnAdmin.style.color='var(--gold)';
-    btnUser.style.background='var(--bg3)';
-    btnUser.style.borderColor='var(--border2)';
-    btnUser.style.color='var(--text2)';
-  }
-}
-
-const SYSTEM_USERS=[
-  {name:'ADMIN',email:'admin@karytho.com',pass:'Admin2026',role:'admin'},
-  {name:'CIDOP',email:'cidop@karytho.com',pass:'Cidop2026',role:'user'},
-  {name:'EVENTOS',email:'eventos@karytho.com',pass:'Eventos2026',role:'eventos'}
-];
-
-async function createSystemUsers(){
-  showToast('Creando usuarios del sistema...','blue');
-  let success=0,errors=[];
-  
-  for(const u of SYSTEM_USERS){
-    try{
-      const cred=await firebase.auth().createUserWithEmailAndPassword(u.email,u.pass);
-      const uid=cred.user.uid;
-      
-      await fbDb.ref('users/'+uid).set({
-        name:u.name,
-        email:u.email,
-        branchId:'default',
-        role:u.role,
-        createdAt:Date.now(),
-        createdBy:'Sistema'
-      });
-      
-      success++;
-      logActivity('system_user','Usuario creado — '+u.name);
-    } catch(err){
-      if(err.code==='auth/email-already-in-use'){
-        errors.push(u.name+': ya existe');
-      } else {
-        errors.push(u.name+': '+err.message);
-      }
-    }
-  }
-  
-  if(errors.length>0 && success===0){
-    showToast('Error: '+errors.join(', '),'red');
-  } else if(errors.length>0){
-    showToast('✅ '+success+' creados, '+errors.length+' ya existían','green');
-  } else {
-    showToast('✅ Todos los usuarios del sistema creados','green');
-  }
-  
-  loadFirebaseUsers();
-}
-
-async function createNewUser(){
-  const name=document.getElementById('newu-name').value.trim();
-  const pass=document.getElementById('newu-pass').value;
-  const branch=document.getElementById('newu-branch').value;
-  
-  if(!name){showToast('Escribe el nombre del usuario','red');return;}
-  if(!pass||pass.length<6){showToast('La contraseña debe tener mínimo 6 caracteres','red');return;}
-  if(!branch){showToast('Selecciona una sucursal','red');return;}
-  
-  const btn=document.getElementById('btn-create-user');
-  btn.textContent='Creando...';btn.disabled=true;
-  
-  const email=name.toLowerCase().replace(/[^a-z0-9]/g,'.').replace(/\.+/g,'.')+'@'+branch+'.karytho.local';
-  
-  try{
-    const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
-    const uid=cred.user.uid;
-    
-    await fbDb.ref('users/'+uid).set({
-      name:name,
-      email:email,
-      branchId:branch,
-      role:newUserRole,
-      createdAt:Date.now(),
-      createdBy:safeStorage.getItem(SK_DISPLAY)||'Admin'
-    });
-    
-    showToast('✅ Usuario "'+name+'" creado','green');
-    logActivity('user_create','Usuario creado — '+name+' en '+branch);
-    closeNewUserForm();
-    loadFirebaseUsers();
-  } catch(err){
-    console.error(err);
-    if(err.code==='auth/email-already-in-use'){
-      showToast('Ya existe un usuario con ese nombre','red');
-    } else if(err.code==='auth/invalid-email'){
-      showToast('Nombre de usuario inválido','red');
-    } else {
-      showToast('Error al crear usuario','red');
-    }
-  }
-  
-  btn.textContent='💾 Crear Usuario';btn.disabled=false;
-}
-
-let firebaseUsers=[];
-
-function loadFirebaseUsers(){
-  if(!fbDb)return;
-  fbDb.ref('users').once('value').then(snap=>{
-    const data=snap.val()||{};
-    firebaseUsers=Object.entries(data).map(([uid,u])=>({uid,...u}));
-    renderFirebaseUsersList();
-  });
-}
-
-function renderFirebaseUsersList(){
-  const list=document.getElementById('adm-users-list');
-  if(!list)return;
-  
-  let html='';
-  
-  // Sección: Usuarios con cuenta (Firebase Auth)
-  html+='<div style="margin-bottom:24px">';
-  html+='<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">🔑 Usuarios con cuenta</div>';
-  
-  if(firebaseUsers.length===0){
-    html+='<div class="admin-empty" style="padding:16px 0">Sin usuarios con cuenta. Usa "Crear nuevo usuario".</div>';
-  } else {
-    firebaseUsers.forEach((u,i)=>{
-      const roleLabel=u.role==='admin'?'🔑 Encargado':'👤 Empleado';
-      const roleColor=u.role==='admin'?'var(--gold)':'var(--text3)';
-      const safeId='adm-fuavatar-'+i;
-      html+=`
-        <div class="user-mgr-card" style="animation-delay:${i*.04}s">
-          <div class="user-mgr-avatar" id="${safeId}" title="Avatar de ${u.name}">
-            <span class="avatar-letter">${(u.name||'?').charAt(0).toUpperCase()}</span>
-          </div>
-          <div class="user-mgr-info">
-            <div class="user-mgr-name">${u.name||'Sin nombre'}</div>
-            <div class="user-mgr-sub" style="color:${roleColor}">${roleLabel} — ${u.branchId||'Sin sucursal'}</div>
-          </div>
-          <div class="user-mgr-actions">
-            <button class="btn-usr-del" title="Eliminar ${u.name}" onclick="deleteFirebaseUser('${u.uid}','${u.name}')">✕</button>
-          </div>
-        </div>
-      `;
-    });
-  }
-  html+='</div>';
-  
-  // Sección: Miembros del picker (sin cuenta)
-  html+='<div>';
-  html+='<div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">👤 Miembros del Picker (sin cuenta)</div>';
-  
-  if(CIDOP_MEMBERS.length===0){
-    html+='<div class="admin-empty" style="padding:16px 0">Sin miembros en el picker.</div>';
-  } else {
-    CIDOP_MEMBERS.forEach((name,i)=>{
-      const safeId='adm-pavatar-'+i;
-      html+=`
-        <div class="user-mgr-card" style="animation-delay:${i*.04}s">
-          <div class="user-mgr-avatar" id="${safeId}" title="Avatar de ${name}">
-            <span class="avatar-letter">${name.charAt(0).toUpperCase()}</span>
-          </div>
-          <div class="user-mgr-info">
-            <div class="user-mgr-name">${name}</div>
-            <div class="user-mgr-sub">Picker (sin cuenta)</div>
-          </div>
-          <div class="user-mgr-actions">
-            <button class="btn-usr-del" title="Eliminar ${name}" onclick="deletePickerMember('${name}',${i})">✕</button>
-          </div>
-        </div>
-      `;
-    });
-  }
-  html+='</div>';
-  
-  list.innerHTML=html;
-}
-
-function deleteFirebaseUser(uid,name){
-  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
-    try{
-      const userSnap=await fbDb.ref('users/'+uid).once('value');
-      const userData=userSnap.val();
-      
-      await fbDb.ref('users/'+uid).remove();
-      
-      if(userData&&userData.email){
-        try{
-          const authUser=firebase.auth().currentUser;
-          if(authUser&&authUser.uid===uid){
-            await firebase.auth().signOut();
-          }
-        } catch(e){console.log('No se pudo desautenticar')}
-      }
-      
-      showToast('Usuario eliminado','green');
-      logActivity('user_delete','Usuario eliminado — '+name);
-      loadFirebaseUsers();
-    } catch(err){
-      showToast('Error al eliminar usuario','red');
-      console.error(err);
-    }
-  });
-}
-
-function deletePickerMember(name,idx){
-  customConfirm('¿Eliminar a "'+name+'" del picker?','Eliminar',()=>{
-    CIDOP_MEMBERS.splice(idx,1);
-    saveCidopMembers(()=>{
-      showToast('"'+name+'" eliminado del picker','green');
-      logActivity('picker_del','Eliminado del picker — '+name);
-      loadFirebaseUsers();
-    });
-  });
 }
 
 function renderAdminChart(ps,r){
@@ -10301,14 +9959,11 @@ async function initSessionBranch(){
     try{
       const snap=await fbDb.ref('users/'+savedUid).once('value');
       const data=snap.val();
-      if(data && data.branchId && data.branchId!=='default'){
+      if(data && data.branchId){
         currentBranch=data.branchId;
         currentUid=savedUid;
       } else {
-        const sucSnap=await fbDb.ref('sucursales').once('value');
-        const sucData=sucSnap.val()||{};
-        const keys=Object.keys(sucData).filter(k=>k!=='default');
-        currentBranch=keys.length>0?keys[0]:'default';
+        currentBranch='default';
         currentUid=savedUid;
       }
     } catch(e){
@@ -10369,5 +10024,164 @@ if(savedSession==='1' && savedRole==='admin'){
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
 
-<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script></body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script>
+
+<!-- ===== PICKER MEMBER MODAL ===== -->
+<div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">👤 Agregar al Picker</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Agrega una persona al selector de turno (sin cuenta)</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="pickermember-name" placeholder="Ej: Caro"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closePickerMemberForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Agregar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NEW USER MODAL ===== -->
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">🔑 Nuevo Usuario</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
+      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
+      <select id="newuser-role" onchange="newUserRole=this.value"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="user">👤 Empleado</option>
+        <option value="admin">🔑 Admin</option>
+        <option value="eventos">🎪 Eventos</option>
+      </select>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        🔐 Crear usuario
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Picker member functions
+function openAddPickerMemberForm(){
+  document.getElementById('pickermember-name').value='';
+  document.getElementById('pickermember-overlay').classList.remove('hidden');
+}
+
+function closePickerMemberForm(){
+  document.getElementById('pickermember-overlay').classList.add('hidden');
+}
+
+function closePickerMemberOutside(e){
+  if(e.target.id==='pickermember-overlay')closePickerMemberForm();
+}
+
+function addPickerMember(){
+  const name=document.getElementById('pickermember-name').value.trim();
+  if(!name){showToast('Escribe un nombre','red');return;}
+  if(CIDOP_MEMBERS.map(m=>m.toLowerCase()).includes(name.toLowerCase())){
+    showToast('Ese nombre ya existe','red');return;
+  }
+  CIDOP_MEMBERS.push(name);
+  saveCidopMembers(()=>{
+    closePickerMemberForm();
+    showToast('"'+name+'" agregado al picker','green');
+    loadFirebaseUsers();
+  });
+}
+
+// New user functions
+function openNewUserForm(){
+  document.getElementById('newuser-name').value='';
+  document.getElementById('newuser-email').value='';
+  document.getElementById('newuser-password').value='';
+  document.getElementById('newuser-role').value='user';
+  newUserRole='user';
+  document.getElementById('newuser-overlay').classList.remove('hidden');
+}
+
+function closeNewUserForm(){
+  document.getElementById('newuser-overlay').classList.add('hidden');
+}
+
+function closeNewUserOutside(e){
+  if(e.target.id==='newuser-overlay')closeNewUserForm();
+}
+
+function createNewUser(){
+  const name=document.getElementById('newuser-name').value.trim();
+  const email=document.getElementById('newuser-email').value.trim();
+  const password=document.getElementById('newuser-password').value;
+  
+  if(!name){showToast('Escribe un nombre','red');return;}
+  if(!email||!email.includes('@')){showToast('Ingresa un correo válido','red');return;}
+  if(!password||password.length<6){showToast('La contraseña debe tener al menos 6 caracteres','red');return;}
+  
+  const btn=document.getElementById('btn-create-user');
+  btn.disabled=true;
+  btn.textContent='Creando...';
+  
+  firebase.auth().createUserWithEmailAndPassword(email,password)
+    .then(cred=>{
+      return fbDb.ref('users/'+cred.user.uid).set({
+        name:name,
+        email:email,
+        role:newUserRole,
+        branchId:currentBranch||'default',
+        createdAt:Date.now()
+      });
+    })
+    .then(()=>{
+      showToast('Usuario creado exitosamente','green');
+      closeNewUserForm();
+      loadFirebaseUsers();
+    })
+    .catch(err=>{
+      let msg='Error al crear usuario';
+      if(err.code==='auth/email-already-in-use')msg='El correo ya está en uso';
+      showToast(msg,'red');
+    })
+    .finally(()=>{
+      btn.disabled=false;
+      btn.textContent='🔐 Crear usuario';
+    });
+}
+
+</script>
+</body>
 </html>
