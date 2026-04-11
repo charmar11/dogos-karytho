@@ -4921,7 +4921,7 @@ function agregarGastoCidop(){
   };
   if(!gastos) gastos=[];
   gastos.unshift(g);
-  safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+  safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
   document.getElementById('cidop-gasto-desc').value='';
   document.getElementById('cidop-gasto-monto').value='';
   showToast('✅ Gasto guardado','green');
@@ -5157,7 +5157,7 @@ function renderCidopGastosList(){
   const el=document.getElementById('cidop-gastos-list');if(!el)return;
   const gs=getCidopGastosFiltrados();
   _buildGastosHTML(el, gs, cidopGastosPeriod,
-    (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(getBranchRef('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
+    (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(getBranchRef('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
     null // CIDOP no tiene edición de fecha
   );
 }
@@ -6542,7 +6542,7 @@ function loadGastos(){
   if(!fbDb){return;}
   // Firebase is the single source of truth for gastos.
   // Show cached version instantly, then sync with Firebase.
-  try{gastos=JSON.parse(safeStorage.getItem(SK_GASTOS))||[];}catch{gastos=[];}
+  try{gastos=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch))||[];}catch{gastos=[];}
 
   // Realtime listener — Firebase is authoritative after first sync
   getBranchRef('gastos').on('value',snap=>{
@@ -6550,10 +6550,10 @@ function loadGastos(){
     if(d&&Object.keys(d).length>0){
       // Firebase has data → use it
       gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
-      safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     } else {
       // Firebase empty → push any local gastos up (covers fresh-write race condition)
-      const cached=JSON.parse(safeStorage.getItem(SK_GASTOS)||'[]');
+      const cached=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch)||'[]');
       if(cached.length>0){
         cached.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
         // Keep in-memory gastos as-is; next snapshot will confirm
@@ -6566,7 +6566,7 @@ function loadGastos(){
       }
       // Truly empty — clear local too
       gastos=[];
-      safeStorage.setItem(SK_GASTOS,'[]');
+      safeStorage.setItem('dk_gastos_'+currentBranch,'[]');
     }
     // Always re-render whichever view is open
     const admTab=document.getElementById('adm-tab-gastos');
@@ -6577,6 +6577,31 @@ function loadGastos(){
     const resTab=document.getElementById('adm-tab-resumen');
     if(resTab&&resTab.classList.contains('active')) renderPuntoEquilibrio();
   });
+}
+
+function loadVentasConsolidadas(){
+  if(!fbDb)return;
+  sales=[];
+  fbDb.ref('sucursales').once('value').then(function(snap){
+    var data=snap.val()||{};
+    var keys=Object.keys(data).filter(function(k){return k&&k!=='default'&&k!=='';});
+    var allSales=[];
+    keys.forEach(function(k){
+       var s=data[k];
+       var salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+       var branchSales=Object.values(salesObj);
+       // Add branch origin indicator just in case
+       branchSales.forEach(function(sale){
+          sale.branchOrigin = k;
+          allSales.push(sale);
+       });
+    });
+    // Sort all desc by timestamp
+    allSales.sort(function(a,b){return b.timestamp-a.timestamp;});
+    sales=allSales;
+    // Notify UI that sales data is ready (since startFbListeners normally does this)
+    if(document.getElementById('admin-screen')?.classList.contains('active')) renderAdmin();
+  }).catch(function(e){console.warn('Error loadVentasConsolidadas',e);});
 }
 
 function loadGastosConsolidados(){
@@ -6609,7 +6634,7 @@ function loadGastosConsolidados(){
       loaded++;
       if(loaded===keys.length){
         gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
-        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+        safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
         var admTab=document.getElementById('adm-tab-gastos');
         if(admTab&&admTab.classList.contains('active')) renderGastos();
       }
@@ -6625,7 +6650,7 @@ function eliminarGasto(id){
   customConfirm('¿Eliminar este gasto?','Eliminar',()=>{
     // Remove optimistically from local array immediately
     gastos=gastos.filter(g=>g.id!==id);
-    safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+    safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     renderGastos();
     renderCidopGastosList();
     showToast('Gasto eliminado','green');
@@ -6749,7 +6774,7 @@ function guardarEdicionGasto(g, cambios){
   const idx=gastos.findIndex(x=>x.id===g.id);
   if(idx<0)return;
   Object.assign(gastos[idx],cambios);
-  safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+  safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
   if(fbDb) fbUpdateSecure(getBranchRef('gastos/'+g.id),cambios).catch(()=>{});
   showToast('✅ Gasto actualizado','green');
   renderGastos();
