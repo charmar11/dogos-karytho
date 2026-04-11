@@ -1584,6 +1584,124 @@ position:sticky;top:0;z-index:20;
   animation:fadeIn .25s ease;
 }
 .admin-tab-view.active{display:block}
+
+/* ── BRANCH PILLS ── */
+.branch-pills-wrap{
+  padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
+}
+.branch-pills-wrap::-webkit-scrollbar{display:none}
+.branch-pill{
+  flex:1;min-width:110px;min-height:44px;padding:10px 14px;
+  background:linear-gradient(135deg,var(--bg3),#1e1e1e);
+  border:1.5px solid var(--border2);border-radius:22px;
+  text-align:center;font-size:13px;font-weight:700;color:var(--text2);
+  cursor:pointer;transition:all .25s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;user-select:none;display:flex;align-items:center;
+  justify-content:center;gap:6px;position:relative;overflow:hidden;
+}
+.branch-pill::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%,rgba(245,200,0,.06) 0%,transparent 70%);
+  opacity:0;transition:opacity .2s;pointer-events:none;
+}
+.branch-pill:hover{
+  border-color:rgba(245,200,0,.4);transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(245,200,0,.08);
+}
+.branch-pill:hover::before{opacity:1}
+.branch-pill:active{transform:scale(.95)}
+.branch-pill.active{
+  background:linear-gradient(135deg,var(--gold),#ddb000);
+  border-color:var(--gold);color:#111;font-weight:800;
+  box-shadow:0 4px 18px rgba(245,200,0,.25);
+}
+.branch-pill.active::before{opacity:0}
+.branch-pill-emoji{font-size:16px;line-height:1}
+
+/* ── RESUMEN KPI HERO ── */
+.resumen-kpi-hero{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;
+  margin-bottom:14px;
+}
+.resumen-kpi{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:16px 14px;position:relative;overflow:hidden;
+  animation:popIn .35s ease both;
+}
+.resumen-kpi::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.resumen-kpi.kpi-ventas::before{background:linear-gradient(90deg,transparent,#2ab8b8,transparent)}
+.resumen-kpi.kpi-gastos::before{background:linear-gradient(90deg,transparent,var(--red),transparent)}
+.resumen-kpi.kpi-neto::before{background:linear-gradient(90deg,transparent,#6fcf6f,transparent)}
+.resumen-kpi-icon{font-size:20px;margin-bottom:4px}
+.resumen-kpi-lbl{font-size:9px;color:var(--text4);letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.resumen-kpi-val{font-size:22px;font-weight:800;line-height:1}
+.resumen-kpi-sub{font-size:10px;color:var(--text3);margin-top:5px;font-weight:600}
+.resumen-kpi.kpi-ventas .resumen-kpi-val{color:#2ab8b8;text-shadow:0 0 14px rgba(42,184,184,.25)}
+.resumen-kpi.kpi-gastos .resumen-kpi-val{color:#f57474;text-shadow:0 0 14px rgba(224,32,32,.2)}
+.resumen-kpi.kpi-neto .resumen-kpi-val{color:#6fcf6f;text-shadow:0 0 14px rgba(45,138,45,.25)}
+.resumen-kpi.kpi-neto.negative .resumen-kpi-val{color:#f57474}
+@media(max-width:420px){
+  .resumen-kpi-hero{grid-template-columns:1fr}
+  .resumen-kpi{display:flex;align-items:center;gap:12px;padding:12px 14px}
+  .resumen-kpi-icon{margin-bottom:0;font-size:24px}
+  .resumen-kpi-val{font-size:20px}
+}
+
+/* ── META VS HOY BADGE ── */
+.resumen-meta-bar{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:14px 16px;margin-bottom:14px;
+}
+.resumen-meta-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.resumen-meta-lbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.resumen-meta-pct{font-size:13px;font-weight:800;color:var(--gold)}
+.resumen-meta-track{background:var(--bg3);border-radius:6px;height:10px;overflow:hidden}
+.resumen-meta-fill{
+  height:100%;border-radius:6px;
+  background:linear-gradient(90deg,var(--red),#f5a623,var(--gold));
+  background-size:200% 100%;transition:width .6s cubic-bezier(.34,1.56,.64,1);
+}
+.resumen-meta-fill.complete{
+  background:linear-gradient(90deg,#2ab8b8,#2d8a2d,var(--gold));
+  animation:goalBarShimmer 1.8s linear infinite;
+}
+.resumen-meta-amounts{display:flex;justify-content:space-between;margin-top:4px}
+.resumen-meta-cur{font-size:12px;font-weight:800;color:#2ab8b8}
+.resumen-meta-goal{font-size:10px;color:var(--text3)}
+
+/* ── BALANCE CHART CARD ── */
+.resumen-balance-card{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:16px 14px 12px;margin-bottom:14px;
+}
+.resumen-balance-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px}
+.resumen-balance-sub{font-size:11px;color:var(--text4);margin-bottom:12px}
+.resumen-balance-wrap{position:relative;height:200px}
+
+/* ── BRANCH COMPARISON ── */
+.branch-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:380px){.branch-compare-grid{grid-template-columns:1fr}}
+.branch-compare-card{
+  background:linear-gradient(135deg,#1c1c1c,#191919);
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:14px;position:relative;overflow:hidden;
+  animation:fadeSlide .25s ease both;
+}
+.branch-compare-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(42,184,184,.4),transparent);
+}
+.branch-compare-medal{font-size:22px;margin-bottom:4px}
+.branch-compare-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px}
+.branch-compare-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+.branch-compare-lbl{color:var(--text3)}
+.branch-compare-val{font-weight:700;color:var(--text)}
 .adm-export-hint{
   background:var(--bg3);border:1px solid var(--border2);
   border-radius:var(--radius-sm);padding:10px 14px;
@@ -2466,10 +2584,12 @@ position:sticky;top:0;z-index:20;
     <button class="btn-admin-logout" onclick="adminLogout()">Salir</button>
   </div>
 
-  <!-- Selector de sucursal para el admin -->
-  <div style="padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-    <span style="font-size:12px;font-weight:700;color:var(--text3)">📍 Sucursal:</span>
-    <select id="admin-branch-select" onchange="onAdminBranchChange()" style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+  <!-- Selector de sucursal estilo pills -->
+  <div class="branch-pills-wrap" id="branch-pills-wrap">
+    <div class="branch-pill active" id="branch-pill-all" onclick="selectBranchPill('all')"><span class="branch-pill-emoji">📊</span> Todas</div>
+    <div class="branch-pill" id="branch-pill-carro1" onclick="selectBranchPill('carro1')"><span class="branch-pill-emoji">🏪</span> Carro 1</div>
+    <div class="branch-pill" id="branch-pill-carro2" onclick="selectBranchPill('carro2')" style="display:none"><span class="branch-pill-emoji">🚗</span> Carro 2</div>
+    <select id="admin-branch-select" onchange="onAdminBranchChange()" style="display:none">
       <option value="">Cargando...</option>
     </select>
   </div>
@@ -2487,6 +2607,61 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: RESUMEN ── -->
   <div class="admin-tab-view active" id="adm-tab-resumen">
+
+    <!-- ── KPIs Hoy: Ventas / Gastos / Neto ── -->
+    <div class="resumen-kpi-hero">
+      <div class="resumen-kpi kpi-ventas">
+        <div class="resumen-kpi-icon">💰</div>
+        <div class="resumen-kpi-lbl">Ventas hoy</div>
+        <div class="resumen-kpi-val" id="adm-r-ventas">$0</div>
+        <div class="resumen-kpi-sub" id="adm-r-ventas-cnt">0 tickets</div>
+      </div>
+      <div class="resumen-kpi kpi-gastos">
+        <div class="resumen-kpi-icon">🧾</div>
+        <div class="resumen-kpi-lbl">Gastos hoy</div>
+        <div class="resumen-kpi-val" id="adm-r-gastos">$0</div>
+        <div class="resumen-kpi-sub" id="adm-r-gastos-cnt">0 registros</div>
+      </div>
+      <div class="resumen-kpi kpi-neto" id="adm-r-neto-card">
+        <div class="resumen-kpi-icon">📈</div>
+        <div class="resumen-kpi-lbl">Neto hoy</div>
+        <div class="resumen-kpi-val" id="adm-r-neto">$0</div>
+        <div class="resumen-kpi-sub" id="adm-r-neto-pct">— margen</div>
+      </div>
+    </div>
+
+    <!-- ── Barra vs Meta diaria ── -->
+    <div class="resumen-meta-bar" id="adm-r-meta-wrap" style="display:none">
+      <div class="resumen-meta-header">
+        <span class="resumen-meta-lbl">🎯 Meta diaria</span>
+        <span class="resumen-meta-pct" id="adm-r-meta-pct">0%</span>
+      </div>
+      <div class="resumen-meta-track"><div class="resumen-meta-fill" id="adm-r-meta-fill" style="width:0%"></div></div>
+      <div class="resumen-meta-amounts">
+        <span class="resumen-meta-cur" id="adm-r-meta-cur">$0</span>
+        <span class="resumen-meta-goal" id="adm-r-meta-goal">meta: —</span>
+      </div>
+    </div>
+
+    <!-- ── Gráfico 7 días: Ventas vs Gastos ── -->
+    <div class="resumen-balance-card">
+      <div class="resumen-balance-title">📊 Balance últimos 7 días</div>
+      <div class="resumen-balance-sub">Ventas vs Gastos vs Neto por día</div>
+      <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#2ab8b8"></div><span style="font-size:11px;color:var(--text2)">Ventas</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#e05050"></div><span style="font-size:11px;color:var(--text2)">Gastos</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#6fcf6f"></div><span style="font-size:11px;color:var(--text2)">Neto</span></div>
+      </div>
+      <div class="resumen-balance-wrap"><canvas id="adm-balance-7d-chart"></canvas></div>
+    </div>
+
+    <!-- ── Comparativa entre sucursales ── -->
+    <div id="adm-branch-compare-section" style="display:none">
+      <div class="sec-label">🏆 Comparativa de sucursales · hoy</div>
+      <div class="branch-compare-grid" id="adm-branch-compare-grid"></div>
+    </div>
+
+    <!-- ── Stats históricos ── -->
     <div class="admin-stat-grid">
       <div class="admin-stat"><div class="admin-stat-lbl">Total ventas</div><div class="admin-stat-val" id="adm-total-count">0</div><div class="admin-stat-sub">registradas</div></div>
       <div class="admin-stat"><div class="admin-stat-lbl">Ingresos totales</div><div class="admin-stat-val" id="adm-total-money">$0</div><div class="admin-stat-sub">historico</div></div>
@@ -5857,9 +6032,9 @@ function loadAdminBranchSelector(){
   
   function doLoad(){
     if(!fbDb){
-      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
       select.value='all';
       adminViewBranch='all';
+      selectBranchPill('all');
       return;
     }
     
@@ -5867,35 +6042,62 @@ function loadAdminBranchSelector(){
       var data=snap.val()||{};
       var keys=Object.keys(data).filter(function(k){return k&&k!=='default';});
       
-      var html='<option value="all">📊 Todas (consolidado)</option>';
+      // Update select for compatibility
+      var html='<option value="all">Todas</option>';
       keys.forEach(function(k){
         var s=data[k];
         var name=(s&&s.name)?s.name:k;
-        html+='<option value="'+k+'">🏪 '+name+'</option>';
+        html+='<option value="'+k+'">'+name+'</option>';
       });
-      
       select.innerHTML=html;
       
-      if(currentBranch&&currentBranch!=='default'){
-        select.value=currentBranch;
-        adminViewBranch=currentBranch;
-      } else {
-        select.value='all';
-        adminViewBranch='all';
+      // Show/hide branch pills based on available branches
+      var pillAll=document.getElementById('branch-pill-all');
+      var pillCarro1=document.getElementById('branch-pill-carro1');
+      var pillCarro2=document.getElementById('branch-pill-carro2');
+      
+      if(keys.length>=2){
+        if(pillCarro2) pillCarro2.style.display='flex';
       }
+      
+      // Determine which branch to select
+      var lastBranch=safeStorage.getItem('dk_admin_branch');
+      var branchToSelect=lastBranch||'all';
+      if(!keys.includes(branchToSelect)&&branchToSelect!=='all'){
+        branchToSelect='all';
+      }
+      
+      select.value=branchToSelect;
+      adminViewBranch=branchToSelect;
+      selectBranchPill(branchToSelect);
+      
     }).catch(function(err){
       console.error('Error cargando selector:',err);
-      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
       select.value='all';
       adminViewBranch='all';
+      selectBranchPill('all');
     });
   }
   
   if(fbDb){
     doLoad();
   } else {
-    select.innerHTML='<option value="">Conectando...</option>';
+    select.value='';
     setTimeout(function(){doLoad();},1000);
+  }
+}
+
+function selectBranchPill(branchId){
+  // Update visual pills using CSS class
+  document.querySelectorAll('.branch-pill').forEach(el=>{
+    const isActive=el.id==='branch-pill-'+branchId;
+    el.classList.toggle('active',isActive);
+  });
+  // Trigger branch change
+  const select=document.getElementById('admin-branch-select');
+  if(select){
+    select.value=branchId;
+    onAdminBranchChange();
   }
 }
 
@@ -5903,6 +6105,10 @@ function onAdminBranchChange(){
   const select=document.getElementById('admin-branch-select');
   if(!select)return;
   adminViewBranch=select.value;
+  // Guardar última sucursal seleccionada
+  safeStorage.setItem('dk_admin_branch', adminViewBranch);
+  // Update visual pills
+  selectBranchPill(adminViewBranch);
   
   // Desconectar listener anterior ANTES de cambiar currentBranch
   if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/gastos').off();
@@ -5937,13 +6143,33 @@ function bootAdmin(){
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
     }
+    // Always start at Resumen with "all" branches on first login, restore last choice on reload
+    const lastBranch=safeStorage.getItem('dk_admin_branch');
+    const isFirstLogin=!safeStorage.getItem('dk_admin_visited');
+    if(isFirstLogin){
+      adminViewBranch='all';
+      safeStorage.setItem('dk_admin_branch','all');
+    } else if(lastBranch){
+      adminViewBranch=lastBranch;
+    }
+    // Apply pill active state for restored branch
+    document.querySelectorAll('.branch-pill').forEach(el=>{
+      el.classList.toggle('active',el.id==='branch-pill-'+adminViewBranch);
+    });
+    // Restore last tab or default to 'resumen'
+    const lastTab=safeStorage.getItem('dk_admin_tab')||'resumen';
+    setAdminTab(lastTab);
+    // Mark that we've visited admin
+    safeStorage.setItem('dk_admin_visited','1');
     startFbListeners();
     startMembersListener();
     startActivityListener();
     startCortesListener();
     startPresence(safeStorage.getItem(SK_DISPLAY)||'Admin');
     loadGastoCats();
-    loadGastos();
+    if(adminViewBranch && adminViewBranch!=='all'){
+      loadGastos();
+    }
   },800);
 }
 
@@ -5987,10 +6213,134 @@ function renderAdmin(){
   renderPuntoEquilibrio();
   renderHeatMap();
   renderBestDays();
-  const lastTab=safeStorage.getItem('dk_admin_tab')||'ventas';
+  const lastTab=safeStorage.getItem('dk_admin_tab')||'resumen';
   setAdminTab(lastTab);
 }
 
+/* ─── RESUMEN KPIs ─── */
+let admBalanceChart7d=null;
+
+function renderResumenKPIs(){
+  const today=todayISO();
+  // Ventas de hoy
+  const salesHoy=sales.filter(s=>s.date===today);
+  const totalVentas=salesHoy.reduce((s,v)=>s+v.total,0);
+  const cnt=salesHoy.length;
+  const avgTicket=cnt?totalVentas/cnt:0;
+  // Gastos de hoy
+  const gastosHoy=gastos.filter(g=>g.fecha===today);
+  const totalGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+  // Neto
+  const neto=totalVentas-totalGastos;
+  const pctGanancia=totalVentas>0?Math.round((neto/totalVentas)*100):0;
+
+  // Update DOM
+  const setEl=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  setEl('adm-r-ventas','$'+totalVentas.toFixed(0));
+  setEl('adm-r-ventas-cnt',cnt+' ticket'+(cnt===1?'':'s')+' · ~$'+avgTicket.toFixed(0)+'/c/u');
+  setEl('adm-r-gastos','$'+totalGastos.toFixed(0));
+  setEl('adm-r-gastos-cnt',gastosHoy.length+' registro'+(gastosHoy.length===1?'':'s'));
+  setEl('adm-r-neto','$'+neto.toFixed(0));
+  setEl('adm-r-neto-pct',(neto>=0?'+':'')+pctGanancia+'% margen');
+  const netoCard=document.getElementById('adm-r-neto-card');
+  if(netoCard)netoCard.classList.toggle('negative',neto<0);
+
+  // Barra vs meta
+  const metaWrap=document.getElementById('adm-r-meta-wrap');
+  if(dailyGoal&&dailyGoal>0&&metaWrap){
+    metaWrap.style.display='';
+    const pct=Math.min(100,Math.round((totalVentas/dailyGoal)*100));
+    const fill=document.getElementById('adm-r-meta-fill');
+    if(fill){fill.style.width=pct+'%';fill.classList.toggle('complete',pct>=100);}
+    setEl('adm-r-meta-pct',pct+'%');
+    setEl('adm-r-meta-cur','$'+totalVentas.toFixed(0)+' vendido');
+    setEl('adm-r-meta-goal','meta: $'+dailyGoal.toFixed(0));
+  } else if(metaWrap){
+    metaWrap.style.display='none';
+  }
+}
+
+function renderBalanceChart7d(){
+  const canvas=document.getElementById('adm-balance-7d-chart');
+  if(!canvas)return;
+  // Build last 7 days
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const labels=days.map(d=>{
+    const dt=new Date(d+'T12:00:00');
+    return dt.toLocaleDateString('es-MX',{weekday:'short',day:'numeric'});
+  });
+  const ventasPorDia=days.map(d=>sales.filter(s=>s.date===d).reduce((s,v)=>s+v.total,0));
+  const gastosPorDia=days.map(d=>gastos.filter(g=>g.fecha===d).reduce((s,g)=>s+(parseFloat(g.monto)||0),0));
+  const netoPorDia=days.map((d,i)=>ventasPorDia[i]-gastosPorDia[i]);
+
+  if(admBalanceChart7d)admBalanceChart7d.destroy();
+  const ctx=canvas.getContext('2d');
+  admBalanceChart7d=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Ventas',data:ventasPorDia,backgroundColor:'rgba(42,184,184,.75)',borderColor:'#2ab8b8',borderWidth:1.5,borderRadius:5},
+        {label:'Gastos',data:gastosPorDia,backgroundColor:'rgba(224,80,80,.65)',borderColor:'#e05050',borderWidth:1.5,borderRadius:5},
+        {label:'Neto',data:netoPorDia,backgroundColor:netoPorDia.map(v=>v>=0?'rgba(111,207,111,.6)':'rgba(224,80,80,.4)'),borderColor:netoPorDia.map(v=>v>=0?'#6fcf6f':'#e05050'),borderWidth:1.5,borderRadius:5}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.parsed.y.toFixed(0)}}},
+      scales:{
+        x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#666',font:{size:10},callback:v=>'$'+v},grid:{color:'rgba(255,255,255,.06)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function renderBranchComparison(){
+  const section=document.getElementById('adm-branch-compare-section');
+  const grid=document.getElementById('adm-branch-compare-grid');
+  if(!section||!grid)return;
+  // Only show when viewing "all" branches
+  if(adminViewBranch!=='all'){section.style.display='none';return;}
+  if(!fbDb){section.style.display='none';return;}
+  const today=todayISO();
+  const medals=['🥇','🥈','🥉'];
+  // Get list of branch IDs from selector
+  const select=document.getElementById('admin-branch-select');
+  if(!select)return;
+  const branchIds=Array.from(select.options).map(o=>o.value).filter(v=>v&&v!=='all');
+  if(branchIds.length<2){section.style.display='none';return;}
+  section.style.display='';
+
+  // Fetch today's sales per branch
+  const promises=branchIds.map(bid=>
+    fbDb.ref('sucursales/'+bid+'/sales').orderByChild('date').equalTo(today)
+      .once('value').then(snap=>{
+        const data=snap.val()||{};
+        const arr=Object.values(data);
+        const total=arr.reduce((s,v)=>s+(v.total||0),0);
+        const cnt=arr.length;
+        return {bid,total,cnt,avg:cnt?total/cnt:0};
+      }).catch(()=>({bid,total:0,cnt:0,avg:0}))
+  );
+
+  Promise.all(promises).then(results=>{
+    results.sort((a,b)=>b.total-a.total);
+    const branchLabels={'carro1':'🏪 Carro 1','carro2':'🚗 Carro 2'};
+    grid.innerHTML=results.map((r,i)=>`
+      <div class="branch-compare-card">
+        <div class="branch-compare-medal">${medals[i]||'🏅'}</div>
+        <div class="branch-compare-name">${branchLabels[r.bid]||r.bid}</div>
+        <div class="branch-compare-row"><span class="branch-compare-lbl">Ventas hoy</span><span class="branch-compare-val" style="color:#2ab8b8">$${r.total.toFixed(0)}</span></div>
+        <div class="branch-compare-row"><span class="branch-compare-lbl">Tickets</span><span class="branch-compare-val">${r.cnt}</span></div>
+        <div class="branch-compare-row"><span class="branch-compare-lbl">Ticket prom.</span><span class="branch-compare-val" style="color:var(--gold)">$${r.avg.toFixed(0)}</span></div>
+      </div>`).join('');
+  });
+}
 /* ─── Punto de Equilibrio Diario ─── */
 let peSelectedProductId=''; // '' = use historical average
 
@@ -7359,6 +7709,11 @@ function setAdminTab(tab){
   if(tab==='sucursales'){
     loadSucursales();
     loadSucursalesList();
+  }
+  if(tab==='resumen'){
+    renderResumenKPIs();
+    renderBalanceChart7d();
+    renderBranchComparison();
   }
 }
 
