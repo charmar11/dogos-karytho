@@ -10898,6 +10898,8 @@ async function buildReporteData(){
     lines.push(sep);
 
     branchKeys.forEach(key=>{
+      // Ignorar sucursal "default" y cualquier sin ventas hoy
+      if(key==='default') return;
       const bd = data[key]||{};
       const nombre = (bd.name||key).toUpperCase();
       let tVentas=0, tTickets=0, tGastos=0, corteHoy=null;
@@ -10908,6 +10910,8 @@ async function buildReporteData(){
           tTickets++;
         }
       });
+      // Si no tuvo ninguna venta hoy, no incluir en el reporte
+      if(tTickets===0) return;
       Object.values(bd.gastos||{}).forEach(g=>{
         if(g&&normFecha(g.fecha)===today) tGastos+=parseFloat(g.monto)||0;
       });
