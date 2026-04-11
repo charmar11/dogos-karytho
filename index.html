@@ -3689,16 +3689,15 @@ let fbAuthReady=false;
 })();
 
 /* ─── Delegacion de eventos para elementos dinamicos ─── */
-document.addEventListener('click',function(e){
-  const target=e.target.closest('#btn-agregar-carro');
-  if(target){
-    e.preventDefault();
-    e.stopPropagation();
-    if(typeof openAddSucursalForm==='function'){
-      openAddSucursalForm();
+(function(){
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#btn-agregar-carro')){
+      e.preventDefault();
+      e.stopPropagation();
+      try{openAddSucursalForm();}catch(err){console.error('Error openAddSucursalForm:',err);}
     }
-  }
-});
+  });
+})();
 
 /* ─── Helper: garantiza auth antes de escribir en Firebase ─── */
 function fbWriteSecure(ref,data){
@@ -7259,16 +7258,6 @@ function loadSucursales(){
   });
 }
 
-function initSucursalesUI(){
-  var btn = document.getElementById('btn-agregar-carro');
-  if(btn){
-    btn.addEventListener('click', function(e){
-      e.preventDefault();
-      openAddSucursalForm();
-    });
-  }
-}
-
 function setSucView(mode){
   sucViewMode=mode;
   const btnAll=document.getElementById('suc-view-all');
@@ -7285,14 +7274,68 @@ function setSucView(mode){
 }
 
 function onSucBranchChange(){
-  sucSelectedBranch=document.getElementById('suc-branch-select').value;
+  const sel=document.getElementById('suc-branch-select');
+  if(sel)sucSelectedBranch=sel.value;
   loadSucursalesList();
 }
 
+function isValidObject(val){
+  return val&&typeof val==='object'&&!Array.isArray(val);
+}
+
+function safeGetKeys(obj){
+  if(!isValidObject(obj))return[];
+  try{return Object.keys(obj);}catch(e){return[];}
+}
+
+function safeGetValues(obj){
+  if(!isValidObject(obj))return[];
+  try{return Object.values(obj);}catch(e){return[];}
+}
+
+function renderSucursalCard(k,s,isCurrent){
+  try{
+    const name=isValidObject(s)&&s.name?s.name:k;
+    const salesRaw=s&&(s.data||s.sales);
+    const salesData=isValidObject(salesRaw)?salesRaw:{};
+    const prodData=isValidObject(s)?(s.products||{}):{};
+    const salesKeys=safeGetKeys(salesData);
+    const prodKeys=safeGetKeys(prodData);
+    const salesCount=salesKeys.length;
+    const productos=prodKeys.length;
+    
+    let totalVentas=0;
+    safeGetValues(salesData).forEach(function(sale){
+      try{
+        if(sale&&typeof sale.total==='number')totalVentas+=sale.total;
+        else if(sale&&sale.total)totalVentas+=parseFloat(sale.total)||0;
+      }catch(e){}
+    });
+    
+    return '<div class="form-card" style="padding:16px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<div style="width:44px;height:44px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>'+
+          '<div><div style="font-size:15px;font-weight:800;color:var(--text)">'+name+'</div><div style="font-size:11px;color:var(--text4)">ID: '+k+'</div></div>'+
+        '</div>'+
+        (isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(245,200,0,.2);color:var(--gold)">⭐ ACTUAL</span>':'')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">'+
+        '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">'+salesCount+'</div><div style="font-size:10px;color:var(--text4)">Ventas</div></div>'+
+        '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">$'+totalVentas.toFixed(0)+'</div><div style="font-size:10px;color:var(--text4)">Total</div></div>'+
+        '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">'+productos+'</div><div style="font-size:10px;color:var(--text4)">Productos</div></div>'+
+      '</div>'+
+    '</div>';
+  }catch(e){
+    console.error('Error renderizando sucursal '+k+':',e);
+    return '<div class="form-card" style="padding:16px;border:1px solid var(--red)"><div style="color:var(--red)">⚠️ Error cargando sucursal: '+k+'</div></div>';
+  }
+}
+
 function loadSucursalesList(){
-  const list=document.getElementById('suc-list');
+  var list=document.getElementById('suc-list');
   if(!list){
-    console.error('Contenedor #suc-list no encontrado');
+    console.error('[loadSucursalesList] Contenedor #suc-list NO encontrado');
     return;
   }
   
@@ -7303,77 +7346,52 @@ function loadSucursalesList(){
     return;
   }
   
-  fbDb.ref('sucursales').once('value').then(snap=>{
-    const data=snap.val()||{};
-    const keys=Object.keys(data).filter(k=>k&&k!=='default');
-    
-    if(keys.length===0){
-      list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
-      return;
-    }
-    
-    const targetBranch=sucViewMode==='branch'&&sucSelectedBranch?sucSelectedBranch:null;
-    const branchesToShow=targetBranch?[targetBranch]:keys;
-    
-    let html='<div style="display:flex;flex-direction:column;gap:12px">';
-    
-    branchesToShow.forEach(k=>{
-      if(!data[k]){
-        console.warn('Sucursal '+k+' no tiene datos');
+  fbDb.ref('sucursales').once('value').then(function(snap){
+    try{
+      var rawData=snap.val();
+      var data=isValidObject(rawData)?rawData:{};
+      var allKeys=safeGetKeys(data);
+      var keys=allKeys.filter(function(k){return k&&k!=='default';});
+      
+      if(keys.length===0){
+        list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
         return;
       }
-      const s=data[k];
-      const name=s.name||k;
-      const isCurrent=k===currentBranch;
-      const salesData=s.data||s.sales||{};
-      const salesCount=Object.keys(salesData).length;
-      const productos=s.products?Object.keys(s.products).length:0;
       
-      let totalVentas=0;
-      Object.values(salesData).forEach(sale=>{
-        if(sale&&sale.total)totalVentas+=parseFloat(sale.total);
+      var targetBranch=sucViewMode==='branch'&&sucSelectedBranch?sucSelectedBranch:null;
+      var branchesToShow=targetBranch?[targetBranch]:keys;
+      var html='<div style="display:flex;flex-direction:column;gap:12px">';
+      var rendered=0;
+      
+      branchesToShow.forEach(function(k){
+        try{
+          if(!data.hasOwnProperty(k)){
+            console.warn('[loadSucursalesList] Key '+k+' no existe en data');
+            return;
+          }
+          var s=data[k];
+          var isCurrent=(k===currentBranch);
+          html+=renderSucursalCard(k,s,isCurrent);
+          rendered++;
+        }catch(e){
+          console.error('[loadSucursalesList] Error procesando key '+k+':',e);
+        }
       });
       
-      html+=`<div class="form-card" style="padding:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:44px;height:44px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
-            <div>
-              <div style="font-size:15px;font-weight:800;color:var(--text)">${name}</div>
-              <div style="font-size:11px;color:var(--text4)">ID: ${k}</div>
-            </div>
-          </div>
-          ${isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(245,200,0,.2);color:var(--gold)">⭐ ACTUAL</span>':''}
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
-          <div style="background:var(--bg2);padding:10px;border-radius:8px">
-            <div style="font-size:18px;font-weight:800;color:var(--gold)">${salesCount}</div>
-            <div style="font-size:10px;color:var(--text4)">Ventas</div>
-          </div>
-          <div style="background:var(--bg2);padding:10px;border-radius:8px">
-            <div style="font-size:18px;font-weight:800;color:var(--gold)">$${totalVentas.toFixed(0)}</div>
-            <div style="font-size:10px;color:var(--text4)">Total</div>
-          </div>
-          <div style="background:var(--bg2);padding:10px;border-radius:8px">
-            <div style="font-size:18px;font-weight:800;color:var(--gold)">${productos}</div>
-            <div style="font-size:10px;color:var(--text4)">Productos</div>
-          </div>
-        </div>
-      </div>`;
-    });
-    
-    html+='</div>';
-    
-    if(sucViewMode==='all'&&keys.length>1){
-      html=`<div style="margin-bottom:12px;padding:12px;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:10px;text-align:center">
-        <div style="font-size:12px;color:var(--gold)">📊 Vista consolidada: ${keys.length} sucursales</div>
-      </div>`+html;
+      html+='</div>';
+      
+      if(sucViewMode==='all'&&keys.length>1){
+        html='<div style="margin-bottom:12px;padding:12px;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:10px;text-align:center"><div style="font-size:12px;color:var(--gold)">📊 Vista consolidada: '+keys.length+' sucursales</div></div>'+html;
+      }
+      
+      list.innerHTML=html;
+      console.log('[loadSucursalesList] OK: '+rendered+'/'+branchesToShow.length+' sucursales renderizadas');
+    }catch(e){
+      console.error('[loadSucursalesList] Error general:',e);
+      list.innerHTML='<div class="admin-empty">Error al procesar datos</div>';
     }
-    
-    list.innerHTML=html;
-    console.log('Sucursales renderizadas:', branchesToShow.length);
-  }).catch(err=>{
-    console.error('Error cargando sucursales:', err);
+  }).catch(function(err){
+    console.error('[loadSucursalesList] Error Firebase:',err);
     list.innerHTML='<div class="admin-empty">Error al cargar sucursales</div>';
   });
 }
