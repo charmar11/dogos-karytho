@@ -5832,42 +5832,24 @@ function onAdminBranchChange(){
   if(!select)return;
   adminViewBranch=select.value;
   
+  // Desconectar listener anterior ANTES de cambiar currentBranch
+  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/gastos').off();
+  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/sales').off();
+  if(fbDb) fbDb.ref('sucursales/'+currentBranch+'/products').off();
+  
   if(adminViewBranch==='all'){
-    // Cargar gastos de todas las sucursales
     currentBranch='carro1';
     fbListening=false;
-    sales=[];
-    products=[];
-    if(fbDb) getBranchRef('gastos').off();
-    gastos=[];
+    sales=[];products=[];gastos=[];
     loadGastosConsolidados();
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[];
-    products=[];
-    if(fbDb) getBranchRef('gastos').off();
-    gastos=[];
+    sales=[];products=[];gastos=[];
     if(startFbListeners) startFbListeners();
     if(loadGastos) loadGastos();
   }
-  
   if(renderAdmin) renderAdmin();
-  
-  // Recargar usuarios si estamos en esa pestaña
-  const usuariosTab=document.getElementById('adm-tab-usuarios');
-  if(usuariosTab&&usuariosTab.classList.contains('active')){
-    loadUsersForAdmin();
-  }
-  
-  if(setAdminTab){
-    const activeTab=document.querySelector('.admin-tab.active');
-    if(activeTab){
-      const match=activeTab.getAttribute('onclick')||'';
-      const tab=match.match(/setAdminTab\('([^']+)'\)/);
-      if(tab) setAdminTab(tab[1]);
-    }
-  }
 }
 
 function bootAdmin(){
