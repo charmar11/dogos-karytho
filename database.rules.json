@@ -28,6 +28,7 @@
     },
     
     "sucursales": {
+      ".read": "auth != null",
       "$branchId": {
         ".read": "auth != null",
         ".write": "auth != null",

@@ -2244,7 +2244,7 @@ position:sticky;top:0;z-index:20;
 </div><!-- end #main-app -->
 
 <!-- ===== SUCURSAL MODAL ===== -->
-<div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)">
+<div id="sucursal-overlay" class="cash-overlay hidden" onclick="closeSucursalOutside(event)" style="position:fixed;inset:0;z-index:9999;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.82);backdrop-filter:blur(6px)">
   <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="cash-title">🏪 Nueva Sucursal</div>
@@ -7423,7 +7423,7 @@ function loadSucursalesList(){
   });
 }
 
-function openAddSucursalForm(){
+window.openAddSucursalForm = function(){
   var modal=document.getElementById('sucursal-overlay');
   var nombreInput=document.getElementById('suc-nombre');
   var idInput=document.getElementById('suc-id');
@@ -7435,8 +7435,18 @@ function openAddSucursalForm(){
   if(copySelect)copySelect.value='';
   if(copyInfo)copyInfo.style.display='none';
   
+  // MOSTRAR MODAL PRIMERO - siempre funciona
+  if(modal){
+    modal.classList.remove('hidden');
+    modal.style.display='flex';
+  } else {
+    console.error('ERROR: Elemento sucrusal-overlay no encontrado');
+    return;
+  }
+  
+  // CARGAR SUCURSALES DESPUES - no interrumpe la apertura
   if(fbDb&&copySelect){
-    fbDb.ref('sucursales').once('value').then(snap=>{
+    fbDb.ref('sucursales').once('value').then(function(snap){
       var data=snap.val()||{};
       var keys=Object.keys(data);
       var sel=document.getElementById('suc-copy-from');
@@ -7454,23 +7464,24 @@ function openAddSucursalForm(){
       console.error('Error cargando sucursales para copiar:', err);
     });
   }
-  
-  if(modal){
-    modal.classList.remove('hidden');
-  } else {
-    console.error('ERROR: Elemento sucrusal-overlay no encontrado');
-  }
-}
-
-window.openAddSucursalForm = openAddSucursalForm;
+};
 
 function closeSucursalForm(){
   var modal=document.getElementById('sucursal-overlay');
-  if(modal)modal.classList.add('hidden');
+  if(modal){
+    modal.classList.add('hidden');
+    modal.style.display='none';
+  }
 }
 
 function closeSucursalOutside(e){
-  if(e.target.id==='sucursal-overlay')closeSucursalForm();
+  if(e.target.id==='sucursal-overlay'){
+    var modal=document.getElementById('sucursal-overlay');
+    if(modal){
+      modal.classList.add('hidden');
+      modal.style.display='none';
+    }
+  }
 }
 
 function onSucCopyFromChange(){
@@ -10193,7 +10204,6 @@ async function initSessionBranch(){
     }
   }
 }
-
 if(savedSession==='1' && savedRole==='admin'){
   document.getElementById('login-screen').classList.add('hidden');
   load();
