@@ -2672,6 +2672,47 @@ position:sticky;top:0;z-index:20;
         ➕ Agregar usuario con cuenta
       </button>
     </div>
+    
+    <!-- New user modal inside tab -->
+    <div id="newuser-overlay" class="cash-overlay hidden" style="z-index:99999;position:fixed;inset:0">
+      <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh;position:relative;z-index:100000">
+        <div class="modal-close" onclick="closeNewUserForm()" style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:20px;color:var(--text4)">&times;</div>
+        <div class="modal-handle"></div>
+        <div class="cash-title">🔑 Nuevo Usuario</div>
+        <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
+        
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
+          <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
+            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+        </div>
+        
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+          <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
+            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+        </div>
+        
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
+          <select id="newuser-role" onchange="newUserRole=this.value"
+            style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+            <option value="user">👤 Empleado</option>
+            <option value="admin">🔑 Admin</option>
+            <option value="eventos">🎪 Eventos</option>
+          </select>
+        </div>
+        
+        <div style="display:flex;gap:10px;margin-top:24px">
+          <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+            Cancelar
+          </button>
+          <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+            🔐 Crear usuario
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -10399,9 +10440,12 @@ function closeNewUserOutside(e){
 }
 
 function createNewUser(){
-  const name=document.getElementById('newuser-name').value.trim();
-  let email=document.getElementById('newuser-email').value.trim();
-  const password=document.getElementById('newuser-password').value;
+  const nameEl=document.getElementById('newuser-name');
+  const name=nameEl ? nameEl.value.trim() : '';
+  const emailEl=document.getElementById('newuser-email');
+  let email=emailEl ? emailEl.value.trim() : '';
+  const passEl=document.getElementById('newuser-password');
+  const password=passEl ? passEl.value : '';
   
   if(!name){showToast('Escribe un nombre','red');return;}
   if(!email) email=name.toLowerCase().replace(/[^a-z0-9]/g,'').replace(/ /g,'')+'@karytho.com';
@@ -10409,8 +10453,10 @@ function createNewUser(){
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
   
   const btn=document.getElementById('btn-create-user');
-  btn.disabled=true;
-  btn.textContent='Creando...';
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='Creando...';
+  }
   
   const secondaryApp=firebase.initializeApp(FB_CONFIG,'secondary');
     secondaryApp.auth().createUserWithEmailAndPassword(email,password)
@@ -10441,8 +10487,10 @@ function createNewUser(){
       secondaryApp.auth().signOut().then(()=>secondaryApp.delete()).catch(()=>{});
     })
     .finally(()=>{
-      btn.disabled=false;
-      btn.textContent='🔐 Crear usuario';
+      if(btn){
+        btn.disabled=false;
+        btn.textContent='🔐 Crear usuario';
+      }
     });
 }
 
@@ -10646,47 +10694,6 @@ window.openCreateUserForm = openCreateUserForm;
       </button>
       <button onclick="addPickerMember()" id="btn-add-pickermember" style="flex:2;background:var(--green);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
         💾 Agregar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== NEW USER MODAL ===== -->
-<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:99999;position:fixed;inset:0">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh;position:relative;z-index:100000">
-    <div class="modal-close" onclick="closeNewUserForm()" style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:20px;color:var(--text4)">&times;</div>
-    <div class="modal-handle"></div>
-    <div class="cash-title">🔑 Nuevo Usuario</div>
-    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
-      <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
-      <input type="password" id="newuser-password" placeholder="Mínimo 6 caracteres"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol</label>
-      <select id="newuser-role" onchange="newUserRole=this.value"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
-        <option value="user">👤 Empleado</option>
-        <option value="admin">🔑 Admin</option>
-        <option value="eventos">🎪 Eventos</option>
-      </select>
-    </div>
-    
-    <div style="display:flex;gap:10px;margin-top:24px">
-      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
-        Cancelar
-      </button>
-      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        🔐 Crear usuario
       </button>
     </div>
   </div>
