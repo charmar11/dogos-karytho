@@ -5823,7 +5823,7 @@ function loadAdminBranchSelector(){
     doLoad();
   } else {
     select.innerHTML='<option value="">Conectando...</option>';
-    setTimeout(doLoad, 1000);
+    setTimeout(function(){doLoad();},1000);
   }
 }
 
@@ -10278,6 +10278,7 @@ if(savedSession==='1' && savedRole==='admin'){
     loadGastos();
     document.getElementById('admin-screen').classList.add('active');
     renderAdmin();
+    setTimeout(function(){loadAdminBranchSelector();},2000);
   },1000);
 } else if(savedSession==='1' && savedRole==='inventario'){
   document.getElementById('login-screen').classList.add('hidden');
