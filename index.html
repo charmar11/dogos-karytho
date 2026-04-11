@@ -10904,7 +10904,7 @@ async function buildReporteData(){
       const nombre = (bd.name||key).toUpperCase();
       let tVentas=0, tTickets=0, tGastos=0, corteHoy=null;
 
-      Object.values(bd.data||bd.sales||{}).forEach(v=>{
+      Object.values(bd.sales||bd.data||{}).forEach(v=>{
         if(v&&toISODate(v.date)===today){
           tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
           tTickets++;
