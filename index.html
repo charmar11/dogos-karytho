@@ -2651,25 +2651,13 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
-    <!-- Sección: Usuarios con cuenta -->
     <div style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:var(--text)">🔑 Usuarios con cuenta</div>
-        <button onclick="openNewUserForm()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
-      </div>
-      <div id="adm-firebase-users-list" class="admin-empty">Cargando...</div>
-    </div>
-    
-    <!-- Sección: Miembros del Picker -->
-    <div style="margin-bottom:20px;padding-top:16px;border-top:1px solid var(--border)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:800;color:var(--text)">👤 Miembros del Picker</div>
+        <div style="font-size:14px;font-weight:800;color:var(--text)">👥 Miembros del Picker</div>
         <button onclick="openAddPickerMemberForm()" style="background:var(--green);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">➕ Agregar</button>
       </div>
       <div id="adm-picker-members-list" class="admin-empty">Cargando...</div>
     </div>
-    
-    <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
   </div>
 
   <!-- ── TAB: ACTIVIDAD ── -->
@@ -7038,10 +7026,9 @@ function setAdminTab(tab){
     const dateRow=document.querySelector('.date-picker-row');
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
-  if(tab==='usuarios')renderAdminUsers();
+  if(tab==='usuarios')loadFirebaseUsers();
   if(tab==='actividad'){
     renderActivityLog();
-    // Refresh online list from Firebase
     if(fbDb) fbDb.ref('presence').once('value',snap=>{
       const data=snap.val()||{};
       const sessions=Object.entries(data).map(([sid,u])=>({...u,_sid:sid}));
@@ -7106,17 +7093,17 @@ function loadSucursales(){
   if(!select)return;
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data);
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
     select.innerHTML='<option value="">Selecciona una sucursal...</option>';
     keys.forEach(k=>{
       const s=data[k];
       const name=s.name||k;
       const opt=document.createElement('option');
       opt.value=k;
-      opt.textContent=name+(k===currentBranch?' (actual)':'');
+      opt.textContent=name;
       select.appendChild(opt);
     });
-    if(currentBranch){
+    if(currentBranch&&currentBranch!=='default'){
       select.value=currentBranch;
       sucSelectedBranch=currentBranch;
     }
@@ -7124,33 +7111,33 @@ function loadSucursales(){
 }
 
 function initSucursalesUI(){
-  console.log('Inicializando UI de sucursales...');
   var btn = document.getElementById('btn-agregar-carro');
   if(btn){
-    console.log('Boton encontrado, adjuntando event listener...');
     btn.addEventListener('click', function(e){
-      console.log('Click en boton agregar carro');
       e.preventDefault();
       openAddSucursalForm();
     });
-    console.log('Event listener adjuntado');
-  } else {
-    console.error('ERROR: Boton btn-agregar-carro no encontrado');
   }
 }
 
 function setSucView(mode){
   sucViewMode=mode;
-  document.getElementById('suc-view-all').classList.toggle('active',mode==='all');
-  document.getElementById('suc-view-branch').classList.toggle('active',mode==='branch');
-  document.getElementById('suc-branch-select').style.display=mode==='branch'?'':'none';
-  if(mode==='branch'){
-    onSucBranchChange();
+  const btnAll=document.getElementById('suc-view-all');
+  const btnBranch=document.getElementById('suc-view-branch');
+  const select=document.getElementById('suc-branch-select');
+  if(btnAll)btnAll.classList.toggle('active',mode==='all');
+  if(btnBranch)btnBranch.classList.toggle('active',mode==='branch');
+  if(select)select.style.display=mode==='branch'?'':'none';
+  if(mode==='branch'&&!sucSelectedBranch){
+    sucSelectedBranch=currentBranch&&currentBranch!=='default'?currentBranch:'';
+    if(select)select.value=sucSelectedBranch;
   }
+  loadSucursalesList();
 }
 
 function onSucBranchChange(){
   sucSelectedBranch=document.getElementById('suc-branch-select').value;
+  loadSucursalesList();
 }
 
 function loadSucursalesList(){
@@ -7158,42 +7145,72 @@ function loadSucursalesList(){
   const list=document.getElementById('suc-list');
   if(!list)return;
   
-  list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:32px;margin-bottom:8px">🏪</div><div>Cargando sucursales...</div></div>';
+  list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:32px;margin-bottom:8px">🏪</div><div>Cargando...</div></div>';
   
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data);
+    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
     
     if(keys.length===0){
       list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
       return;
     }
     
+    const targetBranch=sucViewMode==='branch'&&sucSelectedBranch?sucSelectedBranch:null;
+    const branchesToShow=targetBranch?[targetBranch]:keys;
+    
     let html='<div style="display:flex;flex-direction:column;gap:12px">';
-    keys.forEach(k=>{
+    
+    branchesToShow.forEach(k=>{
+      if(!data[k])return;
       const s=data[k];
       const name=s.name||k;
       const isCurrent=k===currentBranch;
-      const isOnline=isCurrent?'🟢':'⚪';
+      const salesData=s.data||s.sales||{};
+      const salesCount=Object.keys(salesData).length;
+      const productos=s.products?Object.keys(s.products).length:0;
+      
+      let totalVentas=0;
+      Object.values(salesData).forEach(sale=>{
+        if(sale&&sale.total)totalVentas+=parseFloat(sale.total);
+      });
       
       html+=`<div class="form-card" style="padding:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:40px;height:40px;border-radius:10px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
+            <div style="width:44px;height:44px;border-radius:10px;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px">🏪</div>
             <div>
-              <div style="font-size:14px;font-weight:800;color:var(--text)">${name}</div>
+              <div style="font-size:15px;font-weight:800;color:var(--text)">${name}</div>
               <div style="font-size:11px;color:var(--text4)">ID: ${k}</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 8px;border-radius:20px;background:rgba(42,184,184,.15);color:#2ab8b8">ACTUAL</span>':''}
-            <span style="font-size:16px">${isOnline}</span>
+          ${isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(245,200,0,.2);color:var(--gold)">⭐ ACTUAL</span>':''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">${salesCount}</div>
+            <div style="font-size:10px;color:var(--text4)">Ventas</div>
+          </div>
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">$${totalVentas.toFixed(0)}</div>
+            <div style="font-size:10px;color:var(--text4)">Total</div>
+          </div>
+          <div style="background:var(--bg2);padding:10px;border-radius:8px">
+            <div style="font-size:18px;font-weight:800;color:var(--gold)">${productos}</div>
+            <div style="font-size:10px;color:var(--text4)">Productos</div>
           </div>
         </div>
-        <div style="font-size:11px;color:var(--text3)">Estructura: products, sales, gastos, ingredientes, recetas...</div>
       </div>`;
     });
+    
     html+='</div>';
+    
+    if(sucViewMode==='all'&&keys.length>1){
+      html=`<div style="margin-bottom:12px;padding:12px;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:10px;text-align:center">
+        <div style="font-size:12px;color:var(--gold)">📊 Vista consolidada: ${keys.length} sucursales</div>
+      </div>`+html;
+    }
+    
     list.innerHTML=html;
   }).catch(()=>{
     list.innerHTML='<div class="admin-empty">Error al cargar sucursales</div>';
@@ -10165,12 +10182,6 @@ function createNewUser(){
     });
 }
 
-// Update setAdminTab to call loadFirebaseUsers
-const _origSetAdminTab=setAdminTab;
-setAdminTab=function(tab){
-  _origSetAdminTab(tab);
-  if(tab==='usuarios')loadFirebaseUsers();
-};
 </script>
 </body>
 </html>
