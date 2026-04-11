@@ -6029,16 +6029,16 @@ function renderResumenKPIs(){
         const s=data[k];
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
-        Object.values(sSalesObj).forEach(v=>{if(v&&v.date===today){tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0); tTickets++;}});
+        Object.values(sSalesObj).forEach(v=>{if(v&&toISODate(v.date)===today){tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0); tTickets++;}});
         Object.values(sGasObj).forEach(g=>{if(g&&g.fecha===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
       });
       _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs);
     });
   } else {
-    const salesHoy=sales.filter(s=>s.date===today);
+    const salesHoy=sales.filter(s=>toISODate(s.date)===today);
     const tVentas=salesHoy.reduce((s,v)=>s+v.total,0);
     const tTickets=salesHoy.length;
-    const gastosHoy=gastos.filter(g=>g.fecha===today);
+    const gastosHoy=gastos.filter(g=>normFecha(g.fecha)===today);
     const tGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
     _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length);
   }
@@ -6095,7 +6095,7 @@ function renderBalanceChart7d(){
       const salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
       const gasObj=s&&s.gastos?s.gastos:{};
       days.forEach((d,i)=>{
-        Object.values(salesObj).forEach(v=>{if(v&&v.date===d) ventasPorDia[i]+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);});
+        Object.values(salesObj).forEach(v=>{if(v&&toISODate(v.date)===d) ventasPorDia[i]+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);});
         Object.values(gasObj).forEach(g=>{if(g&&g.fecha===d) gastosPorDia[i]+=(parseFloat(g.monto)||0);});
       });
     });
@@ -6137,7 +6137,7 @@ function renderBranchComparison(){
     keys.forEach(bid=>{
       const s=data[bid];
       const salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
-      const arr=Object.values(salesObj).filter(v=>v&&v.date===today);
+      const arr=Object.values(salesObj).filter(v=>v&&toISODate(v.date)===today);
       const total=arr.reduce((sum,v)=>sum+((typeof v.total==='number')?v.total:(parseFloat(v.total)||0)),0);
       const cnt=arr.length;
       results.push({bid,name:s.name||bid,total,cnt,avg:cnt?total/cnt:0});
