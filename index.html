@@ -3688,6 +3688,18 @@ let fbAuthReady=false;
   }catch(e){fbAuthReady=true;}
 })();
 
+/* ─── Delegacion de eventos para elementos dinamicos ─── */
+document.addEventListener('click',function(e){
+  const target=e.target.closest('#btn-agregar-carro');
+  if(target){
+    e.preventDefault();
+    e.stopPropagation();
+    if(typeof openAddSucursalForm==='function'){
+      openAddSucursalForm();
+    }
+  }
+});
+
 /* ─── Helper: garantiza auth antes de escribir en Firebase ─── */
 function fbWriteSecure(ref,data){
   return new Promise((resolve,reject)=>{
@@ -7278,15 +7290,22 @@ function onSucBranchChange(){
 }
 
 function loadSucursalesList(){
-  if(!fbDb)return;
   const list=document.getElementById('suc-list');
-  if(!list)return;
+  if(!list){
+    console.error('Contenedor #suc-list no encontrado');
+    return;
+  }
   
   list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:32px;margin-bottom:8px">🏪</div><div>Cargando...</div></div>';
   
+  if(!fbDb){
+    list.innerHTML='<div class="admin-empty">Sin conexión a Firebase</div>';
+    return;
+  }
+  
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
+    const keys=Object.keys(data).filter(k=>k&&k!=='default');
     
     if(keys.length===0){
       list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
@@ -7299,7 +7318,10 @@ function loadSucursalesList(){
     let html='<div style="display:flex;flex-direction:column;gap:12px">';
     
     branchesToShow.forEach(k=>{
-      if(!data[k])return;
+      if(!data[k]){
+        console.warn('Sucursal '+k+' no tiene datos');
+        return;
+      }
       const s=data[k];
       const name=s.name||k;
       const isCurrent=k===currentBranch;
@@ -7349,48 +7371,55 @@ function loadSucursalesList(){
     }
     
     list.innerHTML=html;
-  }).catch(()=>{
+    console.log('Sucursales renderizadas:', branchesToShow.length);
+  }).catch(err=>{
+    console.error('Error cargando sucursales:', err);
     list.innerHTML='<div class="admin-empty">Error al cargar sucursales</div>';
   });
 }
 
 function openAddSucursalForm(){
-  console.log('Abriendo modal sucursal...');
-  var modal = document.getElementById('sucursal-overlay');
-  console.log('Modal encontrado:', modal);
+  var modal=document.getElementById('sucursal-overlay');
+  var nombreInput=document.getElementById('suc-nombre');
+  var idInput=document.getElementById('suc-id');
+  var copySelect=document.getElementById('suc-copy-from');
+  var copyInfo=document.getElementById('suc-copy-info');
   
-  document.getElementById('suc-nombre').value='';
-  document.getElementById('suc-id').value='';
-  document.getElementById('suc-copy-from').value='';
-  document.getElementById('suc-copy-info').style.display='none';
+  if(nombreInput)nombreInput.value='';
+  if(idInput)idInput.value='';
+  if(copySelect)copySelect.value='';
+  if(copyInfo)copyInfo.style.display='none';
   
-  if(fbDb){
+  if(fbDb&&copySelect){
     fbDb.ref('sucursales').once('value').then(snap=>{
-      const data=snap.val()||{};
-      const keys=Object.keys(data);
-      const select=document.getElementById('suc-copy-from');
-      select.innerHTML='<option value="">— Empezar desde cero —</option>';
-      keys.forEach(k=>{
-        const s=data[k];
-        const name=s.name||k;
-        const opt=document.createElement('option');
+      var data=snap.val()||{};
+      var keys=Object.keys(data);
+      var sel=document.getElementById('suc-copy-from');
+      if(!sel)return;
+      sel.innerHTML='<option value="">— Empezar desde cero —</option>';
+      keys.forEach(function(k){
+        var s=data[k];
+        var name=s.name||k;
+        var opt=document.createElement('option');
         opt.value=k;
         opt.textContent=name+(k===currentBranch?' (actual)':'');
-        select.appendChild(opt);
+        sel.appendChild(opt);
       });
+    }).catch(function(err){
+      console.error('Error cargando sucursales para copiar:', err);
     });
   }
   
   if(modal){
     modal.classList.remove('hidden');
-    console.log('Modal visible');
   } else {
-    console.error('ERROR: No se encontro el elemento sucrusal-overlay');
+    console.error('ERROR: Elemento sucrusal-overlay no encontrado');
   }
 }
 
 function closeSucursalForm(){
-  document.getElementById('sucursal-overlay').classList.add('hidden');
+  var modal=document.getElementById('sucursal-overlay');
+  if(modal)modal.classList.add('hidden');
 }
 
 function closeSucursalOutside(e){
