@@ -10386,7 +10386,7 @@ function closeNewUserForm(){
 }
 
 function closeNewUserOutside(e){
-  if(e.target.id==='newuser-overlay')closeNewUserForm();
+  if(e.target.id==='newuser-overlay' && e.target.closest('.cash-modal') === null)closeNewUserForm();
 }
 
 function createNewUser(){
@@ -10402,7 +10402,8 @@ function createNewUser(){
   btn.disabled=true;
   btn.textContent='Creando...';
   
-  firebase.auth().createUserWithEmailAndPassword(email,password)
+  const secondaryApp=firebase.initializeApp(FB_CONFIG,'secondary');
+    secondaryApp.auth().createUserWithEmailAndPassword(email,password)
     .then(cred=>{
       return fbDb.ref('users/'+cred.user.uid).set({
         name:name,
@@ -10413,6 +10414,12 @@ function createNewUser(){
       });
     })
     .then(()=>{
+      return secondaryApp.auth().signOut();
+    })
+    .then(()=>{
+      return secondaryApp.delete();
+    })
+    .then(()=>{
       showToast('Usuario creado exitosamente','green');
       closeNewUserForm();
       loadUsersForAdmin();
@@ -10421,6 +10428,7 @@ function createNewUser(){
       let msg='Error al crear usuario';
       if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso';
       showToast(msg,'red');
+      secondaryApp.auth().signOut().then(()=>secondaryApp.delete()).catch(()=>{});
     })
     .finally(()=>{
       btn.disabled=false;
