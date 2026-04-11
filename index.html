@@ -6306,19 +6306,7 @@ function loadGastos(){
       gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
       safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
     } else {
-      // Firebase empty → push any local gastos up (covers fresh-write race condition)
-      const cached=JSON.parse(safeStorage.getItem(SK_GASTOS)||'[]');
-      if(cached.length>0){
-        cached.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
-        // Keep in-memory gastos as-is; next snapshot will confirm
-        return;
-      }
-      // Also push any gastos that are in memory but not yet in Firebase (race condition fix)
-      if(gastos&&gastos.length>0){
-        gastos.forEach(g=>{if(g.id) fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});});
-        return;
-      }
-      // Truly empty — clear local too
+      // Firebase empty for this branch — gastos are only in Firebase, never push from local
       gastos=[];
       safeStorage.setItem(SK_GASTOS,'[]');
     }
