@@ -12,8 +12,6 @@ echo.
 
 cd /d "%~dp0"
 
-echo Ingresa la URL de tu repositorio GitHub
-echo (ejemplo: https://github.com/usuario/dogos-karytho.git)
 echo.
 set /p REPO_URL="URL del repositorio: "
 
@@ -36,7 +34,7 @@ echo ============================================
 echo    CONFIGURADO!
 echo ============================================
 echo.
-echo Ahora puedes ejecutar deploy.bat para
-echo subir cambios a GitHub
+echo Ahora puedes ejecutar deploy.bat
+echo para subir cambios a GitHub
 echo.
 pause
