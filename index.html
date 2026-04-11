@@ -3671,21 +3671,19 @@ function openFbSetup(){showToast('Sincronizacion ya configurada','green');}
 
 /* ─── Inicializar Firebase UNA sola vez al cargar la pagina ─── */
 let fbAuthReady=false;
-(function(){
+(async function(){
   try{
     if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
     fbDb=firebase.database();
-    // Autenticacion anonima silenciosa — requerida por reglas de seguridad
-    firebase.auth().signInAnonymously()
-      .then(()=>{fbAuthReady=true;})
-      .catch(()=>{fbAuthReady=true;});
-    // Mantener sesion activa — re-autenticar si expira
-    firebase.auth().onAuthStateChanged(user=>{
-      if(!user&&fbDb){
-        firebase.auth().signInAnonymously().catch(()=>{});
-      }
-    });
-  }catch(e){fbAuthReady=true;}
+    // Establecer persistencia LOCAL inmediatamente
+    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    
+    fbAuthReady=true;
+    // Firebase Auth restaurara cualquier sesion previa automaticamente
+    // (el admin ya inicio sesion antes del reload)
+  }catch(e){
+    fbAuthReady=true;
+  }
 })();
 
 /* ─── Delegacion de eventos para elementos dinamicos ─── */
