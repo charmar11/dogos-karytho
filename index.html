@@ -10866,6 +10866,97 @@ window.openNewUserForm = openNewUserForm;
 window.closeNewUserForm = closeNewUserForm;
 window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
+
+/* ═══════════════════════════════════════════════════
+   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 12:00 PM
+   ═══════════════════════════════════════════════════ */
+const CALLMEBOT_PHONE  = '5216442793641';
+const CALLMEBOT_APIKEY = '7519882';
+const REPORTE_HORA     = 12;
+const REPORTE_MINUTO   = 0;
+const SK_REPORTE_SENT  = 'dk_reporte_enviado';
+
+async function buildReporteData(){
+  const today = todayISO();
+  let tVentas=0, tTickets=0, tGastos=0, nombreSuc='';
+  let corteHoy=null;
+
+  if(fbDb){
+    const snap = await fbDb.ref('sucursales').once('value');
+    const data  = snap.val()||{};
+    const branch = (adminViewBranch&&adminViewBranch!=='all') ? adminViewBranch : currentBranch;
+    const bd = data[branch]||{};
+    nombreSuc = bd.name||branch||'Sucursal';
+    Object.values(bd.data||bd.sales||{}).forEach(v=>{
+      if(v&&toISODate(v.date)===today){
+        tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
+        tTickets++;
+      }
+    });
+    Object.values(bd.gastos||{}).forEach(g=>{
+      if(g&&normFecha(g.fecha)===today) tGastos+=parseFloat(g.monto)||0;
+    });
+    const cortesHoy=Object.values(bd.cortes||{}).filter(c=>c&&c.fechaISO===today).sort((a,b)=>b.ts-a.ts);
+    if(cortesHoy.length) corteHoy=cortesHoy[0];
+  } else {
+    tVentas  = sales.filter(s=>toISODate(s.date)===today).reduce((a,v)=>a+v.total,0);
+    tTickets = sales.filter(s=>toISODate(s.date)===today).length;
+    tGastos  = gastos.filter(g=>normFecha(g.fecha)===today).reduce((a,g)=>a+(parseFloat(g.monto)||0),0);
+    const ch = cortesHistory.filter(c=>c.fechaISO===today).sort((a,b)=>b.ts-a.ts);
+    if(ch.length) corteHoy=ch[0];
+  }
+
+  const neto       = tVentas-tGastos;
+  const ticketProm = tTickets ? tVentas/tTickets : 0;
+  const margen     = tVentas>0 ? Math.round((neto/tVentas)*100) : 0;
+  const metaPct    = dailyGoal>0 ? Math.min(999,Math.round((tVentas/dailyGoal)*100)) : null;
+  const fecha      = new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+
+  const sep = '---------------------';
+  let msg = '';
+  msg += '\uD83D\uDCCA *REPORTE DIARIO - '+nombreSuc.toUpperCase()+'*\n';
+  msg += '\uD83D\uDDD3 '+fecha+'\n'+sep+'\n';
+  msg += '\uD83D\uDCB0 *Ventas hoy:* $'+tVentas.toFixed(2)+'\n';
+  msg += '\uD83C\uDFAB Tickets: '+tTickets+'  |  Prom: $'+ticketProm.toFixed(2)+'\n';
+  msg += '\uD83E\uDDFE *Gastos hoy:* $'+tGastos.toFixed(2)+'\n';
+  msg += '\uD83D\uDCC8 *Neto:* $'+neto.toFixed(2)+' ('+(margen>=0?'+':'')+margen+'%)\n';
+  if(metaPct!==null){
+    const emoji=metaPct>=100?'\u2705':metaPct>=60?'\uD83D\uDFE1':'\uD83D\uDD34';
+    msg += '\uD83C\uDFAF Meta: '+emoji+' '+metaPct+'% de $'+dailyGoal.toFixed(2)+'\n';
+  }
+  if(corteHoy){
+    const dif=corteHoy.diferencia||0;
+    msg += sep+'\n\uD83E\uDDF2 *Ultimo corte ('+corteHoy.hora+')*\n';
+    msg += '   Esperado: $'+corteHoy.totalEsperado.toFixed(2)+'\n';
+    msg += '   Contado:  $'+corteHoy.totalContado.toFixed(2)+'\n';
+    msg += '   Diferencia: '+(dif>=0?'+':'')+'$'+dif.toFixed(2)+' '+(dif===0?'\u2705':dif>0?'\u2B06':'\u2B07')+'\n';
+  } else {
+    msg += '\uD83E\uDDF2 Sin cortes registrados hoy\n';
+  }
+  msg += sep+'\n_Dogos Karytho - reporte automatico_';
+  return msg;
+}
+
+async function enviarReporteWhatsApp(){
+  try{
+    const msg=await buildReporteData();
+    const url='https://api.callmebot.com/whatsapp.php?phone='+CALLMEBOT_PHONE+'&text='+encodeURIComponent(msg)+'&apikey='+CALLMEBOT_APIKEY;
+    await fetch(url);
+    safeStorage.setItem(SK_REPORTE_SENT,todayISO());
+    console.log('Reporte WhatsApp enviado');
+  }catch(e){
+    console.warn('Error reporte WhatsApp:',e);
+  }
+}
+window.enviarReporteWhatsApp=enviarReporteWhatsApp;
+
+// Revisa la hora cada minuto — dispara exactamente a las 12:00 PM
+setInterval(()=>{
+  const n=new Date();
+  if(n.getHours()===REPORTE_HORA&&n.getMinutes()===REPORTE_MINUTO){
+    if(safeStorage.getItem(SK_REPORTE_SENT)!==todayISO()) enviarReporteWhatsApp();
+  }
+},60000);
 </script>
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
@@ -10910,7 +11001,7 @@ window.openCreateUserForm = openCreateUserForm;
     </div>
     
     <div style="margin-bottom:4px;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
-      <span style="font-size:11px;color:var(--text3)">📧 Correo auto: <b style="color:var(--gold)">nombre@karytho.com</b></span>
+      <span style="font-size:11px;color:var(--text3)">📧 Correo auto: <b style="color:var(--gold)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="395756545b4b5c7952584b404d5156175a5654">[email&#160;protected]</a></b></span>
     </div>
     
     <div style="margin-bottom:16px">
@@ -10933,12 +11024,4 @@ window.openCreateUserForm = openCreateUserForm;
       <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
         Cancelar
       </button>
-      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
-        🔐 Crear usuario
-      </button>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px
