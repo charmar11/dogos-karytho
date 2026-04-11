@@ -5780,32 +5780,51 @@ let adminRange='hoy';
 let adminViewBranch='';
 
 function loadAdminBranchSelector(){
-  if(!fbDb)return;
-  const select=document.getElementById('admin-branch-select');
+  var select=document.getElementById('admin-branch-select');
   if(!select)return;
   
-  fbDb.ref('sucursales').once('value').then(snap=>{
-    const data=snap.val()||{};
-    const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
-    
-    select.innerHTML='<option value="all">📊 Todas (consolidado)</option>';
-    keys.forEach(k=>{
-      const s=data[k];
-      const name=s.name||k;
-      const opt=document.createElement('option');
-      opt.value=k;
-      opt.textContent='🏪 '+name;
-      select.appendChild(opt);
-    });
-    
-    if(currentBranch&&currentBranch!=='default'){
-      select.value=currentBranch;
-      adminViewBranch=currentBranch;
-    } else {
+  function doLoad(){
+    if(!fbDb){
+      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
       select.value='all';
       adminViewBranch='all';
+      return;
     }
-  });
+    
+    fbDb.ref('sucursales').once('value').then(function(snap){
+      var data=snap.val()||{};
+      var keys=Object.keys(data).filter(function(k){return k&&k!=='default';});
+      
+      var html='<option value="all">📊 Todas (consolidado)</option>';
+      keys.forEach(function(k){
+        var s=data[k];
+        var name=(s&&s.name)?s.name:k;
+        html+='<option value="'+k+'">🏪 '+name+'</option>';
+      });
+      
+      select.innerHTML=html;
+      
+      if(currentBranch&&currentBranch!=='default'){
+        select.value=currentBranch;
+        adminViewBranch=currentBranch;
+      } else {
+        select.value='all';
+        adminViewBranch='all';
+      }
+    }).catch(function(err){
+      console.error('Error cargando selector:',err);
+      select.innerHTML='<option value="all">📊 Todas (consolidado)</option><option value="carro1">🏪 Carro 1</option>';
+      select.value='all';
+      adminViewBranch='all';
+    });
+  }
+  
+  if(fbDb){
+    doLoad();
+  } else {
+    select.innerHTML='<option value="">Conectando...</option>';
+    setTimeout(doLoad, 1000);
+  }
 }
 
 function onAdminBranchChange(){
@@ -10519,6 +10538,20 @@ function openCreateUserForm(){
   newUserRole='user';
   document.getElementById('newuser-overlay').classList.remove('hidden');
 }
+
+/* ─── EXPORTAR FUNCIONES AL SCOPE GLOBAL ─── */
+window.openAddSucursalForm = openAddSucursalForm;
+window.closeSucursalForm = closeSucursalForm;
+window.loadSucursalesList = loadSucursalesList;
+window.loadAdminBranchSelector = loadAdminBranchSelector;
+window.loadSucursales = loadSucursales;
+window.createSucursal = createSucursal;
+window.setSucView = setSucView;
+window.onSucBranchChange = onSucBranchChange;
+window.renderSucursalCard = renderSucursalCard;
+window.isValidObject = isValidObject;
+window.safeGetKeys = safeGetKeys;
+window.safeGetValues = safeGetValues;
 
 </script>
 </body>
