@@ -3486,12 +3486,12 @@ function loginWithFirebase(user,pass,cb){
   }
   
   // Otros usuarios: buscar por nombre o email en la base de datos
-  const userLower=user.toLowerCase();
+  var userLower2=user.toLowerCase();
   fbDb.ref('users').once('value').then(snap=>{
     const data=snap.val()||{};
     const users=[];
     Object.entries(data).forEach(([uid,val])=>{
-      if(val && (val.name&&val.name.toLowerCase()===userLower || val.email&&val.email.toLowerCase()===userLower)){
+      if(val && (val.name&&val.name.toLowerCase()===userLower2 || val.email&&val.email.toLowerCase()===userLower2)){
         users.push({uid:uid,...val});
       }
     });
@@ -10702,6 +10702,7 @@ window.openNewUserForm = openNewUserForm;
 window.closeNewUserForm = closeNewUserForm;
 window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
+window.doLogin = doLogin;
 </script>
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
