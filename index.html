@@ -10868,11 +10868,11 @@ window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
 
 /* ═══════════════════════════════════════════════════
-   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 12:00 PM
+   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 11:00 AM
    ═══════════════════════════════════════════════════ */
 const CALLMEBOT_PHONE  = '5216442793641';
 const CALLMEBOT_APIKEY = '7519882';
-const REPORTE_HORA     = 12;
+const REPORTE_HORA     = 0;
 const REPORTE_MINUTO   = 0;
 const SK_REPORTE_SENT  = 'dk_reporte_enviado';
 
@@ -10912,36 +10912,46 @@ async function buildReporteData(){
   const metaPct    = dailyGoal>0 ? Math.min(999,Math.round((tVentas/dailyGoal)*100)) : null;
   const fecha      = new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
 
+  const NL  = '%0A'; // salto de línea explícito para CallMeBot
   const sep = '---------------------';
-  let msg = '';
-  msg += '\uD83D\uDCCA *REPORTE DIARIO - '+nombreSuc.toUpperCase()+'*\n';
-  msg += '\uD83D\uDDD3 '+fecha+'\n'+sep+'\n';
-  msg += '\uD83D\uDCB0 *Ventas hoy:* $'+tVentas.toFixed(2)+'\n';
-  msg += '\uD83C\uDFAB Tickets: '+tTickets+'  |  Prom: $'+ticketProm.toFixed(2)+'\n';
-  msg += '\uD83E\uDDFE *Gastos hoy:* $'+tGastos.toFixed(2)+'\n';
-  msg += '\uD83D\uDCC8 *Neto:* $'+neto.toFixed(2)+' ('+(margen>=0?'+':'')+margen+'%)\n';
+  const lines = [];
+  lines.push('📊 *REPORTE DIARIO - '+nombreSuc.toUpperCase()+'*');
+  lines.push('🗓 '+fecha);
+  lines.push(sep);
+  lines.push('💰 *Ventas hoy:* $'+tVentas.toFixed(2));
+  lines.push('🎫 Tickets: '+tTickets+'  |  Prom: $'+ticketProm.toFixed(2));
+  lines.push('🧾 *Gastos hoy:* $'+tGastos.toFixed(2));
+  lines.push('📈 *Neto:* $'+neto.toFixed(2)+' ('+(margen>=0?'+':'')+margen+'%)');
   if(metaPct!==null){
-    const emoji=metaPct>=100?'\u2705':metaPct>=60?'\uD83D\uDFE1':'\uD83D\uDD34';
-    msg += '\uD83C\uDFAF Meta: '+emoji+' '+metaPct+'% de $'+dailyGoal.toFixed(2)+'\n';
+    const emoji=metaPct>=100?'✅':metaPct>=60?'🟡':'🔴';
+    lines.push('🎯 Meta: '+emoji+' '+metaPct+'% de $'+dailyGoal.toFixed(2));
   }
   if(corteHoy){
     const dif=corteHoy.diferencia||0;
-    msg += sep+'\n\uD83E\uDDF2 *Ultimo corte ('+corteHoy.hora+')*\n';
-    msg += '   Esperado: $'+corteHoy.totalEsperado.toFixed(2)+'\n';
-    msg += '   Contado:  $'+corteHoy.totalContado.toFixed(2)+'\n';
-    msg += '   Diferencia: '+(dif>=0?'+':'')+'$'+dif.toFixed(2)+' '+(dif===0?'\u2705':dif>0?'\u2B06':'\u2B07')+'\n';
+    lines.push(sep);
+    lines.push('🧲 *Ultimo corte ('+corteHoy.hora+')*');
+    lines.push('   Esperado: $'+corteHoy.totalEsperado.toFixed(2));
+    lines.push('   Contado:  $'+corteHoy.totalContado.toFixed(2));
+    lines.push('   Diferencia: '+(dif>=0?'+':'')+'$'+dif.toFixed(2)+' '+(dif===0?'✅':dif>0?'⬆':'⬇'));
   } else {
-    msg += '\uD83E\uDDF2 Sin cortes registrados hoy\n';
+    lines.push('🧲 Sin cortes registrados hoy');
   }
-  msg += sep+'\n_Dogos Karytho - reporte automatico_';
-  return msg;
+  lines.push(sep);
+  lines.push('_Dogos Karytho - reporte automatico_');
+  // Unir con %0A para que CallMeBot interprete los saltos de línea correctamente
+  return lines.map(l=>encodeURIComponent(l)).join(NL);
 }
 
 async function enviarReporteWhatsApp(){
   try{
-    const msg=await buildReporteData();
-    const url='https://api.callmebot.com/whatsapp.php?phone='+CALLMEBOT_PHONE+'&text='+encodeURIComponent(msg)+'&apikey='+CALLMEBOT_APIKEY;
-    await fetch(url);
+    const msgEncoded=await buildReporteData();
+    const url='https://api.callmebot.com/whatsapp.php?phone='+CALLMEBOT_PHONE+'&text='+msgEncoded+'&apikey='+CALLMEBOT_APIKEY;
+    // Usamos <img> para evitar el bloqueo CORS del navegador
+    await new Promise((resolve)=>{
+      const img=new Image();
+      img.onload=img.onerror=()=>resolve();
+      img.src=url;
+    });
     safeStorage.setItem(SK_REPORTE_SENT,todayISO());
     console.log('Reporte WhatsApp enviado');
   }catch(e){
@@ -10950,7 +10960,7 @@ async function enviarReporteWhatsApp(){
 }
 window.enviarReporteWhatsApp=enviarReporteWhatsApp;
 
-// Revisa la hora cada minuto — dispara exactamente a las 12:00 PM
+// Revisa la hora cada minuto — dispara exactamente a las 11:00 AM
 setInterval(()=>{
   const n=new Date();
   if(n.getHours()===REPORTE_HORA&&n.getMinutes()===REPORTE_MINUTO){
