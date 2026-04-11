@@ -7141,9 +7141,10 @@ function loadSucursales(){
   if(!fbDb)return;
   const select=document.getElementById('suc-branch-select');
   if(!select)return;
+  
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data);
+    const keys=Object.keys(data).filter(k=>k!=='default');
     select.innerHTML='<option value="">Selecciona una sucursal...</option>';
     keys.forEach(k=>{
       const s=data[k];
@@ -7153,12 +7154,43 @@ function loadSucursales(){
       opt.textContent=name+(k===currentBranch?' (actual)':'');
       select.appendChild(opt);
     });
-    if(currentBranch){
+    
+    if(currentBranch&&currentBranch!=='default'&&keys.includes(currentBranch)){
       select.value=currentBranch;
       sucSelectedBranch=currentBranch;
     }
+    
     loadSucursalesList();
+  }).catch(err=>{
+    console.error('Error cargando sucursales:',err);
+    const list=document.getElementById('suc-list');
+    if(list)list.innerHTML='<div class="admin-empty">Error al cargar. Revisa tu conexión.</div>';
   });
+}
+
+function setSucView(mode){
+  sucViewMode=mode;
+  const btnAll=document.getElementById('suc-view-all');
+  const btnBranch=document.getElementById('suc-view-branch');
+  const select=document.getElementById('suc-branch-select');
+  
+  if(btnAll)btnAll.classList.toggle('active',mode==='all');
+  if(btnBranch)btnBranch.classList.toggle('active',mode==='branch');
+  if(select)select.style.display=mode==='branch'?'':'none';
+  
+  if(mode==='branch'&&!sucSelectedBranch){
+    sucSelectedBranch=currentBranch&&currentBranch!=='default'?currentBranch:'';
+    if(select)select.value=sucSelectedBranch;
+  }
+  
+  loadSucursalesList();
+}
+
+function onSucBranchChange(){
+  const select=document.getElementById('suc-branch-select');
+  if(!select)return;
+  sucSelectedBranch=select.value;
+  loadSucursalesList();
 }
 
 function loadSucursalesList(){
@@ -7170,7 +7202,8 @@ function loadSucursalesList(){
   
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
-    const keys=Object.keys(data);
+    const allKeys=Object.keys(data);
+    const keys=allKeys.filter(k=>k!=='default');
     
     if(keys.length===0){
       list.innerHTML=`
@@ -7183,8 +7216,13 @@ function loadSucursalesList(){
       return;
     }
     
+    const targetBranch=sucViewMode==='branch'&&sucSelectedBranch?sucSelectedBranch:null;
+    
     let html='';
-    keys.forEach(k=>{
+    const branchesToShow=targetBranch?[targetBranch]:keys;
+    
+    branchesToShow.forEach(k=>{
+      if(!data[k])return;
       const s=data[k];
       const name=s.name||k;
       const fecha=s.createdAt?new Date(s.createdAt).toLocaleDateString('es-MX'):'N/A';
@@ -7208,9 +7246,18 @@ function loadSucursalesList(){
           <div style="font-size:11px;color:var(--text3)">
             Creada: ${fecha} · Por: ${creador}
           </div>
+          ${targetBranch?`<div style="margin-top:10px;padding:10px;background:var(--bg2);border-radius:8px;font-size:12px">
+            <strong>Vista activa:</strong> Mostrando datos de ${name}
+          </div>`:''}
         </div>
       `;
     });
+    
+    if(!targetBranch){
+      html+=`<div style="font-size:12px;color:var(--text4);text-align:center;margin-top:10px">
+        Ve arriba para cambiar entre vista consolidada o por sucursal
+      </div>`;
+    }
     
     list.innerHTML=html;
   }).catch(err=>{
@@ -10202,11 +10249,14 @@ async function initSessionBranch(){
     try{
       const snap=await fbDb.ref('users/'+savedUid).once('value');
       const data=snap.val();
-      if(data && data.branchId){
+      if(data && data.branchId && data.branchId!=='default'){
         currentBranch=data.branchId;
         currentUid=savedUid;
       } else {
-        currentBranch='default';
+        const sucSnap=await fbDb.ref('sucursales').once('value');
+        const sucData=sucSnap.val()||{};
+        const keys=Object.keys(sucData).filter(k=>k!=='default');
+        currentBranch=keys.length>0?keys[0]:'default';
         currentUid=savedUid;
       }
     } catch(e){
