@@ -7457,6 +7457,7 @@ window.openAddSucursalForm = function(){
   
   if(modal){
     modal.classList.remove('hidden');
+    modal.style.display='flex';
   } else {
     console.error('ERROR: Elemento sucrusal-overlay no encontrado');
   }
@@ -7464,11 +7465,20 @@ window.openAddSucursalForm = function(){
 
 function closeSucursalForm(){
   var modal=document.getElementById('sucursal-overlay');
-  if(modal)modal.classList.add('hidden');
+  if(modal){
+    modal.classList.add('hidden');
+    modal.style.display='none';
+  }
 }
 
 function closeSucursalOutside(e){
-  if(e.target.id==='sucursal-overlay')closeSucursalForm();
+  if(e.target.id==='sucursal-overlay'){
+    var modal=document.getElementById('sucursal-overlay');
+    if(modal){
+      modal.classList.add('hidden');
+      modal.style.display='none';
+    }
+  }
 }
 
 function onSucCopyFromChange(){
