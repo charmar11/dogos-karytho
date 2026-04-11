@@ -2923,16 +2923,6 @@ position:sticky;top:0;z-index:20;
     
     <!-- Visualizaciones Consolidadas -->
     <div id="suc-consolidated-visuals" style="display:none;margin-bottom:16px;">
-      <!-- ── Gráfico 7 días: Ventas vs Gastos ── -->
-      <div class="resumen-balance-card">
-        <div class="resumen-balance-title">📊 Balance últimos 7 días</div>
-        <div class="resumen-balance-sub">Ventas vs Gastos por día</div>
-        <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#2ab8b8"></div><span style="font-size:11px;color:var(--text2)">Ventas</span></div>
-          <div style="display:flex;align-items:center;gap:6px"><div style="width:10px;height:10px;border-radius:3px;background:#e05050"></div><span style="font-size:11px;color:var(--text2)">Gastos</span></div>
-        </div>
-        <div class="resumen-balance-wrap"><canvas id="adm-balance-7d-chart"></canvas></div>
-      </div>
       <!-- ── Comparativa entre sucursales ── -->
       <div id="adm-branch-compare-section">
         <div class="sec-label">🏆 Comparativa de sucursales · hoy</div>
@@ -5924,21 +5914,22 @@ function onAdminBranchChange(){
   adminViewBranch=select.value;
   
   if(adminViewBranch==='all'){
-    // Cargar gastos de todas las sucursales
+    // Cargar ventas y gastos de TODAS las sucursales
     currentBranch='carro1';
     fbListening=false;
     sales=[];
     products=[];
     gastos=[];
-    loadGastosConsolidados();
+    if(typeof loadVentasConsolidadas === 'function') loadVentasConsolidadas();
+    if(typeof loadGastosConsolidados === 'function') loadGastosConsolidados();
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
     sales=[];
     products=[];
     gastos=[];
-    if(startFbListeners) startFbListeners();
-    if(loadGastos) loadGastos();
+    if(typeof startFbListeners === 'function') startFbListeners();
+    if(typeof loadGastos === 'function') loadGastos();
   }
   
   if(renderAdmin) renderAdmin();
