@@ -5832,15 +5832,24 @@ function onAdminBranchChange(){
   if(!select)return;
   adminViewBranch=select.value;
   
-  currentBranch=adminViewBranch==='all'?'carro1':adminViewBranch;
+  if(adminViewBranch==='all'){
+    // Cargar gastos de todas las sucursales
+    currentBranch='carro1';
+    fbListening=false;
+    sales=[];
+    products=[];
+    gastos=[];
+    loadGastosConsolidados();
+  } else {
+    currentBranch=adminViewBranch;
+    fbListening=false;
+    sales=[];
+    products=[];
+    gastos=[];
+    if(startFbListeners) startFbListeners();
+    if(loadGastos) loadGastos();
+  }
   
-  fbListening=false;
-  sales=[];
-  products=[];
-  gastos=[];
-  
-  if(startFbListeners) startFbListeners();
-  if(loadGastos) loadGastos();
   if(renderAdmin) renderAdmin();
   
   // Recargar usuarios si estamos en esa pestaña
@@ -6336,6 +6345,46 @@ function loadGastos(){
     // Update break-even widget if resumen is open
     const resTab=document.getElementById('adm-tab-resumen');
     if(resTab&&resTab.classList.contains('active')) renderPuntoEquilibrio();
+  });
+}
+
+function loadGastosConsolidados(){
+  if(!fbDb)return;
+  gastos=[];
+  
+  fbDb.ref('sucursales').once('value').then(function(snap){
+    var data=snap.val()||{};
+    var keys=Object.keys(data).filter(function(k){return k&&k!=='default';});
+    
+    var allGastos=[];
+    var loaded=0;
+    
+    if(keys.length===0){
+      gastos=[];
+      renderGastos();
+      return;
+    }
+    
+    keys.forEach(function(branchId){
+      var branchGastos=data[branchId]&&data[branchId].gastos;
+      if(branchGastos){
+        Object.values(branchGastos).forEach(function(g){
+          if(g&&g.id){
+            g._branchId=branchId;
+            allGastos.push(g);
+          }
+        });
+      }
+      loaded++;
+      if(loaded===keys.length){
+        gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
+        safeStorage.setItem(SK_GASTOS,JSON.stringify(gastos));
+        var admTab=document.getElementById('adm-tab-gastos');
+        if(admTab&&admTab.classList.contains('active')) renderGastos();
+      }
+    });
+  }).catch(function(err){
+    console.error('Error cargando gastos consolidados:',err);
   });
 }
 
@@ -7456,6 +7505,7 @@ function loadSucursalesList(){
       
       list.innerHTML=html;
       console.log('[loadSucursalesList] OK: '+rendered+'/'+branchesToShow.length+' sucursales renderizadas');
+      loadAdminBranchSelector();
     }catch(e){
       console.error('[loadSucursalesList] Error general:',e);
       list.innerHTML='<div class="admin-empty">Error al procesar datos</div>';
@@ -7536,6 +7586,7 @@ function deleteSucursal(id){
     fbDb.ref('sucursales/'+id).remove().then(function(){
       showToast('Sucursal eliminada','green');
       loadSucursalesList();
+      loadAdminBranchSelector();
     }).catch(function(err){
       showToast('Error al eliminar','red');
       console.error(err);
@@ -10278,7 +10329,7 @@ if(savedSession==='1' && savedRole==='admin'){
     loadGastos();
     document.getElementById('admin-screen').classList.add('active');
     renderAdmin();
-    setTimeout(function(){loadAdminBranchSelector();},2000);
+    setTimeout(function(){loadAdminBranchSelector();},3500);
   },1000);
 } else if(savedSession==='1' && savedRole==='inventario'){
   document.getElementById('login-screen').classList.add('hidden');
