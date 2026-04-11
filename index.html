@@ -7347,11 +7347,12 @@ function renderSucursalCard(k,s,isCurrent){
         '</div>'+
         (isCurrent?'<span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(245,200,0,.2);color:var(--gold)">⭐ ACTUAL</span>':'')+
       '</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:12px">'+
         '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">'+salesCount+'</div><div style="font-size:10px;color:var(--text4)">Ventas</div></div>'+
         '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">$'+totalVentas.toFixed(0)+'</div><div style="font-size:10px;color:var(--text4)">Total</div></div>'+
         '<div style="background:var(--bg2);padding:10px;border-radius:8px"><div style="font-size:18px;font-weight:800;color:var(--gold)">'+productos+'</div><div style="font-size:10px;color:var(--text4)">Productos</div></div>'+
       '</div>'+
+      '<button onclick="deleteSucursal(\''+k+'\')" style="width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">🗑️ Eliminar</button>'+
     '</div>';
   }catch(e){
     console.error('Error renderizando sucursal '+k+':',e);
@@ -7484,6 +7485,22 @@ function closeSucursalOutside(e){
   }
 }
 
+function deleteSucursal(id){
+  if(id===currentBranch){
+    showToast('No puedes eliminar el carro actual','red');
+    return;
+  }
+  customConfirm('¿Eliminar la sucursal "'+id+'"? Esta accion no se puede deshacer.','Eliminar',function(){
+    fbDb.ref('sucursales/'+id).remove().then(function(){
+      showToast('Sucursal eliminada','green');
+      loadSucursalesList();
+    }).catch(function(err){
+      showToast('Error al eliminar','red');
+      console.error(err);
+    });
+  });
+}
+
 function onSucCopyFromChange(){
   const from=document.getElementById('suc-copy-from').value;
   const info=document.getElementById('suc-copy-info');
@@ -7544,13 +7561,12 @@ async function createSucursal(){
     
     await fbDb.ref('sucursales/'+idFinal).set(estructuraVacia);
     
-    // Limpiar placeholders _init inmediatamente usando null (elimina la propiedad)
-    const keysConInit=['products','sales','gastos','gasto_cats','ingredients','recipes','general_recipe','inv_history','ing_categories','cortes','fondo','config'];
-    const limpieza={};
-    keysConInit.forEach(function(k){
-      limpieza[k]=null;
-    });
-    await fbDb.ref('sucursales/'+idFinal).update(limpieza);
+    // Forzar creacion de nodos en Firebase
+    const nodos=['products','sales','gastos','gasto_cats','ingredients','recipes','general_recipe','inv_history','ing_categories','cortes','fondo','config'];
+    for(var i=0;i<nodos.length;i++){
+      await fbDb.ref('sucursales/'+idFinal+'/'+nodos[i]).set(true);
+      await fbDb.ref('sucursales/'+idFinal+'/'+nodos[i]).remove();
+    }
     
     showToast('✅ Sucursal "'+nombre+'" creada','green');
     closeSucursalForm();
