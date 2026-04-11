@@ -10386,16 +10386,18 @@ function closeNewUserForm(){
 }
 
 function closeNewUserOutside(e){
-  if(e.target.id==='newuser-overlay' && e.target.closest('.cash-modal') === null)closeNewUserForm();
+  // Solo cerrar al hacer click en la X del modal, nunca al hacer click fuera
+  if(e.target.classList.contains('modal-close'))closeNewUserForm();
 }
 
 function createNewUser(){
   const name=document.getElementById('newuser-name').value.trim();
-  const email=document.getElementById('newuser-email').value.trim();
+  let email=document.getElementById('newuser-email').value.trim();
   const password=document.getElementById('newuser-password').value;
   
   if(!name){showToast('Escribe un nombre','red');return;}
-  if(!email||!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
+  if(!email) email=name.toLowerCase().replace(/[^a-z0-9]/g,'').replace(/ /g,'')+'@karytho.com';
+  if(!email.includes('@')){showToast('Ingresa un correo valido','red');return;}
   if(!password||password.length<6){showToast('La contrasena debe tener al menos 6 caracteres','red');return;}
   
   const btn=document.getElementById('btn-create-user');
@@ -10558,10 +10560,10 @@ function removePickerMember(idx,name){
 }
 
 function deleteUserAccount(uid,name){
-  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
+  customConfirm('¿Eliminar al usuario "'+name+'"?\n\nNota: La cuenta de Auth debe eliminarse desde la Consola de Firebase.','Eliminar',async ()=>{
     try{
       await fbDb.ref('users/'+uid).remove();
-      showToast('Usuario eliminado','green');
+      showToast('Usuario eliminado de DB','green');
       loadUsersForAdmin();
     } catch(e){
       showToast('Error al eliminar','red');
@@ -10632,8 +10634,9 @@ window.openCreateUserForm = openCreateUserForm;
 </div>
 
 <!-- ===== NEW USER MODAL ===== -->
-<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh">
+    <div class="modal-close" onclick="closeNewUserForm()" style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:20px;color:var(--text4)">&times;</div>
     <div class="modal-handle"></div>
     <div class="cash-title">🔑 Nuevo Usuario</div>
     <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea un nuevo usuario con cuenta</div>
@@ -10641,12 +10644,6 @@ window.openCreateUserForm = openCreateUserForm;
     <div style="margin-bottom:16px">
       <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre *</label>
       <input type="text" id="newuser-name" placeholder="Ej: Juan Perez"
-        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
-    </div>
-    
-    <div style="margin-bottom:16px">
-      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Correo *</label>
-      <input type="email" id="newuser-email" placeholder="correo@ejemplo.com"
         style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
     </div>
     
