@@ -1754,6 +1754,15 @@ position:sticky;top:0;z-index:20;
   <div class="login-logo">🌭</div>
   <div class="picker-title">¿Quién eres?</div>
   <div class="picker-sub">Toca tu nombre para entrar</div>
+  
+  <!-- Selector de sucursal -->
+  <div style="margin-bottom:16px;width:100%;max-width:280px">
+    <select id="picker-sucursal" onchange="onPickerSucursalChange()"
+      style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+      <option value="">Cargando...</option>
+    </select>
+  </div>
+  
   <div class="picker-grid" id="picker-grid"></div>
 </div>
 
@@ -2269,6 +2278,56 @@ position:sticky;top:0;z-index:20;
   </div>
 </div>
 
+<!-- ===== NEW USER MODAL ===== -->
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closeNewUserOutside(event)">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="cash-title">👤 Nuevo Usuario</div>
+    <div style="font-size:12px;color:var(--text4);margin-bottom:20px;text-align:center">Crea una cuenta para un empleado o encargado</div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Nombre completo *</label>
+      <input type="text" id="newu-name" placeholder="Ej: María García"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Contraseña *</label>
+      <input type="password" id="newu-pass" placeholder="Mínimo 6 caracteres"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark"/>
+    </div>
+    
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Sucursal / Carro *</label>
+      <select id="newu-branch"
+        style="width:100%;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-weight:600;outline:none;box-sizing:border-box;color-scheme:dark">
+        <option value="">— Seleccionar sucursal —</option>
+      </select>
+    </div>
+    
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:8px">Rol *</label>
+      <div style="display:flex;gap:10px">
+        <button id="newu-role-user" onclick="setNewUserRole('user')" style="flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:8px;padding:12px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
+          👤 Empleado
+        </button>
+        <button id="newu-role-admin" onclick="setNewUserRole('admin')" style="flex:1;background:var(--bg3);border:2px solid var(--border2);border-radius:8px;padding:12px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s">
+          🔑 Encargado
+        </button>
+      </div>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button onclick="closeNewUserForm()" style="flex:1;background:var(--bg3);color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;padding:14px;font-size:14px;font-weight:700;cursor:pointer">
+        Cancelar
+      </button>
+      <button onclick="createNewUser()" id="btn-create-user" style="flex:2;background:var(--gold);color:#111;border:none;border-radius:8px;padding:14px;font-size:14px;font-weight:800;cursor:pointer">
+        💾 Crear Usuario
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== CUSTOM CONFIRM — outside all containers ===== -->
 <div class="confirm-overlay hidden" id="confirm-overlay">
   <div class="confirm-box">
@@ -2631,11 +2690,14 @@ position:sticky;top:0;z-index:20;
 
   <!-- ── TAB: USUARIOS ── -->
   <div class="admin-tab-view" id="adm-tab-usuarios">
+    <div style="margin-bottom:16px">
+      <button class="btn-add-user" onclick="openNewUserForm()" style="background:var(--gold);color:#111;font-weight:800">➕ Crear nuevo usuario</button>
+    </div>
     <div id="adm-users-list"></div>
-    <div class="add-user-form">
-      <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600">Agregar nuevo usuario al picker</div>
+    <div class="add-user-form" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600">Modo rápido (agregar al picker sin cuenta)</div>
       <input class="add-user-input" id="new-user-name" placeholder="Nombre (ej: Maria)" maxlength="20"/>
-      <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar usuario</button>
+      <button class="btn-add-user" onclick="adminAddUser()">➕ Agregar al picker</button>
     </div>
     <input type="file" id="adm-avatar-input" accept="image/*" style="display:none" onchange="adminHandleAvatarUpload(event)"/>
   </div>
@@ -3244,23 +3306,74 @@ function loginWithFirebase(user,pass,cb){
     'ADMIN':'admin@karytho.com',
     'EVENTOS':'eventos@karytho.com'
   };
-  const email=emailMap[user.toUpperCase()];
-  if(!email){cb(null,'Usuario o contraseña incorrectos');return;}
-  auth.signInWithEmailAndPassword(email,pass)
+  
+  const emailFijo=emailMap[user.toUpperCase()];
+  
+  if(emailFijo){
+    auth.signInWithEmailAndPassword(emailFijo,pass)
+      .then(cred=>{
+        const uid=cred.user.uid;
+        currentUid=uid;
+        safeStorage.setItem(SK_UID,uid);
+        return fbDb.ref('users/'+uid).once('value');
+      })
+      .then(snap=>{
+        const data=snap.val();
+        if(!data){cb(null,'Usuario no configurado');return;}
+        currentBranch=data.branchId||'default';
+        cb(data,null);
+      })
+      .catch(()=>{
+        cb(null,'Usuario o contraseña incorrectos');
+      });
+  } else {
+    fbDb.ref('users').orderByChild('name').equalTo(user).once('value').then(snap=>{
+      const users=[];
+      snap.forEach(child=>{
+        users.push({uid:child.key,...child.val()});
+      });
+      
+      if(users.length===0){
+        fbDb.ref('users').orderByChild('email').equalTo(user+'@default.karytho.local').once('value').then(snap2=>{
+          snap2.forEach(child=>{
+            users.push({uid:child.key,...child.val()});
+          });
+          if(users.length===0){
+            cb(null,'Usuario no encontrado. Contacta al encargado.');
+          } else {
+            tryLoginUser(users[0],pass,cb);
+          }
+        }).catch(()=>cb(null,'Error al buscar usuario'));
+        return;
+      }
+      
+      if(users.length>1){
+        cb(null,'Hay varios usuarios con ese nombre. Usa tu email completo.');
+        return;
+      }
+      
+      tryLoginUser(users[0],pass,cb);
+    }).catch(()=>cb(null,'Error al buscar usuario'));
+  }
+}
+
+function tryLoginUser(userData,pass,cb){
+  const auth=firebase.auth();
+  auth.signInWithEmailAndPassword(userData.email,pass)
     .then(cred=>{
-      const uid=cred.user.uid;
-      currentUid=uid;
-      safeStorage.setItem(SK_UID,uid);
-      return fbDb.ref('users/'+uid).once('value');
+      currentUid=cred.user.uid;
+      safeStorage.setItem(SK_UID,currentUid);
+      currentBranch=userData.branchId||'default';
+      cb(userData,null);
     })
-    .then(snap=>{
-      const data=snap.val();
-      if(!data){cb(null,'Usuario no configurado');return;}
-      currentBranch=data.branchId||'default';
-      cb(data,null);
-    })
-    .catch(()=>{
-      cb(null,'Usuario o contraseña incorrectos');
+    .catch(err=>{
+      if(err.code==='auth/wrong-password'){
+        cb(null,'Contraseña incorrecta');
+      } else if(err.code==='auth/user-not-found'){
+        cb(null,'Usuario no encontrado');
+      } else {
+        cb(null,'Error al iniciar sesión');
+      }
     });
 }
 
@@ -6914,7 +7027,7 @@ function setAdminTab(tab){
     const dateRow=document.querySelector('.date-picker-row');
     if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
   }
-  if(tab==='usuarios')renderAdminUsers();
+  if(tab==='usuarios'){renderAdminUsers();loadFirebaseUsers();}
   if(tab==='actividad'){
     renderActivityLog();
     // Refresh online list from Firebase
@@ -7008,6 +7121,7 @@ function openAddSucursalForm(){
     fbDb.ref('sucursales').once('value').then(snap=>{
       const data=snap.val()||{};
       const keys=Object.keys(data);
+      
       const select=document.getElementById('suc-copy-from');
       select.innerHTML='<option value="">— Empezar desde cero —</option>';
       keys.forEach(k=>{
@@ -7018,6 +7132,21 @@ function openAddSucursalForm(){
         opt.textContent=name+(k===currentBranch?' (actual)':'');
         select.appendChild(opt);
       });
+      
+      const userSelect=document.getElementById('newu-branch');
+      if(userSelect){
+        const currentVal=userSelect.value;
+        userSelect.innerHTML='<option value="">— Seleccionar sucursal —</option>';
+        keys.forEach(k=>{
+          const s=data[k];
+          const name=s.name||k;
+          const opt=document.createElement('option');
+          opt.value=k;
+          opt.textContent=name;
+          userSelect.appendChild(opt);
+        });
+        if(currentVal)userSelect.value=currentVal;
+      }
     });
   }
   
@@ -7096,12 +7225,207 @@ async function createSucursal(){
     closeSucursalForm();
     loadSucursales();
     loadSucursalesList();
+    
+    const userSelect=document.getElementById('newu-branch');
+    if(userSelect&&!userSelect.classList.contains('hidden')){
+      fbDb.ref('sucursales').once('value').then(snap=>{
+        const data=snap.val()||{};
+        const keys=Object.keys(data);
+        userSelect.innerHTML='<option value="">— Seleccionar sucursal —</option>';
+        keys.forEach(k=>{
+          const s=data[k];
+          const name=s.name||k;
+          const opt=document.createElement('option');
+          opt.value=k;
+          opt.textContent=name;
+          userSelect.appendChild(opt);
+        });
+        userSelect.value=idFinal;
+      });
+    }
   } catch(err){
     showToast('Error al crear sucursal','red');
     console.error(err);
   }
   
   btn.textContent='💾 Crear Sucursal';btn.disabled=false;
+}
+
+let newUserRole='user';
+
+function openNewUserForm(){
+  document.getElementById('newu-name').value='';
+  document.getElementById('newu-pass').value='';
+  document.getElementById('newu-branch').value='';
+  setNewUserRole('user');
+  
+  if(fbDb){
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const keys=Object.keys(data);
+      const select=document.getElementById('newu-branch');
+      select.innerHTML='<option value="">— Seleccionar sucursal —</option>';
+      keys.forEach(k=>{
+        const s=data[k];
+        const name=s.name||k;
+        const opt=document.createElement('option');
+        opt.value=k;
+        opt.textContent=name;
+        select.appendChild(opt);
+      });
+    });
+  }
+  
+  document.getElementById('newuser-overlay').classList.remove('hidden');
+}
+
+function closeNewUserForm(){
+  document.getElementById('newuser-overlay').classList.add('hidden');
+}
+
+function closeNewUserOutside(e){
+  if(e.target.id==='newuser-overlay')closeNewUserForm();
+}
+
+function setNewUserRole(role){
+  newUserRole=role;
+  const btnUser=document.getElementById('newu-role-user');
+  const btnAdmin=document.getElementById('newu-role-admin');
+  if(role==='user'){
+    btnUser.style.background='rgba(245,200,0,.2)';
+    btnUser.style.borderColor='var(--gold)';
+    btnUser.style.color='var(--gold)';
+    btnAdmin.style.background='var(--bg3)';
+    btnAdmin.style.borderColor='var(--border2)';
+    btnAdmin.style.color='var(--text2)';
+  } else {
+    btnAdmin.style.background='rgba(245,200,0,.2)';
+    btnAdmin.style.borderColor='var(--gold)';
+    btnAdmin.style.color='var(--gold)';
+    btnUser.style.background='var(--bg3)';
+    btnUser.style.borderColor='var(--border2)';
+    btnUser.style.color='var(--text2)';
+  }
+}
+
+async function createNewUser(){
+  const name=document.getElementById('newu-name').value.trim();
+  const pass=document.getElementById('newu-pass').value;
+  const branch=document.getElementById('newu-branch').value;
+  
+  if(!name){showToast('Escribe el nombre del usuario','red');return;}
+  if(!pass||pass.length<6){showToast('La contraseña debe tener mínimo 6 caracteres','red');return;}
+  if(!branch){showToast('Selecciona una sucursal','red');return;}
+  
+  const btn=document.getElementById('btn-create-user');
+  btn.textContent='Creando...';btn.disabled=true;
+  
+  const email=name.toLowerCase().replace(/[^a-z0-9]/g,'.').replace(/\.+/g,'.')+'@'+branch+'.karytho.local';
+  
+  try{
+    const cred=await firebase.auth().createUserWithEmailAndPassword(email,pass);
+    const uid=cred.user.uid;
+    
+    await fbDb.ref('users/'+uid).set({
+      name:name,
+      email:email,
+      branchId:branch,
+      role:newUserRole,
+      createdAt:Date.now(),
+      createdBy:safeStorage.getItem(SK_DISPLAY)||'Admin'
+    });
+    
+    showToast('✅ Usuario "'+name+'" creado','green');
+    logActivity('user_create','Usuario creado — '+name+' en '+branch);
+    closeNewUserForm();
+    loadFirebaseUsers();
+  } catch(err){
+    console.error(err);
+    if(err.code==='auth/email-already-in-use'){
+      showToast('Ya existe un usuario con ese nombre','red');
+    } else if(err.code==='auth/invalid-email'){
+      showToast('Nombre de usuario inválido','red');
+    } else {
+      showToast('Error al crear usuario','red');
+    }
+  }
+  
+  btn.textContent='💾 Crear Usuario';btn.disabled=false;
+}
+
+let firebaseUsers=[];
+
+function loadFirebaseUsers(){
+  if(!fbDb)return;
+  fbDb.ref('users').once('value').then(snap=>{
+    const data=snap.val()||{};
+    firebaseUsers=Object.entries(data).map(([uid,u])=>({uid,...u}));
+    renderFirebaseUsersList();
+  });
+}
+
+function renderFirebaseUsersList(){
+  const list=document.getElementById('adm-users-list');
+  if(!list)return;
+  
+  if(!firebaseUsers.length){
+    list.innerHTML='<div class="admin-empty">Sin usuarios creados. Usa el formulario de arriba.</div>';
+    return;
+  }
+  
+  list.innerHTML='';
+  firebaseUsers.forEach((u,i)=>{
+    const card=document.createElement('div');
+    card.className='user-mgr-card';
+    card.style.animationDelay=(i*.04)+'s';
+    
+    const roleLabel=u.role==='admin'?'🔑 Encargado':'👤 Empleado';
+    const roleColor=u.role==='admin'?'var(--gold)':'var(--text3)';
+    
+    const safeId='adm-uavatar-'+(u.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    
+    card.innerHTML=`
+      <div class="user-mgr-avatar" id="${safeId}" title="Avatar de ${u.name}">
+        <span class="avatar-letter">${(u.name||'?').charAt(0).toUpperCase()}</span>
+      </div>
+      <div class="user-mgr-info">
+        <div class="user-mgr-name">${u.name||'Sin nombre'}</div>
+        <div class="user-mgr-sub" style="color:${roleColor}">${roleLabel} — ${u.branchId||'Sin sucursal'}</div>
+      </div>
+      <div class="user-mgr-actions">
+        <button class="btn-usr-del" title="Eliminar ${u.name}" onclick="deleteFirebaseUser('${u.uid}','${u.name}')">✕</button>
+      </div>
+    `;
+    
+    list.appendChild(card);
+  });
+}
+
+function deleteFirebaseUser(uid,name){
+  customConfirm('¿Eliminar al usuario "'+name+'"?','Eliminar',async ()=>{
+    try{
+      const userSnap=await fbDb.ref('users/'+uid).once('value');
+      const userData=userSnap.val();
+      
+      await fbDb.ref('users/'+uid).remove();
+      
+      if(userData&&userData.email){
+        try{
+          const authUser=firebase.auth().currentUser;
+          if(authUser&&authUser.uid===uid){
+            await firebase.auth().signOut();
+          }
+        } catch(e){console.log('No se pudo desautenticar')}
+      }
+      
+      showToast('Usuario eliminado','green');
+      logActivity('user_delete','Usuario eliminado — '+name);
+      loadFirebaseUsers();
+    } catch(err){
+      showToast('Error al eliminar usuario','red');
+      console.error(err);
+    }
+  });
 }
 
 function renderAdminChart(ps,r){
