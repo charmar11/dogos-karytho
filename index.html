@@ -3689,13 +3689,24 @@ let fbAuthReady=false;
 })();
 
 /* ─── Delegacion de eventos para elementos dinamicos ─── */
-document.addEventListener('click', function(e){
-  var btn = e.target.closest('#btn-agregar-carro');
-  if(btn){
-    e.preventDefault();
-    openAddSucursalForm();
+(function(){
+  var setup = function(){
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest('#btn-agregar-carro');
+      if(btn){
+        e.preventDefault();
+        if(typeof openAddSucursalForm === 'function'){
+          openAddSucursalForm();
+        }
+      }
+    });
+  };
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
   }
-});
+})();
 
 /* ─── Helper: garantiza auth antes de escribir en Firebase ─── */
 function fbWriteSecure(ref,data){
@@ -7431,6 +7442,8 @@ function openAddSucursalForm(){
     console.error('ERROR: Elemento sucrusal-overlay no encontrado');
   }
 }
+
+window.openAddSucursalForm = openAddSucursalForm;
 
 function closeSucursalForm(){
   var modal=document.getElementById('sucursal-overlay');
