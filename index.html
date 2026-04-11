@@ -10670,42 +10670,41 @@ function createNewUser(){
   btn.disabled=true;
   btn.textContent='Creando...';
   
-  // Use a secondary Firebase app so the admin session is NOT interrupted
-  const SECONDARY_APP_NAME='admin-user-creator';
-  let secondaryApp;
-  try{
-    secondaryApp=firebase.app(SECONDARY_APP_NAME);
-  }catch(e){
-    secondaryApp=firebase.initializeApp(FB_CONFIG,SECONDARY_APP_NAME);
-  }
-  
-  secondaryApp.auth().createUserWithEmailAndPassword(email,password)
-    .then(cred=>{
-      // Write user record using main admin fbDb (admin is still signed in)
-      return fbDb.ref('users/'+cred.user.uid).set({
-        name:name,
-        email:email,
-        role:newUserRole,
-        branchId:adminViewBranch||'default',
-        createdAt:Date.now()
-      });
-    })
-    .then(()=>{
-      // Sign out of secondary app so it doesn't linger
-      secondaryApp.auth().signOut().catch(()=>{});
-      showToast('Usuario creado: '+email,'green');
-      closeNewUserForm();
-      loadUsersForAdmin();
-    })
-    .catch(err=>{
-      let msg='Error al crear usuario';
-      if(err.code==='auth/email-already-in-use')msg='El correo ya esta en uso ('+email+')';
-      showToast(msg,'red');
-    })
-    .finally(()=>{
-      btn.disabled=false;
-      btn.textContent='🔐 Crear usuario';
+  // Use Firebase Auth REST API — completely bypasses the SDK, admin session is NEVER touched
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+FB_CONFIG.apiKey,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email,password:password,returnSecureToken:false})
+  })
+  .then(r=>r.json())
+  .then(result=>{
+    if(result.error){
+      const code=result.error.message||'';
+      if(code==='EMAIL_EXISTS')throw new Error('El correo ya esta en uso ('+email+')');
+      throw new Error('Error al crear usuario: '+code);
+    }
+    const uid=result.localId;
+    // Write user record with admin's current DB connection (admin still signed in)
+    return fbDb.ref('users/'+uid).set({
+      name:name,
+      email:email,
+      role:newUserRole,
+      branchId:adminViewBranch||'default',
+      createdAt:Date.now()
     });
+  })
+  .then(()=>{
+    showToast('✅ Usuario creado: '+email,'green');
+    closeNewUserForm();
+    loadUsersForAdmin();
+  })
+  .catch(err=>{
+    showToast(err.message||'Error al crear usuario','red');
+  })
+  .finally(()=>{
+    btn.disabled=false;
+    btn.textContent='🔐 Crear usuario';
+  });
 }
 
 // Usuarios del admin por sucursal
