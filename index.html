@@ -10445,17 +10445,18 @@ function loadUsersForAdmin(){
   
   container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Cargando...</div>';
   
-  if(adminViewBranch==='carro1'){
-    desc.textContent='Miembros del selector de turno (sin cuenta)';
-    addSection.style.display='none';
-    loadPickerMembers();
-    return;
-  }
-  
   if(!adminViewBranch||adminViewBranch==='all'){
     container.innerHTML='<div style="text-align:center;padding:40px;color:var(--text4)">Selecciona una sucursal para ver sus usuarios</div>';
     addSection.style.display='none';
     return;
+  }
+  
+  if(adminViewBranch==='carro1'){
+    desc.textContent='Usuarios con cuenta';
+    addSection.style.display='block';
+  } else {
+    desc.textContent='Usuarios con cuenta de esta sucursal';
+    addSection.style.display='block';
   }
   
   desc.textContent='Usuarios con cuenta de esta sucursal';
@@ -10632,8 +10633,8 @@ window.openCreateUserForm = openCreateUserForm;
 </div>
 
 <!-- ===== NEW USER MODAL ===== -->
-<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:9999">
-  <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh">
+<div id="newuser-overlay" class="cash-overlay hidden" style="z-index:99999;position:fixed;inset:0">
+  <div class="cash-modal" style="max-height:90vh;overflow-y:auto;margin-top:15vh;position:relative;z-index:100000">
     <div class="modal-close" onclick="closeNewUserForm()" style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:20px;color:var(--text4)">&times;</div>
     <div class="modal-handle"></div>
     <div class="cash-title">🔑 Nuevo Usuario</div>
