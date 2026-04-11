@@ -7423,7 +7423,7 @@ function loadSucursalesList(){
   });
 }
 
-function openAddSucursalForm(){
+window.openAddSucursalForm = function(){
   var modal=document.getElementById('sucursal-overlay');
   var nombreInput=document.getElementById('suc-nombre');
   var idInput=document.getElementById('suc-id');
@@ -7460,9 +7460,7 @@ function openAddSucursalForm(){
   } else {
     console.error('ERROR: Elemento sucrusal-overlay no encontrado');
   }
-}
-
-window.openAddSucursalForm = openAddSucursalForm;
+};
 
 function closeSucursalForm(){
   var modal=document.getElementById('sucursal-overlay');
