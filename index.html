@@ -656,7 +656,7 @@ position:sticky;top:0;z-index:20;
 .corte-overlay.hidden{display:none}
 .corte-modal{
   background:linear-gradient(180deg,#1e1e1e,#1a1a1a);
-  border-radius:26px 26px 0 0;padding:22px 20px 50px;
+  border-radius:26px 26px 0 0;padding:22px 20px 80px;
   width:100%;max-width:520px;
   border-top:2.5px solid var(--gold);
   max-height:90vh;overflow-y:auto;
@@ -5276,7 +5276,15 @@ function renderCidopGastosList(){
   const gs=getCidopGastosFiltrados();
   _buildGastosHTML(el, gs, cidopGastosPeriod,
     (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(getBranchRef('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
-    null // CIDOP no tiene edición de fecha
+    (g,cambios)=>{
+      const idx=gastos.findIndex(x=>x.id===g.id);
+      if(idx<0)return;
+      Object.assign(gastos[idx],cambios);
+      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+      if(fbDb) fbUpdateSecure(getBranchRef('gastos/'+g.id),cambios).catch(()=>{});
+      showToast('✅ Gasto actualizado','green');
+      renderCidopGastosList();
+    }
   );
 }
 
