@@ -4272,10 +4272,10 @@ function startFbListeners(){
       ...sales.filter(s=>!fbIds.has(s.id) && (now-s.id < 120000)) // 2 min grace period
     ].sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
 
-    if(syncedSales.length!==sales.length){
-      sales=syncedSales;
-      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-    }
+    // Sync autoritativo: FB es la fuente de verdad
+    // Pero SIEMPRE actualizamos sales con syncedSales para respetar borrados
+    sales=syncedSales;
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     // Detectar pérdida inesperada de ventas (si antes había y ahora no hay nada, ni local ni remoto)
     if(sales.length===0){
       recoverSalesFromBackup();
@@ -5630,8 +5630,12 @@ function deleteSale(id){
     // Restore inventory before removing sale
     restaurarInventario(sale);
     sales=sales.filter(s=>String(s.id)!==String(id));
+    // Solo guardamos en localStorage. NO llamamos fbSaveSales() aquí porque
+    // causa una race condition: el listener se dispara antes que fbRemoveSecure
+    // confirme el borrado y restaura la venta eliminada.
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     if(fbDb) fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
-    saveSales();renderHistorial();
+    renderHistorial();
     logActivity('venta_del',desc);
     showToast('Venta eliminada e inventario restaurado');
   });
