@@ -5698,7 +5698,7 @@ function _populateCortesSemanaDropdown(){
   const primera=fechas[0];
   const hoy=todayISO();
   const pDate=new Date(primera+'T12:00:00');
-  const hDate=new Date(hoy+'T12:00:00');
+  let hDate=new Date(hoy+'T12:00:00');
   const diffDays=Math.floor((hDate-pDate)/(86400000));
   const totalSemanas=Math.ceil(diffDays/7);
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
