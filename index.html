@@ -4243,6 +4243,30 @@ function startFbListeners(){
     // Update goal bar in cobrar tab
     updateGoalBar();
   });
+  // Sync gastos - AGREGAR ESTE LISTENER
+  getBranchRef('gastos').on('value',snap=>{
+    const data=snap.val();
+    if(data){
+      const fbGastos=Object.values(data);
+      // Mezclar con locales
+      if(fbGastos.length>0){
+        const localIds=new Set((gastos||[]).map(g=>g.id));
+        const newFromRemote=fbGastos.filter(g=>!localIds.has(g.id));
+        if(newFromRemote.length>0){
+          gastos=[...(gastos||[]),...newFromRemote].sort((a,b)=>b.timestamp-a.timestamp);
+          safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+        }
+      }
+      // Refresh CIDOP if open
+      if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
+      // Refresh admin if open
+      const adminScreen=document.getElementById('admin-screen');
+      if(adminScreen&&adminScreen.classList.contains('active')){
+        const gastosTab=document.getElementById('adm-tab-gastos');
+        if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
+      }
+    }
+  });
   // Sync daily goal config from Firebase (override localStorage if found)
   getBranchRef('config/daily_goal').on('value',snap=>{
     const v=snap.val();
@@ -5153,16 +5177,16 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
       };
       viewRow.querySelector('._g-del').onclick=()=>onDelete(g);
       editForm.querySelector('._ef-cancel').onclick=()=>{editForm.style.display='none';};
-      editForm.querySelector('._ef-save').onclick=()=>{
+      const saveBtn=editForm.querySelector('._ef-save');
+      saveBtn.onclick=()=>{
         const nd=editForm.querySelector('._ef-desc').value.trim();
         const nm=parseFloat(editForm.querySelector('._ef-monto').value)||0;
         const nf=editForm.querySelector('._ef-fecha').value||g.fecha;
         const nc=editForm.querySelector('._ef-cat').value||g.cat;
         const no=editForm.querySelector('._ef-origen').value||'caja';
-        if(!nd){showToast('Escribe una descripción','red');return;}
-        if(!nm){showToast('Escribe el monto','red');return;}
-        if(!onEdit){alert('onEdit es: '+onEdit);return;}
+        if(!onEdit){showToast('Error: función de edición no disponible','red');return;}
         onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc,origen:no});
+        editForm.style.display='none';
       };
 
       wrapper.appendChild(viewRow);
@@ -5273,17 +5297,19 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
 function renderCidopGastosList(){
   const el=document.getElementById('cidop-gastos-list');if(!el)return;
   const gs=getCidopGastosFiltrados();
+  const onEditCallback=(g,cambios)=>{
+    const idx=gastos.findIndex(x=>x.id===g.id);
+    if(idx<0)return;
+    Object.assign(gastos[idx],cambios);
+    safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+    if(fbDb) fbUpdateSecure(getBranchRef('gastos/'+g.id),cambios).catch(()=>{});
+    showToast('✅ Gasto actualizado','green');
+    renderCidopGastosList();
+  };
   _buildGastosHTML(el, gs, cidopGastosPeriod,
     (g)=>{customConfirm('¿Eliminar este gasto?','Eliminar',()=>{gastos=gastos.filter(x=>x.id!==g.id);safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));if(fbDb)fbRemoveSecure(getBranchRef('gastos/'+g.id)).catch(()=>{});showToast('Gasto eliminado','green');renderCidopGastosList();});},
-    (g,cambios)=>{
-      const idx=gastos.findIndex(x=>x.id===g.id);
-      if(idx<0)return;
-      Object.assign(gastos[idx],cambios);
-      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-      if(fbDb) fbUpdateSecure(getBranchRef('gastos/'+g.id),cambios).catch(()=>{});
-      showToast('✅ Gasto actualizado','green');
-      renderCidopGastosList();
-    }
+    null,
+    onEditCallback
   );
 }
 
