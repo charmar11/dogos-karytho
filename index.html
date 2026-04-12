@@ -5616,7 +5616,9 @@ function openCorte(){
   document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   _renderCortePorFecha(window.corteFechaSeleccionada);
   document.getElementById('corte-overlay').classList.remove('hidden');
-  recalcCorte();
+  // Ensure gastos are loaded before recalc
+  loadGastos();
+  setTimeout(recalcCorte, 1500);
 }
 
 function onCorteFechaChange(){
