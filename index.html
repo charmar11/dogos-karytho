@@ -4158,10 +4158,19 @@ function startFbListeners(){
       if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
     }
   });
-  // Sync sales
+  // Sync sales - mezclar datos remotos con locales (no sobrescribir)
   getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
-    sales=data?Object.values(data).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];
+    const fbSales=data?Object.values(data):[];
+    // Mezclar: mantener locales + agregar remotos que no existen localmente
+    if(fbSales.length>0){
+      const localIds=new Set(sales.map(s=>s.id));
+      const newFromRemote=fbSales.filter(s=>!localIds.has(s.id));
+      if(newFromRemote.length>0){
+        sales=[...sales,...newFromRemote].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+      }
+    }
     // Update cajero historial if open
     if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
     // Update admin panel if open
@@ -4199,8 +4208,10 @@ function fbSaveProd(){
 }
 function fbSaveSales(){
   if(!fbDb)return;
-  const obj={};sales.forEach(s=>obj[s.id]=s);
-  getBranchRef('sales').set(obj).catch(()=>{});
+  // Usa update() en lugar de set() para no borrar ventas remotas
+  const updates={};
+  sales.forEach(s=>{updates['sales/'+s.id]=s;});
+  getBranchRef().update(updates).catch(()=>{});
 }
 
 /* ─── Activity Log ─── */
@@ -6536,17 +6547,21 @@ function loadGastos(){
   // Show cached version instantly, then sync with Firebase.
   try{gastos=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch))||[];}catch{gastos=[];}
 
-  // Realtime listener — Firebase is authoritative after first sync
+  // Realtime listener — mezcla datos remotos con locales
   window._gastosHandler=function(snap){
     const d=snap.val();
-    if(d&&Object.keys(d).length>0){
-      // Firebase has data → use it
-      gastos=Object.values(d).filter(Boolean).sort((a,b)=>b.timestamp-a.timestamp);
-      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-    } else {
-      // Firebase empty — clear local cache too (do NOT push local up, to avoid cross-branch contamination)
-      gastos=[];
-      safeStorage.setItem('dk_gastos_'+currentBranch,'[]');
+    const fbGastos=d?Object.values(d).filter(Boolean):[];
+    // Mezclar: mantener locales + agregar remotos que no existen
+    if(fbGastos.length>0){
+      const localIds=new Set(gastos.map(g=>g.id));
+      const newFromRemote=fbGastos.filter(g=>!localIds.has(g.id));
+      if(newFromRemote.length>0){
+        gastos=[...gastos,...newFromRemote].sort((a,b)=>b.timestamp-a.timestamp);
+        safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+      }
+    } else if(fbGastos.length===0&&gastos.length>0){
+      // Firebase vacio pero hay locales — conservamos locales (no borrar)
+      // No hacemos nada, mantenemos lo existente
     }
     // Always re-render whichever view is open
     const admTab=document.getElementById('adm-tab-gastos');
@@ -8505,8 +8520,16 @@ function bootEventos(){
       // ── Sincronizar ventas en tiempo real (para historial y CIPOD) ──
       getBranchRef('sales').on('value',snap=>{
         const d=snap.val();
-        sales=d?Object.values(d).sort((a,b)=>b.timestamp-a.timestamp):[];
-        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+        const fbSales=d?Object.values(d):[];
+        // Mezclar: mantener locales + agregar remotos que no existen
+        if(fbSales.length>0){
+          const localIds=new Set(sales.map(s=>s.id));
+          const newFromRemote=fbSales.filter(s=>!localIds.has(s.id));
+          if(newFromRemote.length>0){
+            sales=[...sales,...newFromRemote].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+            safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+          }
+        }
         // Actualizar historial si está abierto
         const evHistTab=document.getElementById('ev-tab-historial');
         if(evHistTab&&evHistTab.classList.contains('active')) renderEventosHistorial();
