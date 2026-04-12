@@ -2616,15 +2616,15 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
         <span class="resumen-meta-goal" id="adm-r-meta-goal">meta: —</span>
       </div>
       
-      <!-- Meta Acumulada -->
+      <!-- Meta Acumulada del Mes -->
       <div class="resumen-meta-header" style="margin-top:10px">
-        <span class="resumen-meta-lbl" style="color:#2ab8b8">📊 Meta Acumulada</span>
+        <span class="resumen-meta-lbl" style="color:#2ab8b8">📊 Meta Acumulada (Mes)</span>
         <span class="resumen-meta-pct" id="adm-r-meta-h-pct" style="color:#2ab8b8">0%</span>
       </div>
       <div class="resumen-meta-track" style="height:8px"><div class="resumen-meta-fill history" id="adm-r-meta-h-fill" style="width:0%"></div></div>
       <div class="resumen-meta-amounts">
         <span class="resumen-meta-cur" id="adm-r-meta-h-cur" style="color:#2ab8b8">$0</span>
-        <span class="resumen-meta-goal" id="adm-r-meta-h-goal">objetivo histórico</span>
+        <span class="resumen-meta-goal" id="adm-r-meta-h-goal">objetivo del mes</span>
       </div>
     </div>
     <div class="admin-stat-grid">
@@ -6689,6 +6689,7 @@ let admBalanceChart7d=null;
 
 function renderResumenKPIs(){
   const today=todayISO();
+  const currentMonth=today.slice(0,7); // "YYYY-MM"
   if(adminViewBranch==='all' && fbDb){
     fbDb.ref('sucursales').once('value').then(snap=>{
       const data=snap.val()||{};
@@ -6704,8 +6705,12 @@ function renderResumenKPIs(){
           const vDate=toISODate(v.date);
           const vTotal=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
           if(vDate===today){tVentas+=vTotal; tTickets++;}
-          hVentas+=vTotal;
-          hDates.add(vDate);
+          
+          // Solo acumular si es del mes actual
+          if(vDate.startsWith(currentMonth)){
+            hVentas+=vTotal;
+            hDates.add(vDate);
+          }
         });
         Object.values(sGasObj).forEach(g=>{if(g&&normFecha(g.fecha)===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
       });
@@ -6718,8 +6723,10 @@ function renderResumenKPIs(){
     const gastosHoy=gastos.filter(g=>normFecha(g.fecha)===today&&(g.origen==='caja'||!g.origen));
     const tGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
     
-    const hVentas=sales.reduce((s,v)=>s+v.total,0);
-    const hDates=new Set(sales.map(s=>toISODate(s.date)));
+    // Solo ventas del mes actual para la meta acumulada
+    const salesMes=sales.filter(s=>toISODate(s.date).startsWith(currentMonth));
+    const hVentas=salesMes.reduce((s,v)=>s+v.total,0);
+    const hDates=new Set(salesMes.map(s=>toISODate(s.date)));
     
     _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hDates.size);
   }
@@ -6760,7 +6767,7 @@ function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hD
     const hFill = document.getElementById('adm-r-meta-h-fill');
     if(hFill) hFill.style.width = hPct + '%';
     setEl('adm-r-meta-h-pct', hPct + '%');
-    setEl('adm-r-meta-h-cur', '$' + hVentas.toFixed(0) + ' historico');
+    setEl('adm-r-meta-h-cur', '$' + hVentas.toFixed(0) + ' en el mes');
     setEl('adm-r-meta-h-goal', 'objetivo ('+hDays+' dias): $' + hGoal.toFixed(0));
   } else if(metaWrap){
     metaWrap.style.display='none';
