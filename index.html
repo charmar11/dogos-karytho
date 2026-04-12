@@ -5990,12 +5990,18 @@ function setAdmCortesPeriod(p){
   }
   if(p==='semana'){
     _populateCortesSemanaDropdown();
+    const sel=document.getElementById('cortes-semana-select');
+    if(sel&&sel.options.length>1){sel.selectedIndex=1;admCortesSemanaChange();}
   }
   if(p==='mes'){
     _populateCortesMesDropdown();
+    const sel=document.getElementById('cortes-mes-select');
+    if(sel&&sel.options.length>1){sel.selectedIndex=1;admCortesMesChange();}
   }
   if(p==='todo'){
     _populateCortesAnoDropdown();
+    const sel=document.getElementById('cortes-ano-select');
+    if(sel&&sel.options.length>1){sel.selectedIndex=1;admCortesAnoChange();}
   }
   renderAdmCortes();
 }
@@ -6061,8 +6067,8 @@ function renderAdmCortes(){
   }
   if(!data.length){list.innerHTML='<div class="admin-empty">Sin cortes en este periodo</div>';return;}
 
-  // Si es mes o todo, mostrar totales agrupados por semana del carro
-  if(admCortesPeriod==='mes'||admCortesPeriod==='todo'){
+  // Mes: agrupar por semana del carro
+  if(admCortesPeriod==='mes'){
     const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
     let filtered=cortesHistory;
     if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
@@ -6104,6 +6110,76 @@ function renderAdmCortes(){
         <div class="adm-corte-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.adm-corte-chev').style.transform=this.nextElementSibling.style.display==='block'?'rotate(90deg)':''">
           <div class="adm-corte-head-left">
             <div class="adm-corte-date">${label}</div>
+            <div class="adm-corte-meta">${g.cortes.length} corte${g.cortes.length!==1?'s':''}</div>
+          </div>
+          <div class="adm-corte-head-right">
+            <span class="adm-corte-diff ${diffClass}">${diffStr}</span>
+            <span class="adm-corte-chev">›</span>
+          </div>
+        </div>
+        <div class="adm-corte-body">
+          <div class="adm-corte-grid">
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📥 Ventas</div>
+              <div class="adm-corte-cell-val" style="color:#2ab8b8">$${g.ventas.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📤 Gastos</div>
+              <div class="adm-corte-cell-val" style="color:#f57474">$${g.gastos.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">🧮 Total esperado</div>
+              <div class="adm-corte-cell-val" style="color:var(--gold)">$${g.totalEsperado.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">💰 Total contado</div>
+              <div class="adm-corte-cell-val">$${g.totalContado.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:8px">Cortes incluidos:</div>
+            ${g.cortes.map(c=>`<div style="font-size:12px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2)">${c.fecha} · ${c.user} · <span style="color:${Math.abs(c.diferencia||0)<0.01?'#6fcf6f':(c.diferencia||0)>0?'#6fcf6f':'#f57474'}">${(c.diferencia||0)>=0?'+':''}$${(c.diferencia||0).toFixed(2)}</span>${c.nota?' · 📝':''}</div>`).join('')}
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+    return;
+  }
+
+  // Todo: agrupar por mes del año
+  if(admCortesPeriod==='todo'){
+    const mesesNombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const grupos={};
+    data.forEach(c=>{
+      const ym=(c.fechaISO||'').slice(0,7);
+      if(!grupos[ym]){
+        const[ano,mes]=ym.split('-');
+        const mesNum=parseInt(mes)||0;
+        grupos[ym]={cortes:[], totalEsperado:0, totalContado:0, diferencia:0, ventas:0, gastos:0, mes:mesesNombres[mesNum-1]||mes, ano:ano};
+      }
+      grupos[ym].cortes.push(c);
+      grupos[ym].totalEsperado+=(c.totalEsperado||0);
+      grupos[ym].totalContado+=(c.totalContado||0);
+      grupos[ym].diferencia+=(c.diferencia||0);
+      grupos[ym].ventas+=(c.totalVentas||0);
+      grupos[ym].gastos+=(c.totalGastos||0);
+    });
+    const sortedKeys=Object.keys(grupos).sort((a,b)=>b.localeCompare(a));
+    const BILLS=[1000,500,200,100,50,20];
+    list.innerHTML='';
+    sortedKeys.forEach((key,gIdx)=>{
+      const g=grupos[key];
+      const diff=g.diferencia;
+      const diffClass=Math.abs(diff)<0.01?'exacto':diff>0?'sobra':'falta';
+      const diffStr=Math.abs(diff)<0.01?'✅ $0':diff>0?'+$'+diff.toFixed(2):'−$'+Math.abs(diff).toFixed(2);
+      const label=`${g.mes} ${g.ano}`;
+      const card=document.createElement('div');
+      card.className='adm-corte-card';
+      card.style.animationDelay=(gIdx*.03)+'s';
+      card.innerHTML=`
+        <div class="adm-corte-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.adm-corte-chev').style.transform=this.nextElementSibling.style.display==='block'?'rotate(90deg)':''">
+          <div class="adm-corte-head-left">
+            <div class="adm-corte-date">📅 ${label}</div>
             <div class="adm-corte-meta">${g.cortes.length} corte${g.cortes.length!==1?'s':''}</div>
           </div>
           <div class="adm-corte-head-right">
