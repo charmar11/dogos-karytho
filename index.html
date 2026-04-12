@@ -2277,16 +2277,18 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$20</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-20" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-monedass').focus();}"/>
+        <input class="corte-denom-input" id="cd-20" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();setTimeout(()=>document.getElementById('cd-monedass').focus(),50);}"/>
         <span class="corte-denom-subtotal" id="cd-20-sub">$0</span>
       </div>
       <!-- Morralla -->
       <div class="corte-moneda-row">
         <span class="corte-moneda-lbl">🪙 Morralla (total monedas)</span>
         <div style="display:flex;align-items:center;gap:5px">
-          <span style="font-size:14px;color:var(--gold);font-weight:700">$</span>
-          <input class="corte-moneda-input" id="cd-monedas" type="number" inputmode="decimal" min="0" placeholder="0.00" oninput="recalcCorte()"/>
+<span style="font-size:14px;color:var(--gold);font-weight:700">$</span>
+          <input class="corte-moneda-input" id="cd-monedass" type="number" inputmode="decimal" min="0" placeholder="0.00" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('corte-fondo-input').focus();}"/>
         </div>
+      </div>
+    </div>
       </div>
     </div>
 
@@ -5746,10 +5748,12 @@ function recalcCorte(){
 }
 
 function saveCorte(){
-  const todayISO_=todayISO();
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today);
+  const fechaCorte=window.corteFechaSeleccionada||todayISO();
+  const[y,m,d]=fechaCorte.split('-');
+  const fechaKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
+  const ps=sales.filter(s=>s.date===fechaKey);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
-  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_&&(g.origen==='caja'||!g.origen));
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fechaCorte)&&(g.origen==='caja'||!g.origen));
   const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
   const fondo=parseFloat(document.getElementById('corte-fondo-input').value)||0;
   const esperado=fondo+totalVentas-totalGastos;
@@ -5764,14 +5768,14 @@ function saveCorte(){
   if(monedas>0)denominaciones.monedas=monedas;
   const totalContado=totalBilletes+monedas;
   const diferencia=parseFloat((totalContado-esperado).toFixed(2));
-  const now=new Date();
+  const now=new Date(fechaCorte+'T12:00:00');
   const counts={},totals={};
   ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
   const corte={
     id:'corte_'+Date.now(),
     ts:Date.now(),
-    fecha:toDateKey(now),
-    fechaISO:todayISO_,
+    fecha:fechaKey,
+    fechaISO:fechaCorte,
     hora:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
     user:safeStorage.getItem(SK_DISPLAY)||'Cajero',
     fondoInicial:fondo,
@@ -5934,9 +5938,11 @@ function renderAdmCortes(){
   });
 }
 function compartirWhatsApp(){
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),totalVentas=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date();
-  const todayISO_=todayISO();
-  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_&&(g.origen==='caja'||!g.origen));
+  const fechaCorte=window.corteFechaSeleccionada||todayISO();
+  const[y,m,d]=fechaCorte.split('-');
+  const fechaKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
+  const ps=sales.filter(s=>s.date===fechaKey),totalVentas=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date(fechaCorte+'T12:00:00');
+  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fechaCorte)&&(g.origen==='caja'||!g.origen));
   const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
   const fondo=parseFloat(document.getElementById('corte-fondo-input')?.value)||0;
   const esperado=fondo+totalVentas-totalGastos;
