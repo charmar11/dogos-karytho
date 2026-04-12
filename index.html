@@ -4318,7 +4318,6 @@ function startFbListeners(){
         const gastosTab=document.getElementById('adm-tab-gastos');
         if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
       }
-    }
   });
   // Sync daily goal config from Firebase (override localStorage if found)
   getBranchRef('config/daily_goal').on('value',snap=>{
