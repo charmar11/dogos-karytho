@@ -5632,7 +5632,8 @@ function onCorteFechaChange(){
 function _renderCortePorFecha(isoDate){
   const[y,m,d]=isoDate.split('-');
   const dateKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
-  const ps=sales.filter(s=>s.date===dateKey),totalVentas=ps.reduce((s,v)=>s+v.total,0),now=new Date(isoDate);
+  const now=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
+  const ps=sales.filter(s=>s.date===dateKey),totalVentas=ps.reduce((s,v)=>s+v.total,0);
   // Fecha displayed
   document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Resumen ventas
@@ -5703,7 +5704,7 @@ function recalcCorte(){
     const subEl=document.getElementById('cd-'+b+'-sub');
     if(subEl){subEl.textContent=sub>0?'$'+sub.toLocaleString('es-MX'):'$0';subEl.classList.toggle('active',sub>0);}
   });
-  const monedas=parseFloat(document.getElementById('cd-monedass')?.value)||0;
+  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
   const totalContado=totalBilletes+monedas;
   document.getElementById('corte-contado').textContent='$'+totalContado.toFixed(2);
   // Diferencia
