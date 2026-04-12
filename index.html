@@ -5629,6 +5629,7 @@ function deleteSale(id){
     // Restore inventory before removing sale
     restaurarInventario(sale);
     sales=sales.filter(s=>String(s.id)!==String(id));
+    if(fbDb) fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
     saveSales();renderHistorial();
     logActivity('venta_del',desc);
     showToast('Venta eliminada e inventario restaurado');
@@ -5690,7 +5691,9 @@ function restaurarInventario(sale){
 function clearAllSales(){
   const nav=getNavSales();const ps=nav.filtered;if(!ps.length)return;
   customConfirm('Borrar TODAS las ventas de este periodo?\nEsta accion no se puede deshacer.','Borrar todo',()=>{
-    const ids=new Set(ps.map(s=>s.id));sales=sales.filter(s=>!ids.has(s.id));saveSales();renderHistorial();
+    const ids=new Set(ps.map(s=>s.id));sales=sales.filter(s=>!ids.has(s.id));
+    if(fbDb) ids.forEach(id => fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{}));
+    saveSales();renderHistorial();
     logActivity('ventas_del',`${ps.length} ventas eliminadas`);
     showToast('Ventas borradas');
   });
@@ -11671,151 +11674,6 @@ window.openNewUserForm = openNewUserForm;
 window.closeNewUserForm = closeNewUserForm;
 window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
-
-/* ═══════════════════════════════════════════════════
-   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 11:59 PM
-   ═══════════════════════════════════════════════════ */
-const CALLMEBOT_PHONE  = '5216442793641';
-const CALLMEBOT_APIKEY = '7519882';
-const REPORTE_HORA     = 23;
-const REPORTE_MINUTO   = 59;
-const SK_REPORTE_SENT  = 'dk_reporte_enviado';
-
-// Formatea moneda sin signo $ para evitar que Android lo interprete como variable de shell
-function mxn(val){ return 'MXN '+val.toFixed(2); }
-
-async function buildReporteData(){
-  const today = todayISO();
-  const fecha  = new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-  const NL  = '%0A';
-  const sep = '---------------------';
-  const lines = [];
-
-  if(fbDb){
-    const snap = await fbDb.ref('sucursales').once('value');
-    const data  = snap.val()||{};
-    const branchKeys = Object.keys(data);
-
-    let totalGenVentas=0, totalGenGastos=0, totalGenTickets=0;
-
-    lines.push('📊 *REPORTE DIARIO - TODAS LAS SUCURSALES*');
-    lines.push('🗓 '+fecha);
-    lines.push(sep);
-
-    branchKeys.forEach(key=>{
-      // Ignorar sucursal "default" y cualquier sin ventas hoy
-      if(key==='default') return;
-      const bd = data[key]||{};
-      const nombre = (bd.name||key).toUpperCase();
-      let tVentas=0, tTickets=0, tGastos=0, corteHoy=null;
-
-      Object.values(bd.sales||bd.data||{}).forEach(v=>{
-        if(v&&toISODate(v.date)===today){
-          tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
-          tTickets++;
-        }
-      });
-      // Si no tuvo ninguna venta hoy, no incluir en el reporte
-      if(tTickets===0) return;
-      Object.values(bd.gastos||{}).forEach(g=>{
-        if(g&&normFecha(g.fecha)===today) tGastos+=parseFloat(g.monto)||0;
-      });
-      const cortesHoy=Object.values(bd.cortes||{}).filter(c=>c&&c.fechaISO===today).sort((a,b)=>b.ts-a.ts);
-      if(cortesHoy.length) corteHoy=cortesHoy[0];
-
-      const neto    = tVentas-tGastos;
-      const margen  = tVentas>0 ? Math.round((neto/tVentas)*100) : 0;
-      const metaPct = dailyGoal>0 ? Math.min(999,Math.round((tVentas/dailyGoal)*100)) : null;
-
-      totalGenVentas  += tVentas;
-      totalGenGastos  += tGastos;
-      totalGenTickets += tTickets;
-
-      lines.push('🏪 *'+nombre+'*');
-      lines.push('💰 Ventas: '+mxn(tVentas)+'  |  Tickets: '+tTickets);
-      lines.push('🧾 Gastos: '+mxn(tGastos)+'  |  Neto: '+mxn(neto)+' ('+(margen>=0?'+':'')+margen+'%)');
-      if(metaPct!==null){
-        const emoji=metaPct>=100?'✅':metaPct>=60?'🟡':'🔴';
-        lines.push('🎯 Meta: '+emoji+' '+metaPct+'%');
-      }
-      if(corteHoy){
-        const dif=corteHoy.diferencia||0;
-        lines.push('🧲 Corte '+corteHoy.hora+': '+mxn(corteHoy.totalContado)+(dif===0?' ✅':dif>0?' ⬆':' ⬇'));
-      } else {
-        lines.push('🧲 Sin corte registrado');
-      }
-      lines.push(sep);
-    });
-
-    const netoGen   = totalGenVentas-totalGenGastos;
-    const margenGen = totalGenVentas>0 ? Math.round((netoGen/totalGenVentas)*100) : 0;
-    lines.push('📦 *TOTAL GENERAL*');
-    lines.push('💰 Ventas: '+mxn(totalGenVentas)+'  |  Tickets: '+totalGenTickets);
-    lines.push('📈 Neto: '+mxn(netoGen)+' ('+(margenGen>=0?'+':'')+margenGen+'%)');
-
-  } else {
-    // Fallback sin Firebase
-    const tVentas  = sales.filter(s=>toISODate(s.date)===today).reduce((a,v)=>a+v.total,0);
-    const tTickets = sales.filter(s=>toISODate(s.date)===today).length;
-    const tGastos  = gastos.filter(g=>normFecha(g.fecha)===today&&(g.origen==='caja'||!g.origen)).reduce((a,g)=>a+(parseFloat(g.monto)||0),0);
-    const neto     = tVentas-tGastos;
-    const ticketProm = tTickets ? tVentas/tTickets : 0;
-    const margen   = tVentas>0 ? Math.round((neto/tVentas)*100) : 0;
-    const metaPct  = dailyGoal>0 ? Math.min(999,Math.round((tVentas/dailyGoal)*100)) : null;
-    const ch = cortesHistory.filter(c=>c.fechaISO===today).sort((a,b)=>b.ts-a.ts);
-    const corteHoy = ch.length ? ch[0] : null;
-
-    lines.push('📊 *REPORTE DIARIO*');
-    lines.push('🗓 '+fecha);
-    lines.push(sep);
-    lines.push('💰 Ventas: '+mxn(tVentas));
-    lines.push('🎫 Tickets: '+tTickets+'  |  Prom: '+mxn(ticketProm));
-    lines.push('🧾 Gastos: '+mxn(tGastos));
-    lines.push('📈 Neto: '+mxn(neto)+' ('+(margen>=0?'+':'')+margen+'%)');
-    if(metaPct!==null){
-      const emoji=metaPct>=100?'✅':metaPct>=60?'🟡':'🔴';
-      lines.push('🎯 Meta: '+emoji+' '+metaPct+'% de '+mxn(dailyGoal));
-    }
-    if(corteHoy){
-      const dif=corteHoy.diferencia||0;
-      lines.push(sep);
-      lines.push('🧲 Corte ('+corteHoy.hora+'): '+mxn(corteHoy.totalContado)+(dif===0?' ✅':dif>0?' ⬆':' ⬇'));
-    } else {
-      lines.push('🧲 Sin cortes registrados hoy');
-    }
-  }
-
-  lines.push('_Dogos Karytho - reporte automatico_');
-  return lines.map(l=>encodeURIComponent(l)).join(NL);
-}
-
-async function enviarReporteWhatsApp(){
-  // Marcar inmediatamente para evitar doble envio si hay multiples tabs o llamadas simultaneas
-  safeStorage.setItem(SK_REPORTE_SENT,todayISO());
-  try{
-    const msgEncoded=await buildReporteData();
-    const url='https://api.callmebot.com/whatsapp.php?phone='+CALLMEBOT_PHONE+'&text='+msgEncoded+'&apikey='+CALLMEBOT_APIKEY;
-    // Usamos <img> para evitar el bloqueo CORS del navegador
-    await new Promise((resolve)=>{
-      const img=new Image();
-      img.onload=img.onerror=()=>resolve();
-      img.src=url;
-    });
-    safeStorage.setItem(SK_REPORTE_SENT,todayISO());
-    console.log('Reporte WhatsApp enviado');
-  }catch(e){
-    console.warn('Error reporte WhatsApp:',e);
-  }
-}
-window.enviarReporteWhatsApp=enviarReporteWhatsApp;
-
-// Revisa la hora cada minuto — dispara exactamente a las 11:59 PM
-setInterval(()=>{
-  const n=new Date();
-  if(n.getHours()===REPORTE_HORA&&n.getMinutes()===REPORTE_MINUTO){
-    if(safeStorage.getItem(SK_REPORTE_SENT)!==todayISO()) enviarReporteWhatsApp();
-  }
-},60000);
 </script>
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
