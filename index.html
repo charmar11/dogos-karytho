@@ -1641,6 +1641,7 @@ position:sticky;top:0;z-index:20;
 .resumen-meta-pct{font-size:13px;font-weight:800;color:var(--gold)}
 .resumen-meta-track{background:var(--bg3);border-radius:6px;height:10px;overflow:hidden}
 .resumen-meta-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--red),#f5a623,var(--gold));background-size:200% 100%;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.resumen-meta-fill.history{background:linear-gradient(90deg,#0a3a3a,#2ab8b8,#2bc8c8);}
 .resumen-meta-fill.complete{background:linear-gradient(90deg,#2ab8b8,#2d8a2d,var(--gold));animation:goalBarShimmer 1.8s linear infinite;}
 .resumen-meta-amounts{display:flex;justify-content:space-between;margin-top:4px}
 .resumen-meta-cur{font-size:12px;font-weight:800;color:#2ab8b8}
@@ -2613,6 +2614,17 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
       <div class="resumen-meta-amounts">
         <span class="resumen-meta-cur" id="adm-r-meta-cur">$0</span>
         <span class="resumen-meta-goal" id="adm-r-meta-goal">meta: —</span>
+      </div>
+      
+      <!-- Meta Acumulada -->
+      <div class="resumen-meta-header" style="margin-top:10px">
+        <span class="resumen-meta-lbl" style="color:#2ab8b8">📊 Meta Acumulada</span>
+        <span class="resumen-meta-pct" id="adm-r-meta-h-pct" style="color:#2ab8b8">0%</span>
+      </div>
+      <div class="resumen-meta-track" style="height:8px"><div class="resumen-meta-fill history" id="adm-r-meta-h-fill" style="width:0%"></div></div>
+      <div class="resumen-meta-amounts">
+        <span class="resumen-meta-cur" id="adm-r-meta-h-cur" style="color:#2ab8b8">$0</span>
+        <span class="resumen-meta-goal" id="adm-r-meta-h-goal">objetivo histórico</span>
       </div>
     </div>
     <div class="admin-stat-grid">
@@ -6682,14 +6694,22 @@ function renderResumenKPIs(){
       const data=snap.val()||{};
       const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
       let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
+      let hVentas=0, hDates=new Set();
       keys.forEach(k=>{
         const s=data[k];
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
-        Object.values(sSalesObj).forEach(v=>{if(v&&toISODate(v.date)===today){tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0); tTickets++;}});
+        Object.values(sSalesObj).forEach(v=>{
+          if(!v)return;
+          const vDate=toISODate(v.date);
+          const vTotal=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
+          if(vDate===today){tVentas+=vTotal; tTickets++;}
+          hVentas+=vTotal;
+          hDates.add(vDate);
+        });
         Object.values(sGasObj).forEach(g=>{if(g&&normFecha(g.fecha)===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
       });
-      _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs);
+      _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs, hVentas, hDates.size);
     });
   } else {
     const salesHoy=sales.filter(s=>toISODate(s.date)===today);
@@ -6697,11 +6717,15 @@ function renderResumenKPIs(){
     const tTickets=salesHoy.length;
     const gastosHoy=gastos.filter(g=>normFecha(g.fecha)===today&&(g.origen==='caja'||!g.origen));
     const tGastos=gastosHoy.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
-    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length);
+    
+    const hVentas=sales.reduce((s,v)=>s+v.total,0);
+    const hDates=new Set(sales.map(s=>toISODate(s.date)));
+    
+    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hDates.size);
   }
 }
 
-function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen){
+function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hDays){
   const avgTicket=cnt?totalVentas/cnt:0;
   const neto=totalVentas-totalGastos;
   const pctGanancia=totalVentas>0?Math.round((neto/totalVentas)*100):0;
@@ -6722,12 +6746,22 @@ function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen){
   const metaWrap=document.getElementById('adm-r-meta-wrap');
   if(dailyGoal&&dailyGoal>0&&metaWrap){
     metaWrap.style.display='';
+    // Meta Diaria
     const pct=Math.min(100,Math.round((totalVentas/dailyGoal)*100));
     const fill=document.getElementById('adm-r-meta-fill');
     if(fill){fill.style.width=pct+'%';fill.classList.toggle('complete',pct>=100);}
     setEl('adm-r-meta-pct',pct+'%');
     setEl('adm-r-meta-cur','$'+totalVentas.toFixed(0)+' vendido');
     setEl('adm-r-meta-goal','meta: $'+dailyGoal.toFixed(0));
+    
+    // Meta Acumulada
+    const hGoal = dailyGoal * (hDays || 1);
+    const hPct  = Math.min(100, Math.round((hVentas / hGoal) * 100));
+    const hFill = document.getElementById('adm-r-meta-h-fill');
+    if(hFill) hFill.style.width = hPct + '%';
+    setEl('adm-r-meta-h-pct', hPct + '%');
+    setEl('adm-r-meta-h-cur', '$' + hVentas.toFixed(0) + ' historico');
+    setEl('adm-r-meta-h-goal', 'objetivo ('+hDays+' dias): $' + hGoal.toFixed(0));
   } else if(metaWrap){
     metaWrap.style.display='none';
   }
@@ -6798,10 +6832,17 @@ function renderBranchComparison(){
     keys.forEach(bid=>{
       const s=data[bid];
       const salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
-      const arr=Object.values(salesObj).filter(v=>v&&toISODate(v.date)===today);
-      const total=arr.reduce((sum,v)=>sum+((typeof v.total==='number')?v.total:(parseFloat(v.total)||0)),0);
-      const cnt=arr.length;
-      results.push({bid,name:s.name||bid,total,cnt,avg:cnt?total/cnt:0});
+      const salesArr=Object.values(salesObj);
+      const arrHoy=salesArr.filter(v=>v&&toISODate(v.date)===today);
+      const totalHoy=arrHoy.reduce((sum,v)=>sum+((typeof v.total==='number')?v.total:(parseFloat(v.total)||0)),0);
+      const cntHoy=arrHoy.length;
+      
+      const hTotal=salesArr.reduce((sum,v)=>sum+((typeof v.total==='number')?v.total:(parseFloat(v.total)||0)),0);
+      const hDays=new Set(salesArr.map(v=>v?toISODate(v.date):'')).size;
+      const hGoal=(s.config&&s.config.daily_goal?s.config.daily_goal : dailyGoal) * (hDays || 1);
+      const hEfficiency=hGoal>0?Math.round((hTotal/hGoal)*100):0;
+
+      results.push({bid,name:s.name||bid,total:totalHoy,cnt:cntHoy,avg:cntHoy?totalHoy/cntHoy:0,hEff:hEfficiency});
     });
     results.sort((a,b)=>b.total-a.total);
     grid.innerHTML=results.map((r,i)=>`
@@ -6809,8 +6850,8 @@ function renderBranchComparison(){
         <div class="branch-compare-medal">${medals[i]||'🏅'}</div>
         <div class="branch-compare-name">${r.name}</div>
         <div class="branch-compare-row"><span class="branch-compare-lbl">Ventas hoy</span><span class="branch-compare-val" style="color:#2ab8b8">$${r.total.toFixed(0)}</span></div>
-        <div class="branch-compare-row"><span class="branch-compare-lbl">Tickets</span><span class="branch-compare-val">${r.cnt}</span></div>
         <div class="branch-compare-row"><span class="branch-compare-lbl">Ticket prom.</span><span class="branch-compare-val" style="color:var(--gold)">$${r.avg.toFixed(0)}</span></div>
+        <div class="branch-compare-row" style="border-top:1px solid #333;margin-top:4px;padding-top:6px"><span class="branch-compare-lbl">Eficiencia Hist.</span><span class="branch-compare-val" style="color:#2ab8b8">${r.hEff}%</span></div>
       </div>`).join('');
   });
 }
