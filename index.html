@@ -4299,16 +4299,20 @@ function startFbListeners(){
     const now=Date.now();
     const fbIds=new Set(fbGastos.map(g=>g.id));
 
-    // Sincronización autoritativa para gastos
+    // Firebase es la ÚNICA fuente de verdad para gastos.
+    // Preservamos solo gastos locales que se acaban de crear (< 5s) usando registradoEn.
     const syncedGastos=[
       ...fbGastos,
-      ... (gastos||[]).filter(g=>!fbIds.has(g.id) && (now-g.id < 120000))
-    ].sort((a,b)=>(b.registradoEn||b.timestamp||b.id)-(a.registradoEn||a.timestamp||a.id));
+      ...(gastos||[]).filter(g=>{
+        if(fbIds.has(g.id))return false; // ya está en FB
+        const tLocal=g.registradoEn||g.timestamp||0;
+        return (now-tLocal)<5000; // solo gastos creados hace menos de 5 segundos
+      })
+    ].sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
 
-    if(!gastos || syncedGastos.length!==gastos.length){
-      gastos=syncedGastos;
-      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-    }
+    // Siempre aplicar: Firebase manda
+    gastos=syncedGastos;
+    safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
       // Refresh CIDOP if open
       if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
       // Refresh admin if open
@@ -7315,22 +7319,20 @@ function loadGastos(){
   // Show cached version instantly, then sync with Firebase.
   try{gastos=JSON.parse(safeStorage.getItem('dk_gastos_'+currentBranch))||[];}catch{gastos=[];}
 
-  // Realtime listener — mezcla datos remotos con locales
+  // Realtime listener — Firebase es la fuente de verdad
   window._gastosHandler=function(snap){
     const d=snap.val();
     const fbGastos=d?Object.values(d).filter(Boolean):[];
-    // Mezclar: mantener locales + agregar remotos que no existen
-    if(fbGastos.length>0){
-      const localIds=new Set(gastos.map(g=>g.id));
-      const newFromRemote=fbGastos.filter(g=>!localIds.has(g.id));
-      if(newFromRemote.length>0){
-        gastos=[...gastos,...newFromRemote].sort((a,b)=>b.timestamp-a.timestamp);
-        safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-      }
-    } else if(fbGastos.length===0&&gastos.length>0){
-      // Firebase vacio pero hay locales — conservamos locales (no borrar)
-      // No hacemos nada, mantenemos lo existente
-    }
+    const now2=Date.now();
+    const fbIdsSet=new Set(fbGastos.map(g=>g.id));
+    // Preservar solo gastos locales creados hace menos de 5s (pendientes de subir)
+    const localOnly=(gastos||[]).filter(g=>{
+      if(fbIdsSet.has(g.id))return false;
+      const t=g.registradoEn||g.timestamp||0;
+      return (now2-t)<5000;
+    });
+    gastos=[...fbGastos,...localOnly].sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
+    safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     // Always re-render whichever view is open
     const admTab=document.getElementById('adm-tab-gastos');
     if(admTab&&admTab.classList.contains('active')) renderGastos();
