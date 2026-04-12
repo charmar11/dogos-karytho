@@ -5628,7 +5628,8 @@ function onCorteFechaChange(){
 }
 
 function _renderCortePorFecha(isoDate){
-  const dateKey=toDateKey(new Date(isoDate)); // Convert to locale format D/M/YYYY
+  const[y,m,d]=isoDate.split('-');
+  const dateKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
   const ps=sales.filter(s=>s.date===dateKey),totalVentas=ps.reduce((s,v)=>s+v.total,0),now=new Date(isoDate);
   // Fecha displayed
   document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -5680,7 +5681,8 @@ function _saveFondoPorFecha(isoDate,val){
 
 function recalcCorte(){
   const fecha=window.corteFechaSeleccionada||todayISO();
-  const dateKey=toDateKey(new Date(fecha)); // Convert to locale format D/M/YYYY
+  const[y,m,d]=fecha.split('-');
+  const dateKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
   const ps=sales.filter(s=>s.date===dateKey);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
   const gastosDelDia=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fecha));
