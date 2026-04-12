@@ -5799,7 +5799,7 @@ function saveCorte(){
   });
   const morrallaInput=document.getElementById('cd-monedass')||document.getElementById('cd-monedass');
   const monedas=morrallaInput?parseFloat(morrallaInput.value)||0:0;
-  if(moneda s>0)denominaciones.m=monedas;
+  if(monedas>0)denominaciones.m=monedas;
   const totalContado=totalBilletes+monedas;
   const diferencia=parseFloat((totalContado-esperado).toFixed(2));
   const now=new Date(fechaCorte+'T12:00:00');
