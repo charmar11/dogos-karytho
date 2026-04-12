@@ -6748,10 +6748,9 @@ function renderResumenKPIs(){
     const gastosMes=gastos.filter(g=>normFecha(g.fecha).startsWith(currentMonth));
     const hGastos=gastosMes.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
     
-    // Si estamos en una sucursal específica, respetar su meta configurada
-    const sDailyGoal=(adminViewBranch!=='all'&&currentBranchData&&currentBranchData.config&&currentBranchData.config.daily_goal)?currentBranchData.config.daily_goal : dailyGoal;
-    
-    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hGastos, hDates.size, sDailyGoal, sDailyGoal * hDates.size);
+    // El valor de 'dailyGoal' ya es específico de la sucursal si se seleccionó una,
+    // gracias a los listeners de Firebase que se inician al cambiar de sucursal.
+    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hGastos, hDates.size, dailyGoal, dailyGoal * hDates.size);
   }
 }
 
