@@ -5122,6 +5122,7 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
 
       // ── Formulario de edición inline (oculto) ──
       const catOptions=(gastoCats||[]).map(cat=>`<option value="${cat.id}"${cat.id===g.cat?' selected':''}>${cat.icon} ${cat.name}</option>`).join('');
+      const origenOptions=`<option value="caja"${(g.origen||'caja')==='caja'?' selected':''}>💰 De caja</option><option value="externo"${g.origen==='externo'?' selected':''}>🏦 Externo</option>`;
       const editForm=document.createElement('div');
       editForm.style.cssText='display:none;padding:12px 12px 14px;border-top:1px solid var(--border);background:var(--bg3)';
       editForm.innerHTML=`
@@ -5137,6 +5138,9 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
           </div>
           <select class="_ef-cat" style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none">
             ${catOptions}
+          </select>
+          <select class="_ef-origen" style="background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none">
+            ${origenOptions}
           </select>
           <div style="display:flex;gap:8px;margin-top:2px">
             <button class="_ef-save" style="flex:1;background:linear-gradient(135deg,var(--green),#1e6e1e);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:800;padding:10px;cursor:pointer">💾 Guardar</button>
@@ -5154,9 +5158,10 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
         const nm=parseFloat(editForm.querySelector('._ef-monto').value)||0;
         const nf=editForm.querySelector('._ef-fecha').value||g.fecha;
         const nc=editForm.querySelector('._ef-cat').value||g.cat;
+        const no=editForm.querySelector('._ef-origen').value||'caja';
         if(!nd){showToast('Escribe una descripción','red');return;}
         if(!nm){showToast('Escribe el monto','red');return;}
-        if(typeof onEdit==='function') onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc});
+        if(typeof onEdit==='function') onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc,origen:no});
       };
 
       wrapper.appendChild(viewRow);
