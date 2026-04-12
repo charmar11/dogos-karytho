@@ -2929,53 +2929,19 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
       <button onclick="admCortesNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;margin-left:8px">Hoy</button>
     </div>
     <div id="cortes-filtro-semana" style="display:none;margin-bottom:12px">
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-        <select id="cortes-sem-ano" onchange="admCortesSemAnoChange()"
-          style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
-          <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-        </select>
-        <select id="cortes-sem-select" onchange="admCortesSemSelectChange()"
-          style="flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
-        </select>
-        <button onclick="admCortesSemEsta()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer">Esta semana</button>
-      </div>
+      <select id="cortes-semana-select" onchange="admCortesSemanaChange()"
+        style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+      </select>
     </div>
     <div id="cortes-filtro-mes" style="display:none;margin-bottom:12px">
-      <div style="display:flex;gap:8px;align-items:flex-end">
-        <div style="flex:1">
-          <label style="font-size:10px;color:var(--text4);font-weight:700">Año</label>
-          <select id="cortes-mes-ano" onchange="admCortesMesAnoChange()"
-            style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
-            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-          </select>
-        </div>
-        <div style="flex:2">
-          <label style="font-size:10px;color:var(--text4);font-weight:700">Mes</label>
-          <select id="cortes-mes-select" onchange="admCortesMesSelectChange()"
-            style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
-            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-          </select>
-        </div>
-      </div>
+      <select id="cortes-mes-select" onchange="admCortesMesChange()"
+        style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+      </select>
     </div>
     <div id="cortes-filtro-todo" style="display:none;margin-bottom:12px">
-      <div style="display:flex;gap:8px;align-items:flex-end">
-        <div>
-          <label style="font-size:10px;color:var(--text4);font-weight:700">Desde</label>
-          <select id="cortes-todo-desde" onchange="admCortesTodoChange()"
-            style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
-            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:10px;color:var(--text4);font-weight:700">Hasta</label>
-          <select id="cortes-todo-hasta" onchange="admCortesTodoChange()"
-            style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
-            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
-          </select>
-        </div>
-      </div>
+      <select id="cortes-ano-select" onchange="admCortesAnoChange()"
+        style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark">
+      </select>
     </div>
 
     <!-- Estadísticas -->
@@ -5709,13 +5675,6 @@ const SK_FONDO='dk_fondo_v1';
 let cortesHistory=[];
 let admCortesPeriod='hoy';
 let admCortesDiaISO='';
-let admCortesSemDesde='';
-let admCortesSemHasta='';
-let admCortesSemAno=todayISO().slice(0,4);
-let admCortesMesAno=todayISO().slice(0,4);
-let admCortesMes='';
-let admCortesTodoDesde='2026';
-let admCortesTodoHasta='2026';
 
 function getAdmCortesDiaISO(){return admCortesDiaISO||todayISO();}
 
@@ -5729,78 +5688,73 @@ function admCortesNavHoy(){
   const el=document.getElementById('cortes-fecha-dia');if(el)el.value=admCortesDiaISO;
   renderAdmCortes();
 }
-function _populateSemanasDropdown(){
-  const sel=document.getElementById('cortes-sem-select');if(!sel)return;
-  const ano=document.getElementById('cortes-sem-ano')?.value||admCortesSemAno;
+function _populateCortesSemanaDropdown(){
+  const sel=document.getElementById('cortes-semana-select');if(!sel)return;
+  const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
+  let filtered=cortesHistory;
+  if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
+  if(!filtered.length){sel.innerHTML='<option value="">Sin datos</option>';return;}
+  const fechas=filtered.map(c=>c.fechaISO).filter(f=>f).sort();
+  const primera=fechas[0];
+  const hoy=todayISO();
+  const pDate=new Date(primera+'T12:00:00');
+  const hDate=new Date(hoy+'T12:00:00');
+  const diffDays=Math.floor((hDate-pDate)/(86400000));
+  const totalSemanas=Math.ceil(diffDays/7);
+  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   let opts='<option value="">Seleccionar semana</option>';
-  for(let m=0;m<12;m++){
-    const d=new Date(parseInt(ano),m,1);
-    let lun,dum;
-    while(d.getMonth()===m){
-      const dow=(d.getDay()+6)%7;
-      if(dow===0){lun=new Date(d);lun.setDate(d.getDate()-6);dum=new Date(d);break;}
-      d.setDate(d.getDate()+1);
-    }
-    if(!lun)continue;
-    for(let s=1;s<=5;s++){
-      const desde=new Date(lun);desde.setDate(lun.getDate()+(s-1)*7);
-      const hasta=new Date(desde);hasta.setDate(desde.getDate()+6);
-      if(hasta.getMonth()!==m)continue;
-      const dISO=localISODate(desde);const hISO=localISODate(hasta);
-      const label=`Sem ${s} (${d.getDate()}/${m+1}-${hasta.getDate()})`;
-      const selOpt=(admCortesSemDesde===dISO&&admCortesSemHasta===hISO)?' selected':'';
-      opts+=`<option value="${dISO}|${hISO}"${selOpt}>${label}</option>`;
-    }
+  for(let s=1;s<=totalSemanas;s++){
+    const desdeDate=new Date(pDate);desdeDate.setDate(pDate.getDate()+(s-1)*7);
+    const hastaDate=new Date(desdeDate);hastaDate.setDate(desdeDate.getDate()+6);
+    if(hastaDate>hDate)hastaDate=hDate;
+    const desdeISO=localISODate(desdeDate);
+    const hastaISO=localISODate(hastaDate);
+    const dDes=desdeDate.getDate();const mDes=meses[desdeDate.getMonth()];
+    const dHas=hastaDate.getDate();const mHas=meses[hastaDate.getMonth()];
+    const label=`Sem ${s} (${dDes} ${mDes} - ${dHas} ${mHas})`;
+    opts+=`<option value="${desdeISO}|${hastaISO}">${label}</option>`;
   }
   sel.innerHTML=opts;
 }
-function admCortesSemAnoChange(){
-  admCortesSemAno=document.getElementById('cortes-sem-ano')?.value||admCortesSemAno;
-  _populateSemanasDropdown();
-}
-function admCortesSemSelectChange(){
-  const sel=document.getElementById('cortes-sem-select');
-  if(sel&&sel.value){
-    const[ds,hs]=sel.value.split('|');
-    admCortesSemDesde=ds;admCortesSemHasta=hs;
-    renderAdmCortes();
-  }
-}
-function admCortesSemEsta(){
-  const now=new Date();
-  const dow=(now.getDay()+6)%7;
-  const lun=new Date(now);lun.setDate(now.getDate()-dow);
-  const dom=new Date(lun);dom.setDate(lun.getDate()+6);
-  admCortesSemDesde=localISODate(lun);
-  admCortesSemHasta=localISODate(dom);
-  admCortesSemAno=todayISO().slice(0,4);
-  document.getElementById('cortes-sem-ano').value=admCortesSemAno;
-  _populateSemanasDropdown();
+function admCortesSemanaChange(){
   renderAdmCortes();
 }
-function admCortesMesAnoChange(){
-  admCortesMesAno=document.getElementById('cortes-mes-ano')?.value||admCortesMesAno;
+function _populateCortesMesDropdown(){
+  const sel=document.getElementById('cortes-mes-select');if(!sel)return;
+  const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
+  let filtered=cortesHistory;
+  if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
+  if(!filtered.length){sel.innerHTML='<option value="">Sin datos</option>';return;}
+  const mesesObj={};
+  filtered.forEach(c=>{const f=c.fechaISO;if(f){const ym=f.slice(0,7);mesesObj[ym]=true;}});
+  const mesesKeys=Object.keys(mesesObj).sort((a,b)=>b.localeCompare(a));
+  const mesesNombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  let opts='<option value="">Seleccionar mes</option>';
+  mesesKeys.forEach(ym=>{
+    const[ano,mes]=ym.split('-');
+    const label=`${mesesNombres[parseInt(mes)-1]} ${ano}`;
+    opts+=`<option value="${ym}">${label}</option>`;
+  });
+  sel.innerHTML=opts;
+}
+function admCortesMesChange(){
   renderAdmCortes();
 }
-function admCortesMesSelectChange(){
-  admCortesMes=document.getElementById('cortes-mes-select')?.value||admCortesMes;
+function _populateCortesAnoDropdown(){
+  const sel=document.getElementById('cortes-ano-select');if(!sel)return;
+  const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
+  let filtered=cortesHistory;
+  if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
+  if(!filtered.length){sel.innerHTML='<option value="">Sin datos</option>';return;}
+  const anosObj={};
+  filtered.forEach(c=>{const f=c.fechaISO;if(f){anosObj[f.slice(0,4)]=true;}});
+  const anosKeys=Object.keys(anosObj).sort((a,b)=>b.localeCompare(a));
+  let opts='<option value="">Seleccionar año</option>';
+  anosKeys.forEach(ano=>{opts+=`<option value="${ano}">${ano}</option>`;});
+  sel.innerHTML=opts;
+}
+function admCortesAnoChange(){
   renderAdmCortes();
-}
-function admCortesTodoChange(){
-  admCortesTodoDesde=document.getElementById('cortes-todo-desde')?.value||admCortesTodoDesde;
-  admCortesTodoHasta=document.getElementById('cortes-todo-hasta')?.value||admCortesTodoHasta;
-  renderAdmCortes();
-}
-function _syncCortesSemInput(){
-  _populateSemanasDropdown();
-}
-function getWeekOfMonth(isoDate){
-  if(!isoDate)return'0';
-  const d=new Date(isoDate+'T12:00:00');
-  const first=new Date(d.getFullYear(),d.getMonth(),1);
-  const dow=(first.getDay()+6)%7;
-  const dayOfMonth=d.getDate();
-  return Math.ceil((dayOfMonth+dow)/7);
 }
 
 function _getFondoKey(){return 'fondo_'+todayISO();}
@@ -6035,26 +5989,18 @@ function setAdmCortesPeriod(p){
     const el=document.getElementById('cortes-fecha-dia');if(el)el.value=getAdmCortesDiaISO();
   }
   if(p==='semana'){
-    admCortesSemAno=admCortesSemAno||todayISO().slice(0,4);
-    document.getElementById('cortes-sem-ano').value=admCortesSemAno;
-    _populateSemanasDropdown();
+    _populateCortesSemanaDropdown();
   }
   if(p==='mes'){
-    admCortesMesAno=admCortesMesAno||todayISO().slice(0,4);
-    admCortesMes=admCortesMes||todayISO().slice(5,7);
-    document.getElementById('cortes-mes-ano').value=admCortesMesAno;
-    document.getElementById('cortes-mes-select').value=admCortesMes;
+    _populateCortesMesDropdown();
   }
   if(p==='todo'){
-    document.getElementById('cortes-todo-desde').value=admCortesTodoDesde;
-    document.getElementById('cortes-todo-hasta').value=admCortesTodoHasta;
+    _populateCortesAnoDropdown();
   }
   renderAdmCortes();
 }
 
 function _getAdmCortesFiltrados(){
-  const now=new Date();
-  const todayISO_=todayISO();
   const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
   let filtered=cortesHistory;
   if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
@@ -6064,26 +6010,28 @@ function _getAdmCortesFiltrados(){
     return filtered.filter(c=>c.fechaISO===iso);
   }
   if(admCortesPeriod==='semana'){
-    const desde=localISODate(new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)));
-    const hasta=localISODate(new Date(new Date(desde).getTime()+6*86400000));
-    const desdeSel=document.getElementById('cortes-sem-ano')?document.getElementById('cortes-sem-ano').value:null;
-    const semSel=document.getElementById('cortes-sem-select')?document.getElementById('cortes-sem-select').value:null;
-    const useCustom=admCortesSemDesde&&admCortesSemHasta;
-    const desdeFin=useCustom?admCortesSemDesde:desde;
-    const hastaFin=useCustom?admCortesSemHasta:hasta;
-    return filtered.filter(c=>c.fechaISO>=desdeFin&&c.fechaISO<=hastaFin);
+    const sel=document.getElementById('cortes-semana-select');
+    if(sel&&sel.value){
+      const[desde,hasta]=sel.value.split('|');
+      return filtered.filter(c=>c.fechaISO>=desde&&c.fechaISO<=hasta);
+    }
+    return filtered;
   }
   if(admCortesPeriod==='mes'){
-    let ym=todayISO_.slice(0,7);
-    const selAno=document.getElementById('cortes-mes-ano')?document.getElementById('cortes-mes-ano').value:null;
-    const selMes=document.getElementById('cortes-mes-select')?document.getElementById('cortes-mes-select').value:null;
-    if(selAno&&selMes)ym=selAno+'-'+selMes;
-    return filtered.filter(c=>(c.fechaISO||'').slice(0,7)===ym);
+    const sel=document.getElementById('cortes-mes-select');
+    if(sel&&sel.value){
+      const ym=sel.value;
+      return filtered.filter(c=>(c.fechaISO||'').slice(0,7)===ym);
+    }
+    return filtered;
   }
   if(admCortesPeriod==='todo'){
-    const desde=document.getElementById('cortes-todo-desde')?document.getElementById('cortes-todo-desde').value:'2024-01-01';
-    const hasta=document.getElementById('cortes-todo-hasta')?document.getElementById('cortes-todo-hasta').value:todayISO();
-    return filtered.filter(c=>c.fechaISO>=desde&&c.fechaISO<=hasta);
+    const sel=document.getElementById('cortes-ano-select');
+    if(sel&&sel.value){
+      const ano=sel.value;
+      return filtered.filter(c=>(c.fechaISO||'').slice(0,4)===ano);
+    }
+    return filtered;
   }
   return filtered;
 }
@@ -6113,15 +6061,25 @@ function renderAdmCortes(){
   }
   if(!data.length){list.innerHTML='<div class="admin-empty">Sin cortes en este periodo</div>';return;}
 
-  // Si es mes o todo, mostrar totales agrupados por semana/mes
+  // Si es mes o todo, mostrar totales agrupados por semana del carro
   if(admCortesPeriod==='mes'||admCortesPeriod==='todo'){
-    const isMes=admCortesPeriod==='mes';
-    // Agrupar por semana o mes
+    const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
+    let filtered=cortesHistory;
+    if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
+    const primeraFecha=filtered.length?filtered.map(c=>c.fechaISO).filter(f=>f).sort()[0]:null;
+    const pDate=primeraFecha?new Date(primeraFecha+'T12:00:00'):null;
     const grupos={};
     data.forEach(c=>{
-      const key=isMes?getWeekOfMonth(c.fechaISO):(c.fechaISO||'').slice(0,7);
+      let key='0';
+      if(pDate&&c.fechaISO){
+        const cDate=new Date(c.fechaISO+'T12:00:00');
+        const diffMs=cDate-pDate;
+        const diffDays=Math.floor(diffMs/86400000);
+        const semanaCarro=Math.floor(diffDays/7)+1;
+        key=String(semanaCarro);
+      }
       if(!grupos[key]){
-        grupos[key]={cortes:[], totalEsperado:0, totalContado:0, diferencia:0, ventas:0, gastos:0};
+        grupos[key]={cortes:[], totalEsperado:0, totalContado:0, diferencia:0, ventas:0, gastos:0, semana:key};
       }
       grupos[key].cortes.push(c);
       grupos[key].totalEsperado+=(c.totalEsperado||0);
@@ -6130,7 +6088,7 @@ function renderAdmCortes(){
       grupos[key].ventas+=(c.totalVentas||0);
       grupos[key].gastos+=(c.totalGastos||0);
     });
-    const sortedKeys=Object.keys(grupos).sort((a,b)=>b.localeCompare(a));
+    const sortedKeys=Object.keys(grupos).sort((a,b)=>parseInt(b)-parseInt(a));
     const BILLS=[1000,500,200,100,50,20];
     list.innerHTML='';
     sortedKeys.forEach((key,gIdx)=>{
@@ -6138,7 +6096,7 @@ function renderAdmCortes(){
       const diff=g.diferencia;
       const diffClass=Math.abs(diff)<0.01?'exacto':diff>0?'sobra':'falta';
       const diffStr=Math.abs(diff)<0.01?'✅ $0':diff>0?'+$'+diff.toFixed(2):'−$'+Math.abs(diff).toFixed(2);
-      const label=isMes?`Semana ${key}`:key;
+      const label=`Semana ${g.semana} del carro`;
       const card=document.createElement('div');
       card.className='adm-corte-card';
       card.style.animationDelay=(gIdx*.03)+'s';
