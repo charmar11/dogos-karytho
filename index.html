@@ -11514,11 +11514,13 @@ function createNewUser(){
   })
   .then(()=>{
     showToast('✅ Usuario creado: '+email,'green');
+    alert(`¡USUARIO CREADO CON ÉXITO!\n\nToma una captura o anota estos datos para el empleado:\n\n👤 Correo/Usuario: ${email}\n🔑 Contraseña: ${password}`);
     closeNewUserForm();
     loadUsersForAdmin();
   })
   .catch(err=>{
     showToast(err.message||'Error al crear usuario','red');
+    alert('ERROR DETALLADO POR FIREBASE:\n' + (err.message || 'Desconocido'));
   })
   .finally(()=>{
     btn.disabled=false;
