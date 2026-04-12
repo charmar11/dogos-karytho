@@ -5650,7 +5650,7 @@ function _renderCortePorFecha(isoDate){
     :'<div style="color:var(--text4);font-size:13px;padding:10px 14px">Sin ventas en esta fecha</div>'
   }</div>`;
   // Flujo: entradas y salidas
-  const gastosDelDia=(gastos||[]).filter(g=>normalizarFecha(g.fecha)===normalizarFecha(isoDate));
+  const gastosDelDia=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(isoDate));
   const totalGastos=gastosDelDia.reduce((s,g)=>s+g.monto,0);
   document.getElementById('corte-entradas').textContent='$'+totalVentas.toFixed(2);
   document.getElementById('corte-salidas').textContent='−$'+totalGastos.toFixed(2);
@@ -5683,7 +5683,7 @@ function recalcCorte(){
   const dateKey=toDateKey(new Date(fecha)); // Convert to locale format D/M/YYYY
   const ps=sales.filter(s=>s.date===dateKey);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
-  const gastosDelDia=(gastos||[]).filter(g=>normalizarFecha(g.fecha)===normalizarFecha(fecha));
+  const gastosDelDia=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fecha));
   const totalGastos=gastosDelDia.reduce((s,g)=>s+g.monto,0);
   const fondo=parseFloat(document.getElementById('corte-fondo-input').value)||0;
   // Save fondo
