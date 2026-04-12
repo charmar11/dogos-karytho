@@ -5704,9 +5704,9 @@ function _populateCortesSemanaDropdown(){
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   let opts='<option value="">Seleccionar semana</option>';
   for(let s=1;s<=totalSemanas;s++){
-    const desdeDate=new Date(pDate);desdeDate.setDate(pDate.getDate()+(s-1)*7);
-    const hastaDate=new Date(desdeDate);hastaDate.setDate(desdeDate.getDate()+6);
-    if(hastaDate>hDate)hastaDate=hDate;
+    let desdeDate=new Date(pDate.getTime());desdeDate.setDate(desdeDate.getDate()+(s-1)*7);
+    let hastaDate=new Date(desdeDate.getTime());hastaDate.setDate(desdeDate.getDate()+6);
+    if(hastaDate>hDate)hastaDate=new Date(hDate.getTime());
     const desdeISO=localISODate(desdeDate);
     const hastaISO=localISODate(hastaDate);
     const dDes=desdeDate.getDate();const mDes=meses[desdeDate.getMonth()];
