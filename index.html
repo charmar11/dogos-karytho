@@ -11495,7 +11495,10 @@ function createNewUser(){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({email:email,password:password,returnSecureToken:false})
   })
-  .then(r=>r.json())
+  .then(r=>{
+    btn.textContent='Progreso 2/4: Verificando Firebase Auth...';
+    return r.json();
+  })
   .then(result=>{
     if(result.error){
       const code=result.error.message||'';
@@ -11503,16 +11506,25 @@ function createNewUser(){
       throw new Error('Error al crear usuario: '+code);
     }
     const uid=result.localId;
-    // Write user record with admin's current DB connection (admin still signed in)
-    return fbDb.ref('users/'+uid).set({
+    // Write user record with admin's current DB connection
+    btn.textContent='Progreso 3/4: Guardando permisos en base de datos...';
+    
+    // Configurar Timeout de 5 Segundos por si RTDB está desconectado o cuelga la promesa por reglas
+    const dbPromise = fbDb.ref('users/'+uid).set({
       name:name,
       email:email,
       role:newUserRole,
       branchId:adminViewBranch||'default',
       createdAt:Date.now()
     });
+    
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('TIMEOUT_DB: La base de datos no respondió al guardar permisos en 5 segundos.')), 5000);
+    });
+    return Promise.race([dbPromise, timeoutPromise]);
   })
   .then(()=>{
+    btn.textContent='Progreso 4/4: Éxito';
     showToast('✅ Usuario creado: '+email,'green');
     alert(`¡USUARIO CREADO CON ÉXITO!\n\nToma una captura o anota estos datos para el empleado:\n\n👤 Correo/Usuario: ${email}\n🔑 Contraseña: ${password}`);
     closeNewUserForm();
