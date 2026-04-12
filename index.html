@@ -6617,6 +6617,10 @@ function onAdminBranchChange(){
   if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
   window._sucVentasRef=null;window._sucGastosRef=null;
   window._gastosRef=null;window._gastosHandler=null;
+  
+  if(fbDb && currentBranch && currentBranch !== 'all'){
+    try{ fbDb.ref('sucursales/'+currentBranch).off(); }catch(e){}
+  }
 
   // Show subtle loading state on KPIs — DON'T clear data yet to avoid flash of zeros
   ['adm-r-ventas','adm-r-gastos','adm-r-neto'].forEach(id=>{
@@ -6633,7 +6637,6 @@ function onAdminBranchChange(){
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    if(sales.length>0) fbSaveSales();
     sales=[];gastos=[];
     if(typeof startFbListeners==='function') startFbListeners();
     if(typeof loadGastos==='function') loadGastos();
@@ -7359,9 +7362,9 @@ function loadVentasConsolidadas(){
     var keys=Object.keys(data).filter(function(k){return k&&k!=='default'&&k!=='';});
     var allSales=[];
     keys.forEach(function(k){
-      var s=data[k];
+      var s=data[k] || {};
       var delSet=new Set(Object.keys(s.deleted_sales||{}));
-      var salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+      var salesObj=(s.data||s.sales)?(s.data||s.sales):{};
       Object.values(salesObj).forEach(function(sale){
         if(!delSet.has(String(sale.id))){
           sale.branchOrigin=k;
@@ -11495,10 +11498,7 @@ function createNewUser(){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({email:email,password:password,returnSecureToken:false})
   })
-  .then(r=>{
-    btn.textContent='Progreso 2/4: Verificando Firebase Auth...';
-    return r.json();
-  })
+  .then(r=>r.json())
   .then(result=>{
     if(result.error){
       const code=result.error.message||'';
@@ -11506,33 +11506,21 @@ function createNewUser(){
       throw new Error('Error al crear usuario: '+code);
     }
     const uid=result.localId;
-    // Write user record with admin's current DB connection
-    btn.textContent='Progreso 3/4: Guardando permisos en base de datos...';
-    
-    // Configurar Timeout de 5 Segundos por si RTDB está desconectado o cuelga la promesa por reglas
-    const dbPromise = fbDb.ref('users/'+uid).set({
+    return fbDb.ref('users/'+uid).set({
       name:name,
       email:email,
       role:newUserRole,
       branchId:adminViewBranch||'default',
       createdAt:Date.now()
     });
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('TIMEOUT_DB: La base de datos no respondió al guardar permisos en 5 segundos.')), 5000);
-    });
-    return Promise.race([dbPromise, timeoutPromise]);
   })
   .then(()=>{
-    btn.textContent='Progreso 4/4: Éxito';
     showToast('✅ Usuario creado: '+email,'green');
-    alert(`¡USUARIO CREADO CON ÉXITO!\n\nToma una captura o anota estos datos para el empleado:\n\n👤 Correo/Usuario: ${email}\n🔑 Contraseña: ${password}`);
     closeNewUserForm();
     loadUsersForAdmin();
   })
   .catch(err=>{
     showToast(err.message||'Error al crear usuario','red');
-    alert('ERROR DETALLADO POR FIREBASE:\n' + (err.message || 'Desconocido'));
   })
   .finally(()=>{
     btn.disabled=false;
