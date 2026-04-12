@@ -4135,6 +4135,7 @@ function setFbStatus(s){
 
 /* ─── DAILY GOAL ─── */
 let dailyGoal=0; // 0 = not set
+let admGoalsCache={}; // Cache metas por sucursal para evitar desaparicion al cargar
 const SK_DAILY_GOAL='dg_daily_goal';
 
 function getTodaySalesTotal(){
@@ -4152,6 +4153,9 @@ function getTodayNeto(){
 
 function _applyGoal(v){
   dailyGoal=(v&&typeof v==='number'&&v>0)?v:0;
+  if(typeof adminViewBranch!=='undefined' && adminViewBranch!=='all' && adminViewBranch!==''){
+    admGoalsCache[adminViewBranch]=dailyGoal;
+  }
   updateGoalBar();
   updateAdminGoalBadge();
 }
@@ -6698,8 +6702,12 @@ function renderResumenKPIs(){
   const today=todayISO();
   const currentMonth=today.slice(0,7); // "YYYY-MM"
   if(adminViewBranch==='all' && fbDb){
-    fbDb.ref('sucursales').once('value').then(snap=>{
+    Promise.all([
+      fbDb.ref('sucursales').once('value'),
+      fbDb.ref('cidop/gastos').once('value')
+    ]).then(([snap, cidopSnap])=>{
       const data=snap.val()||{};
+      const cidopData=cidopSnap.val()||{};
       const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
       let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
       let hVentas=0, hGastos=0;
@@ -6730,8 +6738,19 @@ function renderResumenKPIs(){
           if(gDate.startsWith(currentMonth)){hGastos+=gMonto;}
         });
         totalHGoal += sDailyGoal * sDates.size;
+        admGoalsCache[k] = sDailyGoal;
         if(sHasSalesToday) totalDailyGoal += sDailyGoal;
       });
+
+      // Sumar gastos de CIDOP (externos/administrativos)
+      Object.values(cidopData).forEach(g=>{
+        if(!g) return;
+        const gDate=normFecha(g.fecha);
+        const gMonto=parseFloat(g.monto)||0;
+        if(gDate===today){tGastos+=gMonto; tGasRegs++;}
+        if(gDate.startsWith(currentMonth)){hGastos+=gMonto;}
+      });
+
       _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs, hVentas, hGastos, 0, totalDailyGoal, totalHGoal);
     });
   } else {
@@ -6773,8 +6792,13 @@ function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hG
   });
 
   const metaWrap=document.getElementById('adm-r-meta-wrap');
-  const actualDailyGoal = (overrideDailyGoal !== undefined) ? overrideDailyGoal : dailyGoal;
+  let actualDailyGoal = (overrideDailyGoal !== undefined) ? overrideDailyGoal : dailyGoal;
   
+  // Respaldo de caché si la meta viene en 0 (evita que desaparezca al cambiar sucursal)
+  if((!actualDailyGoal || actualDailyGoal <= 0) && typeof adminViewBranch!=='undefined' && adminViewBranch!=='all'){
+    if(admGoalsCache[adminViewBranch]) actualDailyGoal = admGoalsCache[adminViewBranch];
+  }
+
   if(actualDailyGoal&&actualDailyGoal>0&&metaWrap){
     metaWrap.style.display='';
     // Meta Diaria (Basada en Neto/Ganancia)
