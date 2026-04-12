@@ -5087,15 +5087,15 @@ function getCidopGastosFiltrados(){
   if(!gastos) return [];
   if(cidopGastosPeriod==='dia'){
     const iso=getCidopDiaISO();
-    return gastos.filter(g=>normalizarFecha(g.fecha)===normalizarFecha(iso)).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>normFecha(g.fecha)===normFecha(iso)).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   if(cidopGastosPeriod==='semana'){
     const{mon,sun}=getCidopSemRange();
-    return gastos.filter(g=>{const f=normalizarFecha(g.fecha);return f>=normalizarFecha(mon)&&f<=normalizarFecha(sun);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=normFecha(mon)&&f<=normFecha(sun);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   if(cidopGastosPeriod==='mes'){
     const{first,last}=getCidopMesRange();
-    return gastos.filter(g=>{const f=normalizarFecha(g.fecha);return f>=normalizarFecha(first)&&f<=normalizarFecha(last);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=normFecha(first)&&f<=normFecha(last);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
 }
@@ -6237,7 +6237,7 @@ function renderResumenKPIs(){
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
         Object.values(sSalesObj).forEach(v=>{if(v&&toISODate(v.date)===today){tVentas+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0); tTickets++;}});
-        Object.values(sGasObj).forEach(g=>{if(g&&g.fecha===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
+        Object.values(sGasObj).forEach(g=>{if(g&&normFecha(g.fecha)===today){tGastos+=(parseFloat(g.monto)||0); tGasRegs++;}});
       });
       _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs);
     });
@@ -6307,7 +6307,7 @@ function renderBalanceChart7d(){
       const gasObj=s&&s.gastos?s.gastos:{};
       days.forEach((d,i)=>{
         Object.values(salesObj).forEach(v=>{if(v&&toISODate(v.date)===d) ventasPorDia[i]+=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);});
-        Object.values(gasObj).forEach(g=>{if(g&&g.fecha===d) gastosPorDia[i]+=(parseFloat(g.monto)||0);});
+        Object.values(gasObj).forEach(g=>{if(g&&normFecha(g.fecha)===d) gastosPorDia[i]+=(parseFloat(g.monto)||0);});
       });
     });
     if(admBalanceChart7d)admBalanceChart7d.destroy();
@@ -6392,7 +6392,7 @@ function renderPuntoEquilibrio(){
   const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
 
   // Ventas del día
-  const ventasHoy=(sales||[]).filter(s=>s.date===todayKey);
+  const ventasHoy=(sales||[]).filter(s=>toISODate(s.date)===today);
   const totalVendido=ventasHoy.reduce((s,v)=>s+v.total,0);
 
   // Items individuales vendidos hoy
