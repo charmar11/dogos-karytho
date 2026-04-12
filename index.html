@@ -4348,8 +4348,13 @@ function fbSaveProd(){
 function fbSaveSales(){
   if(!fbDb)return;
   const updates={};
-  // Sincronizar los últimos 50 para asegurar consistencia sin saturar la red
-  sales.slice(0,50).forEach(s=>{updates['sales/'+s.id]=s;});
+  // Sincronizar los últimos 50. NUNCA resincronizar ventas que vienen de otras sucursales (branchOrigin)
+  sales.slice(0,50).forEach(s=>{
+    if(!s.branchOrigin) {
+      updates['sales/'+s.id]=s;
+    }
+  });
+  if(Object.keys(updates).length===0) return;
   fbUpdateSecure(getBranchRef(),updates)
     .catch(()=>console.warn('Sync failed: sales reserved in safeStorage'));
 }
@@ -6659,14 +6664,42 @@ function bootAdmin(){
   const _lsGoal=parseFloat(safeStorage.getItem(SK_DAILY_GOAL)||'0');
   if(_lsGoal>0) _applyGoal(_lsGoal);
   
-  // LIMPIA MASIVA DE GHOST SALES: Remueve ventas corruptas que se clonaron a otras sucursales
-  ['carro1','carro2','eventos'].forEach(branch => {
-    if(fbDb) fbDb.ref('sucursales/'+branch+'/sales').once('value').then(snap=>{
-      const d=snap.val(); if(!d)return;
-      const t={}; Object.keys(d).forEach(k=>{ if(d[k] && d[k].branchOrigin){ t[k]=null; } });
-      if(Object.keys(t).length>0) fbDb.ref('sucursales/'+branch+'/sales').update(t);
+  // LIMPIA MASIVA: Deduplicador inteligente de IDs
+  // Borra clones en Firebase y también en el localStorage del navegador
+  if(fbDb) {
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val(); if(!data)return;
+      const seen=new Set();
+      const priorities=['carro1','eventos','carro2']; 
+      const toDelete={};
+      let localSalesDirty=false;
+
+      priorities.forEach(b => {
+        if(data[b] && data[b].sales){
+          Object.keys(data[b].sales).forEach(id => {
+            if(seen.has(id)){
+               if(!toDelete[b]) toDelete[b]={};
+               toDelete[b]['sales/'+id]=null;
+               // Si es la sucursal actual, marcar para borrar localmente también
+               if(b===currentBranch) localSalesDirty=true;
+            } else {
+               seen.add(id);
+            }
+          });
+        }
+      });
+
+      Object.keys(toDelete).forEach(b => {
+        fbDb.ref('sucursales/'+b).update(toDelete[b]);
+      });
+
+      if(localSalesDirty){
+        sales=sales.filter(s=>!seen.has(String(s.id)) || !toDelete[currentBranch]?.hasOwnProperty('sales/'+s.id));
+        safeStorage.setItem(SK_SALES, JSON.stringify(sales));
+        renderAdmin();
+      }
     }).catch(()=>{});
-  });
+  }
 
   renderAdmin();
   fbListening=false;
