@@ -4158,10 +4158,16 @@ function startFbListeners(){
       if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
     }
   });
-  // Sync sales - mezclar datos remotos con locales (no sobrescribir)
+  // Sync sales - proteger ventas locales contra pérdida de datos
   getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
+    const localLength=sales.length;
+    // Si Firebase devuelve vacío pero hay ventas locales, hacer backup a Firebase
+    if(fbSales.length===0&&localLength>0){
+      fbSaveSales();
+      return;
+    }
     // Mezclar: mantener locales + agregar remotos que no existen localmente
     if(fbSales.length>0){
       const localIds=new Set(sales.map(s=>s.id));
@@ -4170,6 +4176,10 @@ function startFbListeners(){
         sales=[...sales,...newFromRemote].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
         safeStorage.setItem(SK_SALES,JSON.stringify(sales));
       }
+    }
+    // Detectar pérdida inesperada de ventas
+    if(localLength>0&&sales.length===0){
+      recoverSalesFromBackup();
     }
     // Update cajero historial if open
     if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
@@ -4208,10 +4218,54 @@ function fbSaveProd(){
 }
 function fbSaveSales(){
   if(!fbDb)return;
-  // Usa update() en lugar de set() para no borrar ventas remotas
   const updates={};
   sales.forEach(s=>{updates['sales/'+s.id]=s;});
   getBranchRef().update(updates).catch(()=>{});
+}
+const SK_SALES_BACKUP='dk_sales_backup_';
+const BACKUP_TTL_DAYS=7;
+function salesBackupKey(id){return SK_SALES_BACKUP+id;}
+function saveSaleBackup(sale){
+  if(!sale||!sale.id)return;
+  const key=salesBackupKey(sale.id);
+  const ttl=BACKUP_TTL_DAYS*24*60*60*1000;
+  safeStorage.setItem(key,JSON.stringify({sale,exp:Date.now()+ttl}));
+}
+function getSaleBackup(id){
+  const key=salesBackupKey(id);
+  const raw=safeStorage.getItem(key);
+  if(!raw)return null;
+  try{
+    const data=JSON.parse(raw);
+    if(data.exp&&Date.now()>data.exp){
+      safeStorage.removeItem(key);
+      return null;
+    }
+    return data.sale;
+  }catch{return null;}
+}
+function recoverSalesFromBackup(){
+  const keys=Object.keys(safeStorage).filter(k=>k.startsWith(SK_SALES_BACKUP));
+  if(!keys.length)return;
+  const recovered=[];
+  keys.forEach(k=>{
+    const raw=safeStorage.getItem(k);
+    if(!raw)return;
+    try{
+      const data=JSON.parse(raw);
+      if(data.exp&&Date.now()>data.exp){
+        safeStorage.removeItem(k);
+        return;
+      }
+      if(data.sale)recovered.push(data.sale);
+    }catch{}
+  });
+  if(recovered.length){
+    sales=recovered.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    fbSaveSales();
+    showToast(`🔄 ${recovered.length} venta(s) recuperada(s) de backup`,'gold');
+  }
 }
 
 /* ─── Activity Log ─── */
@@ -5167,6 +5221,7 @@ function confirmarCobro(){
   const cambio=cash>0?cash-total:null;
   const now=new Date();
   sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+  saveSaleBackup(sales[0]);
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
   clearOrderSilent();closeCash();
@@ -5941,6 +5996,7 @@ function onAdminBranchChange(){
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
+    if(sales.length>0) fbSaveSales();
     sales=[];gastos=[];
     if(typeof startFbListeners==='function') startFbListeners();
     if(typeof loadGastos==='function') loadGastos();
@@ -8521,7 +8577,11 @@ function bootEventos(){
       getBranchRef('sales').on('value',snap=>{
         const d=snap.val();
         const fbSales=d?Object.values(d):[];
-        // Mezclar: mantener locales + agregar remotos que no existen
+        const localLength=sales.length;
+        if(fbSales.length===0&&localLength>0){
+          fbSaveSales();
+          return;
+        }
         if(fbSales.length>0){
           const localIds=new Set(sales.map(s=>s.id));
           const newFromRemote=fbSales.filter(s=>!localIds.has(s.id));
@@ -8530,7 +8590,9 @@ function bootEventos(){
             safeStorage.setItem(SK_SALES,JSON.stringify(sales));
           }
         }
-        // Actualizar historial si está abierto
+        if(localLength>0&&sales.length===0){
+          recoverSalesFromBackup();
+        }
         const evHistTab=document.getElementById('ev-tab-historial');
         if(evHistTab&&evHistTab.classList.contains('active')) renderEventosHistorial();
       });
@@ -8961,6 +9023,9 @@ function registrarEvento(){
     productosDesc:productos,
     user:safeStorage.getItem(SK_DISPLAY)||'Eventos'
   };
+  sales.unshift(sale);
+  saveSaleBackup(sale);
+  saveSales();
   if(fbDb) getBranchRef('sales/'+sale.id).set(sale).catch(()=>{});
 
   // Log en historial de inventario (solo referencia, sin tocar stock)
