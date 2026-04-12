@@ -4262,17 +4262,15 @@ function startFbListeners(){
   getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
-    const now=Date.now();
-    const fbIds=new Set(fbSales.map(s=>s.id));
-    
-    // Firebase es la ÚNICA fuente de verdad para borrados.
-    // Solo preservamos ventas locales que acaban de crearse (< 5s) y aún no llegan a Firebase.
-    const syncedSales=[
-      ...fbSales,
-      ...sales.filter(s=>!fbIds.has(s.id) && (now-s.id < 5000)) // 5s grace para nuevas ventas
-    ].sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
-
-    // Siempre aplicar: Firebase manda
+    // Tracked-deletions: preservar ventas locales que Firebase no tiene (limite de 50).
+    // Solo eliminar IDs borrados EXPLICITAMENTE por el usuario.
+    const deletedIds=_getDeletedIds(SK_DEL_SALES);
+    const fbIdSet=new Set(fbSales.map(s=>String(s.id)));
+    const fbKept=fbSales.filter(s=>!deletedIds.has(String(s.id)));
+    const localOnly=sales.filter(s=>!fbIdSet.has(String(s.id))&&!deletedIds.has(String(s.id)));
+    const seen=new Set();
+    const syncedSales=[...fbKept,...localOnly].filter(s=>{const k=String(s.id);if(seen.has(k))return false;seen.add(k);return true;})
+      .sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
     sales=syncedSales;
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     // Detectar pérdida inesperada de ventas (si antes había y ahora no hay nada, ni local ni remoto)
@@ -4296,21 +4294,14 @@ function startFbListeners(){
   getBranchRef('gastos').on('value',snap=>{
     const data=snap.val();
     const fbGastos=data?Object.values(data):[];
-    const now=Date.now();
-    const fbIds=new Set(fbGastos.map(g=>g.id));
-
-    // Firebase es la ÚNICA fuente de verdad para gastos.
-    // Preservamos solo gastos locales que se acaban de crear (< 5s) usando registradoEn.
-    const syncedGastos=[
-      ...fbGastos,
-      ...(gastos||[]).filter(g=>{
-        if(fbIds.has(g.id))return false; // ya está en FB
-        const tLocal=g.registradoEn||g.timestamp||0;
-        return (now-tLocal)<5000; // solo gastos creados hace menos de 5 segundos
-      })
-    ].sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
-
-    // Siempre aplicar: Firebase manda
+    // Tracked-deletions para gastos
+    const deletedGIds=_getDeletedIds(SK_DEL_GASTOS);
+    const fbGIdSet=new Set(fbGastos.map(g=>String(g.id)));
+    const fbGKept=fbGastos.filter(g=>!deletedGIds.has(String(g.id)));
+    const localGOnly=(gastos||[]).filter(g=>!fbGIdSet.has(String(g.id))&&!deletedGIds.has(String(g.id)));
+    const seenG=new Set();
+    const syncedGastos=[...fbGKept,...localGOnly].filter(g=>{const k=String(g.id);if(seenG.has(k))return false;seenG.add(k);return true;})
+      .sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
     gastos=syncedGastos;
     safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
       // Refresh CIDOP if open
@@ -4479,6 +4470,11 @@ function renderActivityLog(){
 const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
+// Rastrea IDs borrados explicitamente para sincronizacion correcta entre dispositivos
+const SK_DEL_SALES='dk_deleted_sales_v1';
+const SK_DEL_GASTOS='dk_deleted_gastos_v1';
+function _getDeletedIds(key){try{return new Set(JSON.parse(safeStorage.getItem(key))||[]);}catch{return new Set();}}
+function _addDeletedId(key,id){const s=_getDeletedIds(key);s.add(String(id));safeStorage.setItem(key,JSON.stringify([...s].slice(-200)));}
 const SK_GASTO_CATS='dk_gasto_cats_v1';
 const SK_UID='dk_uid_v1';
 // Default categories — user can add/edit/delete
@@ -5637,6 +5633,8 @@ function deleteSale(id){
     // causa una race condition: el listener se dispara antes que fbRemoveSecure
     // confirme el borrado y restaura la venta eliminada.
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    // Registrar borrado para que otros dispositivos lo filtren via tracked-deletions
+    _addDeletedId(SK_DEL_SALES,id);
     if(fbDb) fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
     renderHistorial();
     logActivity('venta_del',desc);
@@ -7324,14 +7322,13 @@ function loadGastos(){
     const d=snap.val();
     const fbGastos=d?Object.values(d).filter(Boolean):[];
     const now2=Date.now();
-    const fbIdsSet=new Set(fbGastos.map(g=>g.id));
-    // Preservar solo gastos locales creados hace menos de 5s (pendientes de subir)
-    const localOnly=(gastos||[]).filter(g=>{
-      if(fbIdsSet.has(g.id))return false;
-      const t=g.registradoEn||g.timestamp||0;
-      return (now2-t)<5000;
-    });
-    gastos=[...fbGastos,...localOnly].sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
+    const delGIds2=_getDeletedIds(SK_DEL_GASTOS);
+    const fbGIdSet2=new Set(fbGastos.map(g=>String(g.id)));
+    const fbGKept2=fbGastos.filter(g=>!delGIds2.has(String(g.id)));
+    const localOnly2=(gastos||[]).filter(g=>!fbGIdSet2.has(String(g.id))&&!delGIds2.has(String(g.id)));
+    const seenG2=new Set();
+    gastos=[...fbGKept2,...localOnly2].filter(g=>{const k=String(g.id);if(seenG2.has(k))return false;seenG2.add(k);return true;})
+      .sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
     safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     // Always re-render whichever view is open
     const admTab=document.getElementById('adm-tab-gastos');
@@ -7412,6 +7409,7 @@ function eliminarGasto(id){
     if(adminViewBranch!=='all'){
       safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     }
+    _addDeletedId(SK_DEL_GASTOS, id);
     renderGastos();
     renderCidopGastosList();
     showToast('Gasto eliminado','green');
