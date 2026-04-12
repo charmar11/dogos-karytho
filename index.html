@@ -2285,7 +2285,7 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
         <span class="corte-moneda-lbl">🪙 Morralla (total monedas)</span>
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:14px;color:var(--gold);font-weight:700">$</span>
-          <input class="corte-moneda-input" id="cd-monedass" type="number" inputmode="decimal" min="0" placeholder="0.00" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('corte-fondo-input').focus();}"/>
+          <input class="corte-moneda-input" id="cd-monedass" type="number" inputmode="decimal" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('corte-fondo-input').focus();}"/>
         </div>
       </div>
     </div>
@@ -4098,9 +4098,8 @@ let dailyGoal=0; // 0 = not set
 const SK_DAILY_GOAL='dg_daily_goal';
 
 function getTodaySalesTotal(){
-  // s.date is stored via toDateKey(now) → locale string e.g. "6/4/2026"
-  const todayKey=toDateKey(new Date());
-  return (sales||[]).filter(s=>s.date===todayKey)
+  const today=todayISO();
+  return (sales||[]).filter(s=>toISODate(s.date)===today)
     .reduce((sum,s)=>sum+(s.total||0),0);
 }
 
@@ -4552,7 +4551,7 @@ function spawnParticle(el){
 function updateDate(){
   const n=new Date();document.getElementById('header-date').textContent=n.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
 }
-const toDateKey=d=>new Date(d).toLocaleDateString('es-MX');
+const toDateKey=d=>{const n=new Date(d);return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');};
 
 // ── Date helpers using YYYY-MM-DD strings (no timezone issues) ──
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -5684,7 +5683,7 @@ function _renderCortePorFecha(isoDate){
   const[y,m,d]=isoDate.split('-');
   const dateKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
   const now=new Date(parseInt(y),parseInt(m)-1,parseInt(d));
-  const ps=sales.filter(s=>s.date===dateKey),totalVentas=ps.reduce((s,v)=>s+v.total,0);
+  const ps=sales.filter(s=>toISODate(s.date)===toISODate(dateKey)),totalVentas=ps.reduce((s,v)=>s+v.total,0);
   // Fecha displayed
   document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Resumen ventas
@@ -5737,7 +5736,7 @@ function recalcCorte(){
   const fecha=window.corteFechaSeleccionada||todayISO();
   const[y,m,d]=fecha.split('-');
   const dateKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
-  const ps=sales.filter(s=>s.date===dateKey);
+  const ps=sales.filter(s=>toISODate(s.date)===fecha);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
   const gastosDelDia=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fecha)&&(g.origen==='caja'||!g.origen));
   const totalGastos=gastosDelDia.reduce((s,g)=>s+g.monto,0);
@@ -5755,7 +5754,8 @@ function recalcCorte(){
     const subEl=document.getElementById('cd-'+b+'-sub');
     if(subEl){subEl.textContent=sub>0?'$'+sub.toLocaleString('es-MX'):'$0';subEl.classList.toggle('active',sub>0);}
   });
-  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  const morrallaInput=document.getElementById('cd-monedass')||document.getElementById('cd-monedass');
+  const monedas=morrallaInput?parseFloat(morrallaInput.value)||0:0;
   const totalContado=totalBilletes+monedas;
   document.getElementById('corte-contado').textContent='$'+totalContado.toFixed(2);
   // Diferencia
@@ -5784,7 +5784,7 @@ function saveCorte(){
   const fechaCorte=window.corteFechaSeleccionada||todayISO();
   const[y,m,d]=fechaCorte.split('-');
   const fechaKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
-  const ps=sales.filter(s=>s.date===fechaKey);
+  const ps=sales.filter(s=>toISODate(s.date)===fechaCorte);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
   const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fechaCorte)&&(g.origen==='caja'||!g.origen));
   const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
@@ -5797,8 +5797,9 @@ function saveCorte(){
     const qty=parseInt(document.getElementById('cd-'+b)?.value)||0;
     if(qty>0){denominaciones['b'+b]=qty;totalBilletes+=qty*b;}
   });
-  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
-  if(monedas>0)denominaciones.monedas=monedas;
+  const m=document.getElementById('cd-monedass')||document.getElementById('cd-monedass');
+  const monedas=m?parseFloat(m.value)||0:0;
+  if(moneda s>0)denominaciones.m=monedas;
   const totalContado=totalBilletes+monedas;
   const diferencia=parseFloat((totalContado-esperado).toFixed(2));
   const now=new Date(fechaCorte+'T12:00:00');
@@ -5974,7 +5975,7 @@ function compartirWhatsApp(){
   const fechaCorte=window.corteFechaSeleccionada||todayISO();
   const[y,m,d]=fechaCorte.split('-');
   const fechaKey=parseInt(d)+'/'+parseInt(m)+'/'+y;
-  const ps=sales.filter(s=>s.date===fechaKey),totalVentas=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date(fechaCorte+'T12:00:00');
+  const ps=sales.filter(s=>toISODate(s.date)===fechaCorte),totalVentas=ps.reduce((s,v)=>s+v.total,0),counts={},now=new Date(fechaCorte+'T12:00:00');
   const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===normFecha(fechaCorte)&&(g.origen==='caja'||!g.origen));
   const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
   const fondo=parseFloat(document.getElementById('corte-fondo-input')?.value)||0;
@@ -5982,7 +5983,8 @@ function compartirWhatsApp(){
   const bills=[1000,500,200,100,50,20];
   let totalBilletes=0;
   bills.forEach(b=>{const qty=parseInt(document.getElementById('cd-'+b)?.value)||0;totalBilletes+=qty*b;});
-  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  const m=document.getElementById('cd-monedass')||document.getElementById('cd-monedass');
+  const monedas=m?parseFloat(m.value)||0:0;
   const totalContado=totalBilletes+monedas;
   const diff=totalContado-esperado;
   ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;}));
@@ -6677,9 +6679,9 @@ function loadCidopMembers(){
 let adminSpecificDate=null; // DD/MM/YYYY when a specific day is selected
 
 function getAdminSales(){
-  if(adminSpecificDate) return sales.filter(s=>s.date===adminSpecificDate);
-  const today=toDateKey(new Date());
-  if(adminRange==='hoy') return sales.filter(s=>s.date===today);
+  const today=todayISO();
+  if(adminSpecificDate) return sales.filter(s=>toISODate(s.date)===toISODate(adminSpecificDate));
+  if(adminRange==='hoy') return sales.filter(s=>toISODate(s.date)===today);
   if(adminRange==='semana') return sales.filter(s=>isSameWeek(s.timestamp));
   if(adminRange==='mes') return sales.filter(s=>isSameMonth(s.timestamp));
   return [...sales];
@@ -7115,8 +7117,8 @@ function _renderGastosContent(gs,iso){
   let salesFilt=sales;
   let perLbl='Histórico';
   if(gastosPeriod==='hoy'){
-    const dayKey=toDateKey(new Date(iso+'T12:00:00'));
-    salesFilt=sales.filter(s=>s.date===dayKey);
+    const dayKey=todayISO();
+    salesFilt=sales.filter(s=>toISODate(s.date)===dayKey);
     const isToday=iso===todayISO();
     perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
   } else if(gastosPeriod==='semana'){
@@ -7186,11 +7188,10 @@ function _xlsxBold(ws, row, ncols){
   }
 }
 function _getSalesFilt(){
-  const today=toDateKey(new Date());
+  const today=todayISO();
   if(gastosPeriod==='hoy'){
-    const iso=admGastosDiaISO||todayISO();
-    const dayKey=toDateKey(new Date(iso+'T12:00:00'));
-    return sales.filter(s=>s.date===dayKey);
+    const dayKey=admGastosDiaISO||todayISO();
+    return sales.filter(s=>toISODate(s.date)===dayKey);
   }
   if(gastosPeriod==='semana'){
     const lunISO=admGastosSemanaISO||_isoOfDate(_getMonday(new Date()));
@@ -10137,10 +10138,10 @@ function setInvCostoPeriod(p){
 }
 
 function renderInvCostos(){
-  const today=toDateKey(new Date());
+  const today=todayISO();
   // Filter sales by period
   let ps;
-  if(invCostoPeriod==='hoy') ps=sales.filter(s=>s.date===today);
+  if(invCostoPeriod==='hoy') ps=sales.filter(s=>toISODate(s.date)===today);
   else if(invCostoPeriod==='semana') ps=sales.filter(s=>isSameWeek(s.timestamp));
   else if(invCostoPeriod==='mes') ps=sales.filter(s=>isSameMonth(s.timestamp));
   else ps=[...sales];
@@ -10278,8 +10279,8 @@ function setInvHistPeriod(p){
 }
 
 function filterHistByPeriod(data){
-  const today=toDateKey(new Date());
-  if(invHistPeriod==='hoy') return data.filter(h=>h.date===today);
+  const today=todayISO();
+  if(invHistPeriod==='hoy') return data.filter(h=>toISODate(h.date)===today);
   if(invHistPeriod==='semana') return data.filter(h=>isSameWeek(h.ts));
   if(invHistPeriod==='mes') return data.filter(h=>isSameMonth(h.ts));
   return data;
