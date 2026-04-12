@@ -2305,6 +2305,12 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
       <div class="corte-diff-val exacto" id="corte-diff-val">$0.00</div>
     </div>
 
+    <!-- Nota -->
+    <div style="margin-bottom:14px">
+      <textarea id="corte-nota" placeholder="📝 Nota opcional (ej: corte de mañana, caja baja, etc.)" 
+        style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;resize:none;height:60px"></textarea>
+    </div>
+
     <!-- Botones -->
     <button class="btn-save-corte" id="btn-save-corte" onclick="saveCorte()">
       💾 Cerrar corte y guardar
@@ -2922,18 +2928,54 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
         style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"/>
       <button onclick="admCortesNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;margin-left:8px">Hoy</button>
     </div>
-    <div id="cortes-filtro-semana" style="display:none;margin-bottom:12px;gap:8px;display:flex">
-      <div style="flex:1">
-        <label style="font-size:10px;color:var(--text4);font-weight:700">Desde</label>
-        <input type="date" id="cortes-sem-desde" onchange="admCortesSemManual()"
-          style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none;color-scheme:dark"/>
+    <div id="cortes-filtro-semana" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <select id="cortes-sem-ano" onchange="admCortesSemAnoChange()"
+          style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
+          <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+        </select>
+        <select id="cortes-sem-select" onchange="admCortesSemSelectChange()"
+          style="flex:1;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none">
+        </select>
+        <button onclick="admCortesSemEsta()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer">Esta semana</button>
       </div>
-      <div style="flex:1">
-        <label style="font-size:10px;color:var(--text4);font-weight:700">Hasta</label>
-        <input type="date" id="cortes-sem-hasta" onchange="admCortesSemManual()"
-          style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none;color-scheme:dark"/>
+    </div>
+    <div id="cortes-filtro-mes" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div style="flex:1">
+          <label style="font-size:10px;color:var(--text4);font-weight:700">Año</label>
+          <select id="cortes-mes-ano" onchange="admCortesMesAnoChange()"
+            style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+          </select>
+        </div>
+        <div style="flex:2">
+          <label style="font-size:10px;color:var(--text4);font-weight:700">Mes</label>
+          <select id="cortes-mes-select" onchange="admCortesMesSelectChange()"
+            style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
+            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
       </div>
-      <button onclick="admCortesSemEsta()" style="align-self:flex-end;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer">Esta semana</button>
+    </div>
+    <div id="cortes-filtro-todo" style="display:none;margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <div>
+          <label style="font-size:10px;color:var(--text4);font-weight:700">Desde</label>
+          <select id="cortes-todo-desde" onchange="admCortesTodoChange()"
+            style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--text4);font-weight:700">Hasta</label>
+          <select id="cortes-todo-hasta" onchange="admCortesTodoChange()"
+            style="background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;outline:none">
+            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- Estadísticas -->
@@ -5669,6 +5711,11 @@ let admCortesPeriod='hoy';
 let admCortesDiaISO='';
 let admCortesSemDesde='';
 let admCortesSemHasta='';
+let admCortesSemAno=todayISO().slice(0,4);
+let admCortesMesAno=todayISO().slice(0,4);
+let admCortesMes='';
+let admCortesTodoDesde='2026';
+let admCortesTodoHasta='2026';
 
 function getAdmCortesDiaISO(){return admCortesDiaISO||todayISO();}
 
@@ -5682,10 +5729,42 @@ function admCortesNavHoy(){
   const el=document.getElementById('cortes-fecha-dia');if(el)el.value=admCortesDiaISO;
   renderAdmCortes();
 }
-function admCortesSemManual(){
-  const d=document.getElementById('cortes-sem-desde');
-  const h=document.getElementById('cortes-sem-hasta');
-  if(d&&h&&d.value&&h.value){admCortesSemDesde=d.value;admCortesSemHasta=h.value;renderAdmCortes();}
+function _populateSemanasDropdown(){
+  const sel=document.getElementById('cortes-sem-select');if(!sel)return;
+  const ano=document.getElementById('cortes-sem-ano')?.value||admCortesSemAno;
+  let opts='<option value="">Seleccionar semana</option>';
+  for(let m=0;m<12;m++){
+    const d=new Date(parseInt(ano),m,1);
+    let lun,dum;
+    while(d.getMonth()===m){
+      const dow=(d.getDay()+6)%7;
+      if(dow===0){lun=new Date(d);lun.setDate(d.getDate()-6);dum=new Date(d);break;}
+      d.setDate(d.getDate()+1);
+    }
+    if(!lun)continue;
+    for(let s=1;s<=5;s++){
+      const desde=new Date(lun);desde.setDate(lun.getDate()+(s-1)*7);
+      const hasta=new Date(desde);hasta.setDate(desde.getDate()+6);
+      if(hasta.getMonth()!==m)continue;
+      const dISO=localISODate(desde);const hISO=localISODate(hasta);
+      const label=`Sem ${s} (${d.getDate()}/${m+1}-${hasta.getDate()})`;
+      const selOpt=(admCortesSemDesde===dISO&&admCortesSemHasta===hISO)?' selected':'';
+      opts+=`<option value="${dISO}|${hISO}"${selOpt}>${label}</option>`;
+    }
+  }
+  sel.innerHTML=opts;
+}
+function admCortesSemAnoChange(){
+  admCortesSemAno=document.getElementById('cortes-sem-ano')?.value||admCortesSemAno;
+  _populateSemanasDropdown();
+}
+function admCortesSemSelectChange(){
+  const sel=document.getElementById('cortes-sem-select');
+  if(sel&&sel.value){
+    const[ds,hs]=sel.value.split('|');
+    admCortesSemDesde=ds;admCortesSemHasta=hs;
+    renderAdmCortes();
+  }
 }
 function admCortesSemEsta(){
   const now=new Date();
@@ -5694,13 +5773,26 @@ function admCortesSemEsta(){
   const dom=new Date(lun);dom.setDate(lun.getDate()+6);
   admCortesSemDesde=localISODate(lun);
   admCortesSemHasta=localISODate(dom);
-  const d=document.getElementById('cortes-sem-desde');if(d)d.value=admCortesSemDesde;
-  const h=document.getElementById('cortes-sem-hasta');if(h)h.value=admCortesSemHasta;
+  admCortesSemAno=todayISO().slice(0,4);
+  document.getElementById('cortes-sem-ano').value=admCortesSemAno;
+  _populateSemanasDropdown();
+  renderAdmCortes();
+}
+function admCortesMesAnoChange(){
+  admCortesMesAno=document.getElementById('cortes-mes-ano')?.value||admCortesMesAno;
+  renderAdmCortes();
+}
+function admCortesMesSelectChange(){
+  admCortesMes=document.getElementById('cortes-mes-select')?.value||admCortesMes;
+  renderAdmCortes();
+}
+function admCortesTodoChange(){
+  admCortesTodoDesde=document.getElementById('cortes-todo-desde')?.value||admCortesTodoDesde;
+  admCortesTodoHasta=document.getElementById('cortes-todo-hasta')?.value||admCortesTodoHasta;
   renderAdmCortes();
 }
 function _syncCortesSemInput(){
-  const d=document.getElementById('cortes-sem-desde');if(d)d.value=admCortesSemDesde;
-  const h=document.getElementById('cortes-sem-hasta');if(h)h.value=admCortesSemHasta;
+  _populateSemanasDropdown();
 }
 function getWeekOfMonth(isoDate){
   if(!isoDate)return'0';
@@ -5869,6 +5961,8 @@ function saveCorte(){
   const now=new Date(fechaCorte+'T12:00:00');
   const counts={},totals={};
   ps.forEach(sale=>sale.items.forEach(it=>{const k=it.name+(it.var&&it.var!=='Normal'?' ('+it.var+')':'');counts[k]=(counts[k]||0)+it.qty;totals[k]=(totals[k]||0)+(it.price*it.qty);}));
+  const notaEl=document.getElementById('corte-nota');
+  const nota=(notaEl&&notaEl.value.trim())||'';
   const corte={
     id:'corte_'+Date.now(),
     ts:Date.now(),
@@ -5877,6 +5971,7 @@ function saveCorte(){
     hora:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
     user:safeStorage.getItem(SK_DISPLAY)||'Cajero',
     branchId:currentBranch,
+    nota:nota,
     fondoInicial:fondo,
     totalVentas:parseFloat(totalVentas.toFixed(2)),
     totalGastos:parseFloat(totalGastos.toFixed(2)),
@@ -5906,7 +6001,11 @@ function saveCorte(){
   closeCorte();
 }
 
-function closeCorte(){document.getElementById('corte-overlay').classList.add('hidden');}
+function closeCorte(){
+  const notaEl=document.getElementById('corte-nota');
+  if(notaEl)notaEl.value='';
+  document.getElementById('corte-overlay').classList.add('hidden');
+}
 
 /* ─── Firebase listener for cortes ─── */
 function startCortesListener(){
@@ -5926,15 +6025,29 @@ function setAdmCortesPeriod(p){
   });
   const fHoy=document.getElementById('cortes-filtro-hoy');
   const fSem=document.getElementById('cortes-filtro-semana');
+  const fMes=document.getElementById('cortes-filtro-mes');
+  const fTodo=document.getElementById('cortes-filtro-todo');
   if(fHoy)fHoy.style.display=p==='hoy'?'block':'none';
-  if(fSem)fSem.style.display=p==='semana'?'flex':'none';
+  if(fSem)fSem.style.display=p==='semana'?'block':'none';
+  if(fMes)fMes.style.display=p==='mes'?'block':'none';
+  if(fTodo)fTodo.style.display=p==='todo'?'block':'none';
   if(p==='hoy'){
     const el=document.getElementById('cortes-fecha-dia');if(el)el.value=getAdmCortesDiaISO();
   }
   if(p==='semana'){
-    admCortesSemDesde=admCortesSemDesde||localISODate(_getMonday(new Date()));
-    admCortesSemHasta=admCortesSemHasta||localISODate(new Date(new Date(admCortesSemDesde).getTime()+6*86400000));
-    _syncCortesSemInput();
+    admCortesSemAno=admCortesSemAno||todayISO().slice(0,4);
+    document.getElementById('cortes-sem-ano').value=admCortesSemAno;
+    _populateSemanasDropdown();
+  }
+  if(p==='mes'){
+    admCortesMesAno=admCortesMesAno||todayISO().slice(0,4);
+    admCortesMes=admCortesMes||todayISO().slice(5,7);
+    document.getElementById('cortes-mes-ano').value=admCortesMesAno;
+    document.getElementById('cortes-mes-select').value=admCortesMes;
+  }
+  if(p==='todo'){
+    document.getElementById('cortes-todo-desde').value=admCortesTodoDesde;
+    document.getElementById('cortes-todo-hasta').value=admCortesTodoHasta;
   }
   renderAdmCortes();
 }
@@ -5951,13 +6064,26 @@ function _getAdmCortesFiltrados(){
     return filtered.filter(c=>c.fechaISO===iso);
   }
   if(admCortesPeriod==='semana'){
-    const desde=admCortesSemDesde||localISODate(new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)));
-    const hasta=admCortesSemHasta||localISODate(new Date(new Date(desde).getTime()+6*86400000));
-    return filtered.filter(c=>c.fechaISO>=desde&&c.fechaISO<=hasta);
+    const desde=localISODate(new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7)));
+    const hasta=localISODate(new Date(new Date(desde).getTime()+6*86400000));
+    const desdeSel=document.getElementById('cortes-sem-ano')?document.getElementById('cortes-sem-ano').value:null;
+    const semSel=document.getElementById('cortes-sem-select')?document.getElementById('cortes-sem-select').value:null;
+    const useCustom=admCortesSemDesde&&admCortesSemHasta;
+    const desdeFin=useCustom?admCortesSemDesde:desde;
+    const hastaFin=useCustom?admCortesSemHasta:hasta;
+    return filtered.filter(c=>c.fechaISO>=desdeFin&&c.fechaISO<=hastaFin);
   }
   if(admCortesPeriod==='mes'){
-    const ym=todayISO_.slice(0,7);
+    let ym=todayISO_.slice(0,7);
+    const selAno=document.getElementById('cortes-mes-ano')?document.getElementById('cortes-mes-ano').value:null;
+    const selMes=document.getElementById('cortes-mes-select')?document.getElementById('cortes-mes-select').value:null;
+    if(selAno&&selMes)ym=selAno+'-'+selMes;
     return filtered.filter(c=>(c.fechaISO||'').slice(0,7)===ym);
+  }
+  if(admCortesPeriod==='todo'){
+    const desde=document.getElementById('cortes-todo-desde')?document.getElementById('cortes-todo-desde').value:'2024-01-01';
+    const hasta=document.getElementById('cortes-todo-hasta')?document.getElementById('cortes-todo-hasta').value:todayISO();
+    return filtered.filter(c=>c.fechaISO>=desde&&c.fechaISO<=hasta);
   }
   return filtered;
 }
@@ -5987,7 +6113,7 @@ function renderAdmCortes(){
   }
   if(!data.length){list.innerHTML='<div class="admin-empty">Sin cortes en este periodo</div>';return;}
 
-  // Si es mes o todo, mostrar totales agrupados
+  // Si es mes o todo, mostrar totales agrupados por semana/mes
   if(admCortesPeriod==='mes'||admCortesPeriod==='todo'){
     const isMes=admCortesPeriod==='mes';
     // Agrupar por semana o mes
@@ -6048,7 +6174,7 @@ function renderAdmCortes(){
           </div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:8px">Cortes incluidos:</div>
-            ${g.cortes.map(c=>`<div style="font-size:12px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2)">${c.fecha} · ${c.user} · <span style="color:${Math.abs(c.diferencia||0)<0.01?'#6fcf6f':(c.diferencia||0)>0?'#6fcf6f':'#f57474'}">${(c.diferencia||0)>=0?'+':''}$${(c.diferencia||0).toFixed(2)}</span></div>`).join('')}
+            ${g.cortes.map(c=>`<div style="font-size:12px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2)">${c.fecha} · ${c.user} · <span style="color:${Math.abs(c.diferencia||0)<0.01?'#6fcf6f':(c.diferencia||0)>0?'#6fcf6f':'#f57474'}">${(c.diferencia||0)>=0?'+':''}$${(c.diferencia||0).toFixed(2)}</span>${c.nota?' · 📝':''}</div>`).join('')}
           </div>
         </div>`;
       list.appendChild(card);
@@ -6056,7 +6182,144 @@ function renderAdmCortes(){
     return;
   }
 
-  // Hoy y Semana: mostrar lista individual (código original)
+  // Hoy: agrupar por hora
+  if(admCortesPeriod==='hoy'){
+    const grupos={};
+    data.forEach(c=>{
+      const hora=c.hora||'00:00';
+      const hKey=hora.slice(0,2)+':00';
+      if(!grupos[hKey]){
+        grupos[hKey]={cortes:[], totalEsperado:0, totalContado:0, diferencia:0, ventas:0, gastos:0, hora:hKey};
+      }
+      grupos[hKey].cortes.push(c);
+      grupos[hKey].totalEsperado+=(c.totalEsperado||0);
+      grupos[hKey].totalContado+=(c.totalContado||0);
+      grupos[hKey].diferencia+=(c.diferencia||0);
+      grupos[hKey].ventas+=(c.totalVentas||0);
+      grupos[hKey].gastos+=(c.totalGastos||0);
+    });
+    const sortedKeys=Object.keys(grupos).sort();
+    const BILLS=[1000,500,200,100,50,20];
+    list.innerHTML='';
+    sortedKeys.forEach((key,gIdx)=>{
+      const g=grupos[key];
+      const diff=g.diferencia;
+      const diffClass=Math.abs(diff)<0.01?'exacto':diff>0?'sobra':'falta';
+      const diffStr=Math.abs(diff)<0.01?'✅ $0':diff>0?'+$'+diff.toFixed(2):'−$'+Math.abs(diff).toFixed(2);
+      const label=g.hora;
+      const card=document.createElement('div');
+      card.className='adm-corte-card';
+      card.style.animationDelay=(gIdx*.03)+'s';
+      card.innerHTML=`
+        <div class="adm-corte-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.adm-corte-chev').style.transform=this.nextElementSibling.style.display==='block'?'rotate(90deg)':''">
+          <div class="adm-corte-head-left">
+            <div class="adm-corte-date">🕐 ${label}</div>
+            <div class="adm-corte-meta">${g.cortes.length} corte${g.cortes.length!==1?'s':''}</div>
+          </div>
+          <div class="adm-corte-head-right">
+            <span class="adm-corte-diff ${diffClass}">${diffStr}</span>
+            <span class="adm-corte-chev">›</span>
+          </div>
+        </div>
+        <div class="adm-corte-body">
+          <div class="adm-corte-grid">
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📥 Ventas</div>
+              <div class="adm-corte-cell-val" style="color:#2ab8b8">$${g.ventas.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📤 Gastos</div>
+              <div class="adm-corte-cell-val" style="color:#f57474">$${g.gastos.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">🧮 Total esperado</div>
+              <div class="adm-corte-cell-val" style="color:var(--gold)">$${g.totalEsperado.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">💰 Total contado</div>
+              <div class="adm-corte-cell-val">$${g.totalContado.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:8px">Cortes incluidos:</div>
+            ${g.cortes.map(c=>`<div style="font-size:12px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2)">${c.hora} · ${c.user} · <span style="color:${Math.abs(c.diferencia||0)<0.01?'#6fcf6f':(c.diferencia||0)>0?'#6fcf6f':'#f57474'}">${(c.diferencia||0)>=0?'+':''}$${(c.diferencia||0).toFixed(2)}</span>${c.nota?' · 📝':''}</div>`).join('')}
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+    return;
+  }
+
+  // Semana: agrupar por día
+  if(admCortesPeriod==='semana'){
+    const grupos={};
+    const diasSemana=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    data.forEach(c=>{
+      const fecha=c.fechaISO||todayISO();
+      if(!grupos[fecha]){
+        const d=new Date(fecha);
+        grupos[fecha]={cortes:[], totalEsperado:0, totalContado:0, diferencia:0, ventas:0, gastos:0, dia:diasSemana[d.getDay()], fecha:fecha};
+      }
+      grupos[fecha].cortes.push(c);
+      grupos[fecha].totalEsperado+=(c.totalEsperado||0);
+      grupos[fecha].totalContado+=(c.totalContado||0);
+      grupos[fecha].diferencia+=(c.diferencia||0);
+      grupos[fecha].ventas+=(c.totalVentas||0);
+      grupos[fecha].gastos+=(c.totalGastos||0);
+    });
+    const sortedKeys=Object.keys(grupos).sort((a,b)=>b.localeCompare(a));
+    const BILLS=[1000,500,200,100,50,20];
+    list.innerHTML='';
+    sortedKeys.forEach((key,gIdx)=>{
+      const g=grupos[key];
+      const diff=g.diferencia;
+      const diffClass=Math.abs(diff)<0.01?'exacto':diff>0?'sobra':'falta';
+      const diffStr=Math.abs(diff)<0.01?'✅ $0':diff>0?'+$'+diff.toFixed(2):'−$'+Math.abs(diff).toFixed(2);
+      const label=g.dia+' · '+key;
+      const card=document.createElement('div');
+      card.className='adm-corte-card';
+      card.style.animationDelay=(gIdx*.03)+'s';
+      card.innerHTML=`
+        <div class="adm-corte-head" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.adm-corte-chev').style.transform=this.nextElementSibling.style.display==='block'?'rotate(90deg)':''">
+          <div class="adm-corte-head-left">
+            <div class="adm-corte-date">📅 ${label}</div>
+            <div class="adm-corte-meta">${g.cortes.length} corte${g.cortes.length!==1?'s':''}</div>
+          </div>
+          <div class="adm-corte-head-right">
+            <span class="adm-corte-diff ${diffClass}">${diffStr}</span>
+            <span class="adm-corte-chev">›</span>
+          </div>
+        </div>
+        <div class="adm-corte-body">
+          <div class="adm-corte-grid">
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📥 Ventas</div>
+              <div class="adm-corte-cell-val" style="color:#2ab8b8">$${g.ventas.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">📤 Gastos</div>
+              <div class="adm-corte-cell-val" style="color:#f57474">$${g.gastos.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">🧮 Total esperado</div>
+              <div class="adm-corte-cell-val" style="color:var(--gold)">$${g.totalEsperado.toFixed(2)}</div>
+            </div>
+            <div class="adm-corte-cell">
+              <div class="adm-corte-cell-lbl">💰 Total contado</div>
+              <div class="adm-corte-cell-val">$${g.totalContado.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:8px">Cortes incluidos:</div>
+            ${g.cortes.map(c=>`<div style="font-size:12px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2)">${c.hora} · ${c.user} · <span style="color:${Math.abs(c.diferencia||0)<0.01?'#6fcf6f':(c.diferencia||0)>0?'#6fcf6f':'#f57474'}">${(c.diferencia||0)>=0?'+':''}$${(c.diferencia||0).toFixed(2)}</span>${c.nota?' · 📝':''}</div>`).join('')}
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+    return;
+  }
+
+  // Mes y Todo: mostrar lista individual (código original)
   const BILLS=[1000,500,200,100,50,20];
   list.innerHTML='';
   data.forEach((c,i)=>{
@@ -6115,6 +6378,10 @@ function renderAdmCortes(){
         ${chips?`<div class="adm-corte-denom-detail">
           <div class="adm-corte-denom-detail-title">Desglose del conteo</div>
           <div class="adm-corte-denom-chips">${chips}</div>
+        </div>`:''}
+        ${c.nota?`<div style="margin-top:10px;padding:10px;background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px">
+          <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:4px">📝 Nota</div>
+          <div style="font-size:13px;color:var(--text)">${c.nota}</div>
         </div>`:''}
         <div class="adm-corte-prods">
           <div class="adm-corte-prods-title">Productos vendidos</div>
