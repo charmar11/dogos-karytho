@@ -6702,20 +6702,24 @@ function renderResumenKPIs(){
       const data=snap.val()||{};
       const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
       let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
-      let hVentas=0, hGastos=0, hDates=new Set();
+      let hVentas=0, hGastos=0;
+      let totalDailyGoal=0, totalHGoal=0;
       keys.forEach(k=>{
         const s=data[k];
+        const sDailyGoal=(s.config&&s.config.daily_goal)?s.config.daily_goal : dailyGoal;
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
+        
+        let sDates=new Set();
+        let sHasSalesToday=false;
         Object.values(sSalesObj).forEach(v=>{
           if(!v)return;
           const vDate=toISODate(v.date);
           const vTotal=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
-          if(vDate===today){tVentas+=vTotal; tTickets++;}
-          
+          if(vDate===today){tVentas+=vTotal; tTickets++; sHasSalesToday=true;}
           if(vDate.startsWith(currentMonth)){
             hVentas+=vTotal;
-            hDates.add(vDate);
+            sDates.add(vDate);
           }
         });
         Object.values(sGasObj).forEach(g=>{
@@ -6725,8 +6729,10 @@ function renderResumenKPIs(){
           if(gDate===today){tGastos+=gMonto; tGasRegs++;}
           if(gDate.startsWith(currentMonth)){hGastos+=gMonto;}
         });
+        totalHGoal += sDailyGoal * sDates.size;
+        if(sHasSalesToday) totalDailyGoal += sDailyGoal;
       });
-      _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs, hVentas, hGastos, hDates.size);
+      _peUpdateResumenKPIs(tVentas, tGastos, tTickets, tGasRegs, hVentas, hGastos, 0, totalDailyGoal, totalHGoal);
     });
   } else {
     const salesHoy=sales.filter(s=>toISODate(s.date)===today);
@@ -6742,11 +6748,14 @@ function renderResumenKPIs(){
     const gastosMes=gastos.filter(g=>normFecha(g.fecha).startsWith(currentMonth));
     const hGastos=gastosMes.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
     
-    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hGastos, hDates.size);
+    // Si estamos en una sucursal específica, respetar su meta configurada
+    const sDailyGoal=(adminViewBranch!=='all'&&currentBranchData&&currentBranchData.config&&currentBranchData.config.daily_goal)?currentBranchData.config.daily_goal : dailyGoal;
+    
+    _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hGastos, hDates.size, sDailyGoal, sDailyGoal * hDates.size);
   }
 }
 
-function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hGastos, hDays){
+function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hGastos, hDays, overrideDailyGoal, overrideHGoal){
   const avgTicket=cnt?totalVentas/cnt:0;
   const neto=totalVentas-totalGastos;
   const pctGanancia=totalVentas>0?Math.round((neto/totalVentas)*100):0;
@@ -6765,25 +6774,30 @@ function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hG
   });
 
   const metaWrap=document.getElementById('adm-r-meta-wrap');
-  if(dailyGoal&&dailyGoal>0&&metaWrap){
+  const actualDailyGoal = (overrideDailyGoal !== undefined) ? overrideDailyGoal : dailyGoal;
+  
+  if(actualDailyGoal&&actualDailyGoal>0&&metaWrap){
     metaWrap.style.display='';
     // Meta Diaria (Basada en Neto/Ganancia)
-    const pct=Math.min(100,Math.round((neto/dailyGoal)*100));
+    const pct=Math.min(100,Math.round((neto/actualDailyGoal)*100));
     const fill=document.getElementById('adm-r-meta-fill');
     if(fill){fill.style.width=pct+'%';fill.classList.toggle('complete',pct>=100);}
     setEl('adm-r-meta-pct',pct+'%');
     setEl('adm-r-meta-cur','$'+neto.toFixed(0)+' ganancia');
-    setEl('adm-r-meta-goal','meta: $'+dailyGoal.toFixed(0));
+    setEl('adm-r-meta-goal','meta: $'+actualDailyGoal.toFixed(0));
     
     // Meta Acumulada (Basada en Ganancia Mensual)
     const hProfit = hVentas - hGastos;
-    const hGoal   = dailyGoal * (hDays || 1);
+    const hGoal   = (overrideHGoal !== undefined) ? overrideHGoal : (actualDailyGoal * (hDays || 1));
     const hPct    = Math.min(100, Math.round((hProfit / hGoal) * 100));
     const hFill   = document.getElementById('adm-r-meta-h-fill');
     if(hFill) hFill.style.width = hPct + '%';
     setEl('adm-r-meta-h-pct', hPct + '%');
     setEl('adm-r-meta-h-cur', '$' + hProfit.toFixed(0) + ' ganancia mes');
-    setEl('adm-r-meta-h-goal', 'objetivo ('+hDays+' dias): $' + hGoal.toFixed(0));
+    
+    // Mostrar dias corregidos si es consolidado
+    const daysText = hDays > 0 ? hDays+' dias' : 'acumulado';
+    setEl('adm-r-meta-h-goal', 'objetivo ('+daysText+'): $' + hGoal.toFixed(0));
   } else if(metaWrap){
     metaWrap.style.display='none';
   }
