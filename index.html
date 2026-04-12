@@ -4265,15 +4265,14 @@ function startFbListeners(){
     const now=Date.now();
     const fbIds=new Set(fbSales.map(s=>s.id));
     
-    // Nueva lógica: Sincronización autoritativa
-    // Retenemos lo que está en FB + lo local que sea MUY reciente (pendiente de subir)
+    // Firebase es la ÚNICA fuente de verdad para borrados.
+    // Solo preservamos ventas locales que acaban de crearse (< 5s) y aún no llegan a Firebase.
     const syncedSales=[
       ...fbSales,
-      ...sales.filter(s=>!fbIds.has(s.id) && (now-s.id < 120000)) // 2 min grace period
+      ...sales.filter(s=>!fbIds.has(s.id) && (now-s.id < 5000)) // 5s grace para nuevas ventas
     ].sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
 
-    // Sync autoritativo: FB es la fuente de verdad
-    // Pero SIEMPRE actualizamos sales con syncedSales para respetar borrados
+    // Siempre aplicar: Firebase manda
     sales=syncedSales;
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     // Detectar pérdida inesperada de ventas (si antes había y ahora no hay nada, ni local ni remoto)
