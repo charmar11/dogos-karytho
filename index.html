@@ -5691,11 +5691,7 @@ function admCortesNavHoy(){
 function _populateCortesSemanaDropdown(){
   const sel=document.getElementById('cortes-semana-select');if(!sel)return;
   const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
-  let filtered=cortesHistory;
-  if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
-  if(!filtered.length){sel.innerHTML='<option value="">Sin datos</option>';return;}
-  const fechas=filtered.map(c=>c.fechaISO).filter(f=>f).sort();
-  const primera=fechas[0];
+  const primera=getBranchStartISO(branchFilter);
   const hoy=todayISO();
   const pDate=new Date(primera+'T12:00:00');
   let hDate=new Date(hoy+'T12:00:00');
@@ -6070,9 +6066,7 @@ function renderAdmCortes(){
   // Mes: agrupar por semana del carro
   if(admCortesPeriod==='mes'){
     const branchFilter=adminViewBranch&&adminViewBranch!=='all'?adminViewBranch:null;
-    let filtered=cortesHistory;
-    if(branchFilter)filtered=filtered.filter(c=>c.branchId===branchFilter);
-    const primeraFecha=filtered.length?filtered.map(c=>c.fechaISO).filter(f=>f).sort()[0]:null;
+    const primeraFecha=getBranchStartISO(branchFilter);
     const pDate=primeraFecha?new Date(primeraFecha+'T12:00:00'):null;
     const grupos={};
     data.forEach(c=>{
@@ -7828,6 +7822,19 @@ function toISODate(dateStr){
   const p=dateStr.split('/');
   if(p.length===3) return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
   return dateStr;
+}
+function getBranchStartISO(branchId) {
+  const bFilter = branchId && branchId !== 'all' ? branchId : null;
+  let sList = sales;
+  if(bFilter) sList = sList.filter(s => s.branchId === bFilter);
+  const sFechas = sList.map(s => toISODate(s.date)).filter(f => f).sort();
+  let cList = cortesHistory;
+  if(bFilter) cList = cList.filter(c => c.branchId === bFilter);
+  const cFechas = cList.map(c => c.fechaISO).filter(f => f).sort();
+  if(!sFechas.length && !cFechas.length) return todayISO();
+  if(!sFechas.length) return cFechas[0];
+  if(!cFechas.length) return sFechas[0];
+  return sFechas[0] < cFechas[0] ? sFechas[0] : cFechas[0];
 }
 
 function renderGastosCharts(gs, totalIngresos, totalGastos, salesFilt){
