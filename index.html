@@ -4347,8 +4347,10 @@ function fbSaveProd(){
 }
 function fbSaveSales(){
   if(!fbDb)return;
+  // BLOQUEO DE SEGURIDAD: Nunca guardar si estamos en vista consolidada o la venta no es de esta rama
+  if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
+  
   const updates={};
-  // Sincronizar los últimos 50. NUNCA resincronizar ventas que vienen de otras sucursales (branchOrigin)
   sales.slice(0,50).forEach(s=>{
     if(!s.branchOrigin) {
       updates['sales/'+s.id]=s;
@@ -4552,6 +4554,8 @@ function saveProd(){
   fbSaveProd();
 }
 function saveSales(){
+  // Solo guardar ventas locales si NO estamos en vista consolidada de Admin
+  if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
   safeStorage.setItem(SK_SALES,JSON.stringify(sales));
   fbSaveSales();
 }
@@ -6612,21 +6616,25 @@ function loadAdminBranchSelector(){
   }
 }
 
-function onAdminBranchChange(){
-  const select=document.getElementById('admin-branch-select');
-  if(!select)return;
-  adminViewBranch=select.value;
-
-  // Detach all active listeners before switching
+function detachAllAdminListeners(){
   if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
   if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
   if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
-  window._sucVentasRef=null;window._sucGastosRef=null;
-  window._gastosRef=null;window._gastosHandler=null;
-  
   if(fbDb && currentBranch && currentBranch !== 'all'){
     try{ fbDb.ref('sucursales/'+currentBranch).off(); }catch(e){}
   }
+  window._sucVentasRef=null;window._sucGastosRef=null;
+  window._gastosRef=null;window._gastosHandler=null;
+}
+
+function onAdminBranchChange(){
+  const select=document.getElementById('admin-branch-select');
+  if(!select)return;
+  const oldBranch = currentBranch;
+  adminViewBranch=select.value;
+
+  // Detach all active listeners before switching
+  detachAllAdminListeners();
 
   // Show subtle loading state on KPIs — DON'T clear data yet to avoid flash of zeros
   ['adm-r-ventas','adm-r-gastos','adm-r-neto'].forEach(id=>{
