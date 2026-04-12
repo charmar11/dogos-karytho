@@ -4262,23 +4262,22 @@ function startFbListeners(){
   getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
-    const localLength=sales.length;
-    // Si Firebase devuelve vacío pero hay ventas locales, hacer backup a Firebase
-    if(fbSales.length===0&&localLength>0){
-      fbSaveSales();
-      return;
+    const now=Date.now();
+    const fbIds=new Set(fbSales.map(s=>s.id));
+    
+    // Nueva lógica: Sincronización autoritativa
+    // Retenemos lo que está en FB + lo local que sea MUY reciente (pendiente de subir)
+    const syncedSales=[
+      ...fbSales,
+      ...sales.filter(s=>!fbIds.has(s.id) && (now-s.id < 120000)) // 2 min grace period
+    ].sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
+
+    if(syncedSales.length!==sales.length){
+      sales=syncedSales;
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     }
-    // Mezclar: mantener locales + agregar remotos que no existen localmente
-    if(fbSales.length>0){
-      const localIds=new Set(sales.map(s=>s.id));
-      const newFromRemote=fbSales.filter(s=>!localIds.has(s.id));
-      if(newFromRemote.length>0){
-        sales=[...sales,...newFromRemote].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-        safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-      }
-    }
-    // Detectar pérdida inesperada de ventas
-    if(localLength>0&&sales.length===0){
+    // Detectar pérdida inesperada de ventas (si antes había y ahora no hay nada, ni local ni remoto)
+    if(sales.length===0){
       recoverSalesFromBackup();
     }
     // Update cajero historial if open
@@ -4297,17 +4296,20 @@ function startFbListeners(){
   // Sync gastos - AGREGAR ESTE LISTENER
   getBranchRef('gastos').on('value',snap=>{
     const data=snap.val();
-    if(data){
-      const fbGastos=Object.values(data);
-      // Mezclar con locales
-      if(fbGastos.length>0){
-        const localIds=new Set((gastos||[]).map(g=>g.id));
-        const newFromRemote=fbGastos.filter(g=>!localIds.has(g.id));
-        if(newFromRemote.length>0){
-          gastos=[...(gastos||[]),...newFromRemote].sort((a,b)=>b.timestamp-a.timestamp);
-          safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-        }
-      }
+    const fbGastos=data?Object.values(data):[];
+    const now=Date.now();
+    const fbIds=new Set(fbGastos.map(g=>g.id));
+
+    // Sincronización autoritativa para gastos
+    const syncedGastos=[
+      ...fbGastos,
+      ... (gastos||[]).filter(g=>!fbIds.has(g.id) && (now-g.id < 120000))
+    ].sort((a,b)=>(b.registradoEn||b.timestamp||b.id)-(a.registradoEn||a.timestamp||a.id));
+
+    if(!gastos || syncedGastos.length!==gastos.length){
+      gastos=syncedGastos;
+      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+    }
       // Refresh CIDOP if open
       if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
       // Refresh admin if open
@@ -7680,8 +7682,7 @@ function _renderGastosContent(gs,iso){
   let salesFilt=sales;
   let perLbl='Histórico';
   if(gastosPeriod==='hoy'){
-    const dayKey=todayISO();
-    salesFilt=sales.filter(s=>toISODate(s.date)===dayKey);
+    salesFilt=sales.filter(s=>toISODate(s.date)===iso);
     const isToday=iso===todayISO();
     perLbl=isToday?'Hoy':new Date(iso+'T12:00:00').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
   } else if(gastosPeriod==='semana'){
