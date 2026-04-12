@@ -4258,47 +4258,57 @@ function startFbListeners(){
       if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
     }
   });
+  // Sync deleted_sales y deleted_gastos para reaccionar a borrados en tiempo real
+  getBranchRef('deleted_sales').on('value', snap => {
+    deletedSalesDb = new Set(Object.keys(snap.val()||{}));
+    if(sales && sales.length){
+      sales = sales.filter(s=>!deletedSalesDb.has(String(s.id)));
+      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+      if(document.getElementById('view-historial')?.classList.contains('active'))renderHistorial();
+      if(document.getElementById('admin-screen')?.classList.contains('active'))renderAdmin();
+    }
+  });
+  getBranchRef('deleted_gastos').on('value', snap => {
+    deletedGastosDb = new Set(Object.keys(snap.val()||{}));
+    if(gastos && gastos.length){
+      gastos = gastos.filter(g=>!deletedGastosDb.has(String(g.id)));
+      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
+      if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
+      if(document.getElementById('admin-screen')?.classList.contains('active')){
+         if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
+      }
+    }
+  });
+
   // Sync sales - proteger ventas locales contra pérdida de datos
   getBranchRef('sales').on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
-    // Tracked-deletions: preservar ventas locales que Firebase no tiene (limite de 50).
-    // Solo eliminar IDs borrados EXPLICITAMENTE por el usuario.
-    const deletedIds=_getDeletedIds(SK_DEL_SALES);
     const fbIdSet=new Set(fbSales.map(s=>String(s.id)));
-    const fbKept=fbSales.filter(s=>!deletedIds.has(String(s.id)));
-    const localOnly=sales.filter(s=>!fbIdSet.has(String(s.id))&&!deletedIds.has(String(s.id)));
+    const fbKept=fbSales.filter(s=>!deletedSalesDb.has(String(s.id)));
+    const localOnly=sales.filter(s=>!fbIdSet.has(String(s.id))&&!deletedSalesDb.has(String(s.id)));
     const seen=new Set();
     const syncedSales=[...fbKept,...localOnly].filter(s=>{const k=String(s.id);if(seen.has(k))return false;seen.add(k);return true;})
       .sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
     sales=syncedSales;
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-    // Detectar pérdida inesperada de ventas (si antes había y ahora no hay nada, ni local ni remoto)
-    if(sales.length===0){
-      recoverSalesFromBackup();
-    }
-    // Update cajero historial if open
+    if(sales.length===0){recoverSalesFromBackup();}
     if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
-    // Update admin panel if open
     const adminScreen=document.getElementById('admin-screen');
     if(adminScreen&&adminScreen.classList.contains('active')){
       renderAdmin();
-      // Also refresh gastos chart if that tab is open (ingresos changed)
       const gastosTab=document.getElementById('adm-tab-gastos');
       if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
     }
-    // Update goal bar in cobrar tab
     updateGoalBar();
   });
   // Sync gastos - AGREGAR ESTE LISTENER
   getBranchRef('gastos').on('value',snap=>{
     const data=snap.val();
     const fbGastos=data?Object.values(data):[];
-    // Tracked-deletions para gastos
-    const deletedGIds=_getDeletedIds(SK_DEL_GASTOS);
     const fbGIdSet=new Set(fbGastos.map(g=>String(g.id)));
-    const fbGKept=fbGastos.filter(g=>!deletedGIds.has(String(g.id)));
-    const localGOnly=(gastos||[]).filter(g=>!fbGIdSet.has(String(g.id))&&!deletedGIds.has(String(g.id)));
+    const fbGKept=fbGastos.filter(g=>!deletedGastosDb.has(String(g.id)));
+    const localGOnly=(gastos||[]).filter(g=>!fbGIdSet.has(String(g.id))&&!deletedGastosDb.has(String(g.id)));
     const seenG=new Set();
     const syncedGastos=[...fbGKept,...localGOnly].filter(g=>{const k=String(g.id);if(seenG.has(k))return false;seenG.add(k);return true;})
       .sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
@@ -4471,10 +4481,9 @@ const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
 // Rastrea IDs borrados explicitamente para sincronizacion correcta entre dispositivos
-const SK_DEL_SALES='dk_deleted_sales_v1';
-const SK_DEL_GASTOS='dk_deleted_gastos_v1';
-function _getDeletedIds(key){try{return new Set(JSON.parse(safeStorage.getItem(key))||[]);}catch{return new Set();}}
-function _addDeletedId(key,id){const s=_getDeletedIds(key);s.add(String(id));safeStorage.setItem(key,JSON.stringify([...s].slice(-200)));}
+// Sets globales cargados desde Firebase para rastrear borrados en tiempo real
+let deletedSalesDb = new Set();
+let deletedGastosDb = new Set();
 const SK_GASTO_CATS='dk_gasto_cats_v1';
 const SK_UID='dk_uid_v1';
 // Default categories — user can add/edit/delete
@@ -5629,13 +5638,13 @@ function deleteSale(id){
     // Restore inventory before removing sale
     restaurarInventario(sale);
     sales=sales.filter(s=>String(s.id)!==String(id));
-    // Solo guardamos en localStorage. NO llamamos fbSaveSales() aquí porque
-    // causa una race condition: el listener se dispara antes que fbRemoveSecure
-    // confirme el borrado y restaura la venta eliminada.
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-    // Registrar borrado para que otros dispositivos lo filtren via tracked-deletions
-    _addDeletedId(SK_DEL_SALES,id);
-    if(fbDb) fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
+    // Tracked-deletions en la nube:
+    deletedSalesDb.add(String(id));
+    if(fbDb) {
+      fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
+      fbWriteSecure(getBranchRef('deleted_sales/'+id), Date.now()).catch(()=>{});
+    }
     renderHistorial();
     logActivity('venta_del',desc);
     showToast('Venta eliminada e inventario restaurado');
@@ -7321,11 +7330,9 @@ function loadGastos(){
   window._gastosHandler=function(snap){
     const d=snap.val();
     const fbGastos=d?Object.values(d).filter(Boolean):[];
-    const now2=Date.now();
-    const delGIds2=_getDeletedIds(SK_DEL_GASTOS);
     const fbGIdSet2=new Set(fbGastos.map(g=>String(g.id)));
-    const fbGKept2=fbGastos.filter(g=>!delGIds2.has(String(g.id)));
-    const localOnly2=(gastos||[]).filter(g=>!fbGIdSet2.has(String(g.id))&&!delGIds2.has(String(g.id)));
+    const fbGKept2=fbGastos.filter(g=>!deletedGastosDb.has(String(g.id)));
+    const localOnly2=(gastos||[]).filter(g=>!fbGIdSet2.has(String(g.id))&&!deletedGastosDb.has(String(g.id)));
     const seenG2=new Set();
     gastos=[...fbGKept2,...localOnly2].filter(g=>{const k=String(g.id);if(seenG2.has(k))return false;seenG2.add(k);return true;})
       .sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
@@ -7353,10 +7360,13 @@ function loadVentasConsolidadas(){
     var allSales=[];
     keys.forEach(function(k){
       var s=data[k];
+      var delSet=new Set(Object.keys(s.deleted_sales||{}));
       var salesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
       Object.values(salesObj).forEach(function(sale){
-        sale.branchOrigin=k;
-        allSales.push(sale);
+        if(!delSet.has(String(sale.id))){
+          sale.branchOrigin=k;
+          allSales.push(sale);
+        }
       });
     });
     allSales.sort(function(a,b){return b.timestamp-a.timestamp;});
@@ -7380,10 +7390,12 @@ function loadGastosConsolidados(){
     var keys=Object.keys(data).filter(function(k){return k&&k!=='default'&&k!=='';});
     var allGastos=[];
     keys.forEach(function(branchId){
-      var branchGastos=data[branchId]&&data[branchId].gastos;
-      if(branchGastos){
-        Object.values(branchGastos).forEach(function(g){
-          if(g&&g.id){var gc=Object.assign({},g);gc._branchId=branchId;allGastos.push(gc);}
+      var branchData=data[branchId];
+      var splitGastos=branchData&&branchData.gastos;
+      var delGSet=new Set(Object.keys((branchData&&branchData.deleted_gastos)||{}));
+      if(splitGastos){
+        Object.values(splitGastos).forEach(function(g){
+          if(g&&g.id&&!delGSet.has(String(g.id))){var gc=Object.assign({},g);gc._branchId=branchId;allGastos.push(gc);}
         });
       }
     });
@@ -7409,7 +7421,7 @@ function eliminarGasto(id){
     if(adminViewBranch!=='all'){
       safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
     }
-    _addDeletedId(SK_DEL_GASTOS, id);
+    deletedGastosDb.add(String(id));
     renderGastos();
     renderCidopGastosList();
     showToast('Gasto eliminado','green');
@@ -7419,6 +7431,7 @@ function eliminarGasto(id){
       fbRemoveSecure(fbDb.ref('sucursales/'+targetBranch+'/gastos/'+id)).catch(()=>{
         showToast('Error al eliminar en Firebase','red');
       });
+      fbWriteSecure(fbDb.ref('sucursales/'+targetBranch+'/deleted_gastos/'+id), Date.now()).catch(()=>{});
     }
   });
 }
