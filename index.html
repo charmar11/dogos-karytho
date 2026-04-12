@@ -652,8 +652,8 @@ position:sticky;top:0;z-index:20;
 }
 .corte-btn:hover{border-color:rgba(245,200,0,.55);box-shadow:0 4px 24px rgba(245,200,0,.14);transform:translateY(-2px)}
 .corte-btn:active{transform:scale(.97)}
-.corte-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:400;display:flex;align-items:flex-end;justify-content:center}
-.corte-overlay.hidden{display:none}
+.corte-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:9999 !important;display:flex;align-items:flex-end;justify-content:center}
+.corte-overlay.hidden{display:none !important}
 .corte-modal{
   background:linear-gradient(180deg,#1e1e1e,#1a1a1a);
   border-radius:26px 26px 0 0;padding:22px 20px 80px;
