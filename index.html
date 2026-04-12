@@ -5642,8 +5642,9 @@ function deleteSale(id){
     // Tracked-deletions en la nube:
     deletedSalesDb.add(String(id));
     if(fbDb) {
-      fbRemoveSecure(getBranchRef('sales/'+id)).catch(()=>{});
-      fbWriteSecure(getBranchRef('deleted_sales/'+id), Date.now()).catch(()=>{});
+      const targetBranch = sale.branchOrigin || currentBranch;
+      fbRemoveSecure(fbDb.ref('sucursales/' + targetBranch + '/sales/' + id)).catch(()=>{});
+      fbWriteSecure(fbDb.ref('sucursales/' + targetBranch + '/deleted_sales/' + id), Date.now()).catch(()=>{});
     }
     renderHistorial();
     logActivity('venta_del',desc);
