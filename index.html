@@ -663,6 +663,42 @@ position:sticky;top:0;z-index:20;
   animation:slideUp .3s cubic-bezier(.32,0,.67,0);
   box-shadow:0 -8px 40px rgba(0,0,0,.5);
 }
+@media(min-width:1025px){
+  .corte-modal{
+    max-width:720px;padding:32px 30px 60px;border-radius:30px;
+  }
+  .corte-header{margin-bottom:28px}
+  .corte-logo{font-size:42px}
+  .corte-brand{font-size:26px}
+  .corte-fecha{font-size:14px}
+  .corte-section-title{font-size:12px;margin:20px 0 12px}
+  .corte-flow-row{padding:14px 18px}
+  .corte-flow-lbl{font-size:15px}
+  .corte-flow-val{font-size:16px}
+  .corte-flow-total{padding:18px 20px}
+  .corte-flow-total-lbl{font-size:15px}
+  .corte-flow-total-val{font-size:28px}
+  .corte-denom-row{padding:11px 18px}
+  .corte-denom-lbl{font-size:15px}
+  .corte-denom-input{font-size:16px;padding:9px 10px;width:80px}
+  .corte-denom-subtotal{font-size:15px}
+  .corte-moneda-row{padding:13px 18px}
+  .corte-moneda-lbl{font-size:15px}
+  .corte-moneda-input{font-size:16px;width:110px;padding:10px 12px}
+  .corte-prod-row{font-size:15px;padding:11px 0}
+  .corte-total-row{padding:20px 0}
+  .corte-total-lbl{font-size:18px}
+  .corte-total-val{font-size:38px}
+  .corte-row{padding:12px 0}
+  .corte-row-lbl{font-size:16px}
+  .corte-row-val{font-size:16px}
+  .corte-diff-box{padding:20px}
+  .corte-diff-lbl{font-size:15px}
+  .corte-diff-val{font-size:32px}
+  .btn-save-corte{padding:20px;font-size:18px}
+  .btn-excel,.btn-whatsapp{padding:18px;font-size:17px}
+  .btn-corte-close{padding:17px;font-size:16px}
+}
 .corte-header{text-align:center;margin-bottom:20px}
 .corte-logo{font-size:32px;margin-bottom:5px}
 .corte-brand{font-size:19px;font-weight:800;color:var(--gold);letter-spacing:2px;text-shadow:0 0 20px rgba(245,200,0,.25)}
@@ -2144,6 +2180,12 @@ position:sticky;top:0;z-index:20;
       <div class="corte-fecha" id="corte-fecha"></div>
     </div>
 
+    <!-- Selector de fecha -->
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 0;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-md)">
+      <label style="font-size:12px;font-weight:700;color:var(--text3)">📅 Fecha del corte:</label>
+      <input type="date" id="corte-fecha-input" style="flex:1;background:var(--bg2);border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-size:14px;font-weight:600;outline:none;-webkit-appearance:none;color-scheme:dark" onchange="onCorteFechaChange()"/>
+    </div>
+
     <!-- ── Resumen de ventas ── -->
     <div class="corte-section-title">📊 Resumen del día</div>
     <div id="corte-resumen-ventas"></div>
@@ -2163,7 +2205,7 @@ position:sticky;top:0;z-index:20;
           <span style="font-size:14px;color:var(--text3);font-weight:700">$</span>
           <input id="corte-fondo-input" type="number" inputmode="decimal" placeholder="0"
             style="width:90px;background:var(--bg2);border:1.5px solid rgba(245,200,0,.35);border-radius:8px;padding:7px 8px;color:var(--gold);font-size:15px;font-weight:800;text-align:center;outline:none;-webkit-appearance:none"
-            oninput="recalcCorte()"/>
+oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('corte-fondo-input').focus();}"/>
         </div>
       </div>
     </div>
@@ -2198,37 +2240,37 @@ position:sticky;top:0;z-index:20;
       <div class="corte-denom-row" id="cd-1000-row">
         <span class="corte-denom-lbl">$1,000</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-1000" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-1000" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-500').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-1000-sub">$0</span>
       </div>
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$500</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-500" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-500" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-200').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-500-sub">$0</span>
       </div>
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$200</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-200" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-200" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-100').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-200-sub">$0</span>
       </div>
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$100</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-100" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-100" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-50').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-100-sub">$0</span>
       </div>
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$50</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-50" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-50" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-20').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-50-sub">$0</span>
       </div>
       <div class="corte-denom-row">
         <span class="corte-denom-lbl">$20</span>
         <span class="corte-denom-x">×</span>
-        <input class="corte-denom-input" id="cd-20" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()"/>
+        <input class="corte-denom-input" id="cd-20" type="number" inputmode="numeric" min="0" placeholder="0" oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('cd-monedass').focus();}"/>
         <span class="corte-denom-subtotal" id="cd-20-sub">$0</span>
       </div>
       <!-- Morralla -->
@@ -4507,6 +4549,14 @@ function normFecha(f){
   if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
   return f;
 }
+function normalizarFecha(f){
+  if(!f)return'';
+  if(f.includes('-')){
+    const[y,m,d]=f.split('-');
+    return d+'/'+m+'/'+y;
+  }
+  return f;
+}
 function gastoEsHoy(g){return normFecha(g.fecha)===todayISO();}
 function gastoEsSemana(g){const f=normFecha(g.fecha);const{mon,sun}=getWeekRangeISO();return f>=mon&&f<=sun;}
 function gastoEsMes(g){const f=normFecha(g.fecha);const{first,last}=getMonthRangeISO();return f>=first&&f<=last;}
@@ -5004,15 +5054,15 @@ function getCidopGastosFiltrados(){
   if(!gastos) return [];
   if(cidopGastosPeriod==='dia'){
     const iso=getCidopDiaISO();
-    return gastos.filter(g=>normFecha(g.fecha)===iso).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>normalizarFecha(g.fecha)===normalizarFecha(iso)).sort((a,b)=>(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   if(cidopGastosPeriod==='semana'){
     const{mon,sun}=getCidopSemRange();
-    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=mon&&f<=sun;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>{const f=normalizarFecha(g.fecha);return f>=normalizarFecha(mon)&&f<=normalizarFecha(sun);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   if(cidopGastosPeriod==='mes'){
     const{first,last}=getCidopMesRange();
-    return gastos.filter(g=>{const f=normFecha(g.fecha);return f>=first&&f<=last;}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
+    return gastos.filter(g=>{const f=normalizarFecha(g.fecha);return f>=normalizarFecha(first)&&f<=normalizarFecha(last);}).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
   }
   return [...gastos].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b.registradoEn||b.timestamp)-(a.registradoEn||a.timestamp));
 }
@@ -5557,9 +5607,31 @@ function _saveFondoHoy(val){
 }
 
 function openCorte(){
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today),totalVentas=ps.reduce((s,v)=>s+v.total,0),now=new Date();
-  // Fecha
+  const fechaInput=document.getElementById('corte-fecha-input');
+  const defaultFecha=todayISO();
+  fechaInput.value=defaultFecha;
+  window.corteFechaSeleccionada=defaultFecha;
+  // Fecha displayed
+  const now=new Date();
   document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  _renderCortePorFecha(window.corteFechaSeleccionada);
+  document.getElementById('corte-overlay').classList.remove('hidden');
+  recalcCorte();
+}
+
+function onCorteFechaChange(){
+  const fecha=document.getElementById('corte-fecha-input').value;
+  if(!fecha)return;
+  window.corteFechaSeleccionada=fecha;
+  _renderCortePorFecha(fecha);
+  recalcCorte();
+}
+
+function _renderCortePorFecha(isoDate){
+  const dateKey=toDateKey(new Date(isoDate)); // Convert to locale format D/M/YYYY
+  const ps=sales.filter(s=>s.date===dateKey),totalVentas=ps.reduce((s,v)=>s+v.total,0),now=new Date(isoDate);
+  // Fecha displayed
+  document.getElementById('corte-fecha').textContent=now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Resumen ventas
   const avg=ps.length?totalVentas/ps.length:0;
   document.getElementById('corte-resumen-ventas').innerHTML=`
@@ -5575,36 +5647,47 @@ function openCorte(){
   const sp=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   document.getElementById('corte-productos').innerHTML=`<div class="corte-flow-box">${
     sp.length?sp.map(([name,qty])=>`<div class="corte-prod-row"><span style="color:var(--text2)">${name}</span><span style="color:var(--text3)">${qty} pzas &nbsp;<span style="color:var(--gold);font-weight:800">$${(totals[name]||0).toFixed(2)}</span></span></div>`).join('')
-    :'<div style="color:var(--text4);font-size:13px;padding:10px 14px">Sin ventas hoy</div>'
+    :'<div style="color:var(--text4);font-size:13px;padding:10px 14px">Sin ventas en esta fecha</div>'
   }</div>`;
   // Flujo: entradas y salidas
-  const todayISO_=todayISO();
-  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
-  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  const gastosDelDia=(gastos||[]).filter(g=>normalizarFecha(g.fecha)===normalizarFecha(isoDate));
+  const totalGastos=gastosDelDia.reduce((s,g)=>s+g.monto,0);
   document.getElementById('corte-entradas').textContent='$'+totalVentas.toFixed(2);
   document.getElementById('corte-salidas').textContent='−$'+totalGastos.toFixed(2);
-  // Fondo inicial
-  const fondoGuardado=_loadFondoHoy();
+  // Fondo inicial (cargar por fecha)
+  const fondoGuardado=_loadFondoPorFecha(isoDate);
   document.getElementById('corte-fondo-input').value=fondoGuardado||'';
   // Reset denominaciones
   ['1000','500','200','100','50','20'].forEach(d=>{
     const el=document.getElementById('cd-'+d);if(el)el.value='';
     const sub=document.getElementById('cd-'+d+'-sub');if(sub){sub.textContent='$0';sub.classList.remove('active');}
   });
-  const monEl=document.getElementById('cd-monedas');if(monEl)monEl.value='';
-  document.getElementById('corte-overlay').classList.remove('hidden');
-  recalcCorte();
+  const monEl=document.getElementById('cd-monedass');if(monEl)monEl.value='';
+}
+
+function _loadFondoPorFecha(isoDate){
+  const SK_FONDO='dk_fondo';
+  const _getFondoKey=()=>isoDate;
+  try{const raw=JSON.parse(safeStorage.getItem(SK_FONDO)||'{}');return parseFloat(raw[_getFondoKey()])||0;}catch{return 0;}
+}
+
+function _saveFondoPorFecha(isoDate,val){
+  const SK_FONDO='dk_fondo';
+  const _getFondoKey=()=>isoDate;
+  try{const raw=JSON.parse(safeStorage.getItem(SK_FONDO)||'{}');raw[_getFondoKey()]=val;safeStorage.setItem(SK_FONDO,JSON.stringify(raw));}catch{}
+  if(fbDb)fbWriteSecure(getBranchRef('fondo/'+_getFondoKey()),val).catch(()=>{});
 }
 
 function recalcCorte(){
-  const todayISO_=todayISO();
-  const today=toDateKey(new Date()),ps=sales.filter(s=>s.date===today);
+  const fecha=window.corteFechaSeleccionada||todayISO();
+  const dateKey=toDateKey(new Date(fecha)); // Convert to locale format D/M/YYYY
+  const ps=sales.filter(s=>s.date===dateKey);
   const totalVentas=ps.reduce((s,v)=>s+v.total,0);
-  const gastosHoy=(gastos||[]).filter(g=>normFecha(g.fecha)===todayISO_);
-  const totalGastos=gastosHoy.reduce((s,g)=>s+g.monto,0);
+  const gastosDelDia=(gastos||[]).filter(g=>normalizarFecha(g.fecha)===normalizarFecha(fecha));
+  const totalGastos=gastosDelDia.reduce((s,g)=>s+g.monto,0);
   const fondo=parseFloat(document.getElementById('corte-fondo-input').value)||0;
   // Save fondo
-  if(fondo>0)_saveFondoHoy(fondo);
+  if(fondo>0)_saveFondoPorFecha(fecha,fondo);
   const esperado=fondo+totalVentas-totalGastos;
   document.getElementById('corte-esperado').textContent='$'+esperado.toFixed(2);
   // Denominaciones
@@ -5616,7 +5699,7 @@ function recalcCorte(){
     const subEl=document.getElementById('cd-'+b+'-sub');
     if(subEl){subEl.textContent=sub>0?'$'+sub.toLocaleString('es-MX'):'$0';subEl.classList.toggle('active',sub>0);}
   });
-  const monedas=parseFloat(document.getElementById('cd-monedas')?.value)||0;
+  const monedas=parseFloat(document.getElementById('cd-monedass')?.value)||0;
   const totalContado=totalBilletes+monedas;
   document.getElementById('corte-contado').textContent='$'+totalContado.toFixed(2);
   // Diferencia
@@ -5639,6 +5722,7 @@ function recalcCorte(){
     lbl.textContent='⬇️ Faltante';sub.textContent='Hay menos dinero del esperado';
     val.textContent='−$'+Math.abs(diff).toFixed(2);
   }
+}
 }
 
 function saveCorte(){
