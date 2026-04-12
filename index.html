@@ -5161,7 +5161,8 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
         const no=editForm.querySelector('._ef-origen').value||'caja';
         if(!nd){showToast('Escribe una descripción','red');return;}
         if(!nm){showToast('Escribe el monto','red');return;}
-        if(typeof onEdit==='function') onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc,origen:no});
+        if(!onEdit){alert('onEdit es: '+onEdit);return;}
+        onEdit(g,{desc:nd,monto:nm,fecha:nf,cat:nc,origen:no});
       };
 
       wrapper.appendChild(viewRow);
