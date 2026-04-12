@@ -3805,7 +3805,8 @@ let currentUid=null;
 
 function getBranchRef(path){
   if(!fbDb)return null;
-  return fbDb.ref('sucursales/'+currentBranch+'/'+path);
+  const fullPath = 'sucursales/'+currentBranch+(path?'/'+path:'');
+  return fbDb.ref(fullPath);
 }
 
 function loadBranchId(uid){
@@ -4342,8 +4343,10 @@ function fbSaveProd(){
 function fbSaveSales(){
   if(!fbDb)return;
   const updates={};
-  sales.forEach(s=>{updates['sales/'+s.id]=s;});
-  getBranchRef().update(updates).catch(()=>{});
+  // Sincronizar los últimos 50 para asegurar consistencia sin saturar la red
+  sales.slice(0,50).forEach(s=>{updates['sales/'+s.id]=s;});
+  fbUpdateSecure(getBranchRef(),updates)
+    .catch(()=>console.warn('Sync failed: sales reserved in safeStorage'));
 }
 const SK_SALES_BACKUP='dk_sales_backup_';
 const BACKUP_TTL_DAYS=7;
@@ -5109,7 +5112,7 @@ function agregarGastoCidop(){
   document.getElementById('cidop-gasto-origen').value='caja';
   showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>{});
+    fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>showToast('?? Gasto guardado localmente (sin internet)',''));
   }
   renderCidopGastosList();
 }
@@ -11670,12 +11673,12 @@ window.createNewUser = createNewUser;
 window.openCreateUserForm = openCreateUserForm;
 
 /* ═══════════════════════════════════════════════════
-   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 11:00 AM
+   📲 REPORTE DIARIO — WhatsApp via CallMeBot — 11:59 PM
    ═══════════════════════════════════════════════════ */
 const CALLMEBOT_PHONE  = '5216442793641';
 const CALLMEBOT_APIKEY = '7519882';
-const REPORTE_HORA     = 11;
-const REPORTE_MINUTO   = 0;
+const REPORTE_HORA     = 23;
+const REPORTE_MINUTO   = 59;
 const SK_REPORTE_SENT  = 'dk_reporte_enviado';
 
 // Formatea moneda sin signo $ para evitar que Android lo interprete como variable de shell
@@ -11806,7 +11809,7 @@ async function enviarReporteWhatsApp(){
 }
 window.enviarReporteWhatsApp=enviarReporteWhatsApp;
 
-// Revisa la hora cada minuto — dispara exactamente a las 11:00 AM
+// Revisa la hora cada minuto — dispara exactamente a las 11:59 PM
 setInterval(()=>{
   const n=new Date();
   if(n.getHours()===REPORTE_HORA&&n.getMinutes()===REPORTE_MINUTO){
