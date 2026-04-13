@@ -8579,6 +8579,7 @@ function onSucBranchChange(){
   const sel=document.getElementById('suc-branch-select');
   if(sel)sucSelectedBranch=sel.value;
   loadSucursalesList();
+  if(typeof renderResumenKPIs==='function') renderResumenKPIs();
   if(typeof renderBalanceChart7d==='function') renderBalanceChart7d();
   if(typeof renderBranchComparison==='function') renderBranchComparison();
 }
