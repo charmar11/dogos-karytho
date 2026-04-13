@@ -6702,171 +6702,156 @@ function loadAdminBranchSelector(){
 }
 
 function detachAllAdminListeners(){
+  // Limpiar listeners consolidados
   if(window._sucVentasRef)try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}
   if(window._sucGastosRef)try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}
   if(window._gastosRef)try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}
-  if(fbDb && currentBranch && currentBranch !== 'all'){
-    try{ fbDb.ref('sucursales/'+currentBranch).off(); }catch(e){}
-  }
   window._sucVentasRef=null;window._sucGastosRef=null;
   window._gastosRef=null;window._gastosHandler=null;
+  
+  // Limpiar listeners de sucursal específica (startFbListeners)
+  if(typeof stopFbListeners==='function'){
+    stopFbListeners();
+  }
+  
+  // Limpiar cualquier otra referencia pendiente
+  currentBranch='default';
 }
 
 function onAdminBranchChange(){
   const select=document.getElementById('admin-branch-select');
   if(!select)return;
-  const oldBranch = currentBranch;
   adminViewBranch=select.value;
 
-  // Detach all active listeners before switching
-  detachAllAdminListeners();
+  // ============================================================
+  // Paso 1: LIMPIAR todos los listeners anteriores completamente
+  // ============================================================
+  if(typeof stopFbListeners==='function') stopFbListeners();
+  if(window._sucVentasRef){try{window._sucVentasRef.off('value',window._sucVentasHandler);}catch(e){}}
+  if(window._sucGastosRef){try{window._sucGastosRef.off('value',window._sucGastosHandler);}catch(e){}}
+  if(window._gastosRef){try{window._gastosRef.off('value',window._gastosHandler);}catch(e){}}
+  window._sucVentasRef=null;window._sucGastosRef=null;window._gastosRef=null;window._sucVentasHandler=null;window._sucGastosHandler=null;
+  
+  // Limpiar estado local
+  sales=[];gastos=[];branchStats={total_sales_money:0,total_sales_count:0};consolidatedBranchStats={total_sales_money:0,total_sales_count:0};
 
-  // Show subtle loading state on KPIs — DON'T clear data yet to avoid flash of zeros
+  // Mostrar estado de carga
   ['adm-r-ventas','adm-r-gastos','adm-r-neto'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){el.style.opacity='0.35';el.style.transition='opacity .15s';}
+    if(el){el.style.opacity='0.35';}
   });
-  
-  // Limpiar lista de ventas visual para evitar confusión mientras carga
-  const listEl = document.getElementById('adm-ventas-list');
-  if(listEl) listEl.innerHTML = '<div class="admin-empty">Cargando datos de sucursal...</div>';
+  const listEl=document.getElementById('adm-ventas-list');
+  if(listEl)listEl.innerHTML='<div class="admin-empty">Cargando datos de sucursal...</div>';
 
-  // Función helper para renderizar ventas inmediatamente
-  const renderVentasInmediato = () => {
-    const ventasTab = document.getElementById('adm-tab-ventas');
-    if(ventasTab && ventasTab.classList.contains('active')){
-      setAdminRange(adminRange || 'hoy');
+  // ============================================================
+  // Paso 2: Cargar datos inmediatos y configurar listeners según modo
+  // ============================================================
+  if(!fbDb)return;
+
+  const renderVentasInmediato=()=>{
+    const ventasTab=document.getElementById('adm-tab-ventas');
+    if(ventasTab&&ventasTab.classList.contains('active')){
+      setAdminRange(adminRange||'hoy');
     }
   };
 
   if(adminViewBranch==='all'){
+    // === MODO CONSOLIDADO (TODAS LAS SUCURSALES) ===
     currentBranch='carro1';
     fbListening=false;
-    
-    // Obtener datos inmediatos de Firebase para modo consolidado
-    if(fbDb){
-      fbDb.ref('sucursales').once('value').then(snap => {
-        const data = snap.val() || {};
-        const keys = Object.keys(data).filter(k => k && k !== 'default' && k !== '');
-        const allSales = [];
-        
-        keys.forEach(k => {
-          const s = data[k] || {};
-          const delSet = new Set(Object.keys(s.deleted_sales || {}));
-          const salesObj = (s.data || s.sales) ? (s.data || s.sales) : {};
-          Object.values(salesObj).forEach(sale => {
-            if (!delSet.has(String(sale.id))) {
-              sale.branchOrigin = k;
-              allSales.push(sale);
-            }
+
+    // Cargar ventas consolidadas inmediatamente
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const keys=Object.keys(data).filter(k=>k&&k!=='default'&&k!=='');
+      const allSales=[];
+      keys.forEach(k=>{
+        const s=data[k]||{};
+        const delSet=new Set(Object.keys(s.deleted_sales||{}));
+        const salesObj=(s.data||s.sales)?(s.data||s.sales):{};
+        Object.values(salesObj).forEach(sale=>{
+          if(!delSet.has(String(sale.id))){sale.branchOrigin=k;allSales.push(sale);}
+        });
+      });
+      sales=allSales.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+      safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
+      
+      // Calcular stats consolidados
+      let totalMoney=0,totalCount=0;
+      keys.forEach(k=>{
+        const s=data[k]||{};
+        const sStats=s.stats&&s.stats.summary?s.stats.summary:null;
+        if(sStats){totalMoney+=(sStats.total_sales_money||0);totalCount+=(sStats.total_sales_count||0);}
+      });
+      consolidatedBranchStats={total_sales_money:totalMoney,total_sales_count:totalCount};
+      renderVentasInmediato();
+    });
+
+    // Cargar gastos consolidados inmediatamente
+    fbDb.ref('sucursales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const keys=Object.keys(data).filter(k=>k&&k!=='default'&&k!=='');
+      const allGastos=[];
+      keys.forEach(branchId=>{
+        const branchData=data[branchId];
+        const splitGastos=branchData&&branchData.gastos;
+        const delGSet=new Set(Object.keys((branchData&&branchData.deleted_gastos)||{}));
+        if(splitGastos){
+          Object.values(splitGastos).forEach(g=>{
+            if(g&&g.id&&!delGSet.has(String(g.id))){const gc=Object.assign({},g);gc._branchId=branchId;allGastos.push(gc);}
           });
-        });
-        
-        sales = allSales.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
-        
-        // Calcular stats consolidados
-        let totalMoney = 0, totalCount = 0;
-        keys.forEach(k => {
-          const s = data[k] || {};
-          const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
-          if(sStats) {
-            totalMoney += (sStats.total_sales_money || 0);
-            totalCount += (sStats.total_sales_count || 0);
-          }
-        });
-        consolidatedBranchStats = { total_sales_money: totalMoney, total_sales_count: totalCount };
-        
-        renderVentasInmediato();
+        }
       });
-      
-      // También cargar gastos consolidados inmediatamente
-      fbDb.ref('sucursales').once('value').then(snap => {
-        const data = snap.val() || {};
-        const keys = Object.keys(data).filter(k => k && k !== 'default' && k !== '');
-        const allGastos = [];
-        
-        keys.forEach(branchId => {
-          const branchData = data[branchId];
-          const splitGastos = branchData && branchData.gastos;
-          const delGSet = new Set(Object.keys((branchData && branchData.deleted_gastos) || {}));
-          if(splitGastos){
-            Object.values(splitGastos).forEach(g => {
-              if(g && g.id && !delGSet.has(String(g.id))) {
-                const gc = Object.assign({}, g);
-                gc._branchId = branchId;
-                allGastos.push(gc);
-              }
-            });
-          }
-        });
-        
-        gastos = allGastos.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        renderGastos();
-      });
-      
-      // Configurar listeners para actualizaciones en tiempo real
-      if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
-      if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
-    }
-  } else {
+      gastos=allGastos.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+      renderGastos();
+    });
+
+    // Configurar SOLO listeners consolidados (no llamar a startFbListeners!)
+    loadVentasConsolidadas();
+    loadGastosConsolidados();
+    
+  }else{
+    // === MODO SUCURSAL ESPECÍFICA ===
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[]; gastos=[];
     safeStorage.removeItem('dk_sales_v3');
     safeStorage.removeItem('dk_gastos_v1');
-    
-    // Obtener datos inmediatos de Firebase para la sucursal específica
-    if(fbDb){
-      const targetBranch = adminViewBranch;
-      
-      // Cargar ventas inmediatamente
-      fbDb.ref('sucursales/' + targetBranch + '/sales').once('value').then(snap => {
-        const data = snap.val() || {};
-        const delSet = new Set(Object.keys(data.deleted_sales || {}));
-        sales = Object.values(data).filter(s => s && !delSet.has(String(s.id)))
-          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
-        renderVentasInmediato();
-      }).catch(() => {
-        sales = [];
-        renderVentasInmediato();
-      });
-      
-      // Cargar gastos inmediatamente
-      fbDb.ref('sucursales/' + targetBranch + '/gastos').once('value').then(snap => {
-        const data = snap.val() || {};
-        const delSet = new Set(Object.keys(data.deleted_gastos || {}));
-        gastos = Object.values(data).filter(g => g && g.id && !delSet.has(String(g.id)))
-          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        safeStorage.setItem(getGastosKey(), JSON.stringify(gastos));
-        renderGastos();
-      }).catch(() => {
-        gastos = [];
-        renderGastos();
-      });
-      
-      // Cargar stats inmediatamente
-      fbDb.ref('sucursales/' + targetBranch + '/stats/summary').once('value').then(snap => {
-        branchStats = snap.val() || { total_sales_money: 0, total_sales_count: 0 };
-      }).catch(() => {
-        branchStats = { total_sales_money: 0, total_sales_count: 0 };
-      });
-      
-      // Configurar listeners para actualizaciones en tiempo real
-      if(typeof startFbListeners==='function') startFbListeners();
-      if(typeof loadGastos==='function') loadGastos();
-    }
-  }
-  
-  // renderAdmin() se llama automáticamente cuando llegan los datos de los listeners
-  // Esto previene el flash de ceros mientras carga
 
-  // Reload users tab if open
-  const usuariosTab=document.getElementById('adm-tab-usuarios');
-  if(usuariosTab&&usuariosTab.classList.contains('active')){
-    loadUsersForAdmin();
+    // Cargar ventas de la sucursal específica inmediatamente
+    fbDb.ref('sucursales/'+adminViewBranch+'/sales').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const delSet=new Set(Object.keys(data.deleted_sales||{}));
+      sales=Object.values(data).filter(s=>s&&!delSet.has(String(s.id)))
+        .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+      safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
+      renderVentasInmediato();
+    }).catch(()=>{sales=[];renderVentasInmediato();});
+
+    // Cargar gastos de la sucursal específica inmediatamente
+    fbDb.ref('sucursales/'+adminViewBranch+'/gastos').once('value').then(snap=>{
+      const data=snap.val()||{};
+      const delSet=new Set(Object.keys(data.deleted_gastos||{}));
+      gastos=Object.values(data).filter(g=>g&&g.id&&!delSet.has(String(g.id)))
+        .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+      safeStorage.setItem(getGastosKey(),JSON.stringify(gastos));
+      renderGastos();
+    }).catch(()=>{gastos=[];renderGastos();});
+
+    // Cargar stats de la sucursal específica inmediatamente
+    fbDb.ref('sucursales/'+adminViewBranch+'/stats/summary').once('value').then(snap=>{
+      branchStats=snap.val()||{total_sales_money:0,total_sales_count:0};
+    }).catch(()=>{branchStats={total_sales_money:0,total_sales_count:0};});
+
+    // Configurar SOLO listeners de sucursal específica
+    startFbListeners();
+    loadGastos();
   }
+
+  // ============================================================
+  // Paso 3: Renderizar otras vistas si están activas
+  // ============================================================
+  const usuariosTab=document.getElementById('adm-tab-usuarios');
+  if(usuariosTab&&usuariosTab.classList.contains('active')){loadUsersForAdmin();}
 }
 
 function bootAdmin(){
