@@ -3804,7 +3804,11 @@ let currentUid=null;
 
 function getBranchRef(path){
   if(!fbDb)return null;
-  const fullPath = 'sucursales/'+currentBranch+(path?'/'+path:'');
+  // Si estamos en modo Admin y hay una sucursal seleccionada manualmente para ver,
+  // usamos esa. Si no, usamos la sucursal asignada al usuario (currentBranch).
+  const target = (typeof adminViewBranch !== 'undefined' && adminViewBranch === 'branch' && sucSelectedBranch) 
+                 ? sucSelectedBranch : currentBranch;
+  const fullPath = 'sucursales/'+target+(path?'/'+path:'');
   return fbDb.ref(fullPath);
 }
 
@@ -8578,8 +8582,13 @@ function setSucView(mode){
 function onSucBranchChange(){
   const sel=document.getElementById('suc-branch-select');
   if(sel)sucSelectedBranch=sel.value;
+  
+  // REINICIO PROFUNDO: 
+  // Desconectamos los oyentes de la sucursal anterior y conectamos los de la nueva.
+  // Esto refrescará Ventas, Gastos y KPIs automáticamente gracias a refreshActiveViews()
+  if (typeof startFbListeners === 'function') startFbListeners();
+  
   loadSucursalesList();
-  if(typeof renderResumenKPIs==='function') renderResumenKPIs();
   if(typeof renderBalanceChart7d==='function') renderBalanceChart7d();
   if(typeof renderBranchComparison==='function') renderBranchComparison();
 }
