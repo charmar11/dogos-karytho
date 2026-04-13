@@ -3820,10 +3820,35 @@ function getBranchRef(path){
 function updateBranchStats(amount, countChange) {
   if (!fbDb || !currentBranch || currentBranch === 'all') return;
   const statsRef = fbDb.ref('sucursales/' + currentBranch + '/stats/summary');
+  const today = todayISO();
+  const currentMonth = today.slice(0, 7);
+  
   statsRef.transaction(current => {
     if (!current) current = { total_sales_money: 0, total_sales_count: 0 };
+    
+    // Auto-reset de contadores diarios si cambió el día
+    if (current.last_date !== today) {
+      current.today_sales_money = 0;
+      current.today_sales_count = 0;
+      current.last_date = today;
+    }
+    
+    // Auto-reset de contadores mensuales si cambió el mes
+    if (current.last_month !== currentMonth) {
+      current.month_sales_money = 0;
+      current.month_sales_count = 0;
+      current.last_month = currentMonth;
+    }
+
     current.total_sales_money = (current.total_sales_money || 0) + amount;
     current.total_sales_count = (current.total_sales_count || 0) + countChange;
+    
+    current.today_sales_money = (current.today_sales_money || 0) + amount;
+    current.today_sales_count = (current.today_sales_count || 0) + countChange;
+    
+    current.month_sales_money = (current.month_sales_money || 0) + amount;
+    current.month_sales_count = (current.month_sales_count || 0) + countChange;
+
     return current;
   });
 }
@@ -7038,19 +7063,17 @@ function renderBalanceChart7d(){
   }).catch(e=>{console.log('Error chart',e);});
 }
 
-function renderBranchComparison(){
-  const grid=document.getElementById('adm-branch-compare-grid');
+function renderComparisonGrid(){
+  const grid=document.getElementById('adm-comparison-grid');
   if(!grid)return;
-  if(typeof sucViewMode === 'undefined' || sucViewMode!=='all'){return;}
-  if(!fbDb){return;}
-  const today=todayISO();
   const medals=['🥇','🥈','🥉'];
+  
+  // Optimizacion: Usar stats pre-calculados para velocidad y ahorro de datos
   fbDb.ref('sucursales').once('value').then(snap=>{
     const data=snap.val()||{};
     const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
     if(keys.length<2){grid.innerHTML='';return;}
     let results=[];
-    const currentMonth = todayISO().slice(0, 7);
     keys.forEach(bid=>{
       const s=data[bid];
       const salesArr=Object.values(s&&(s.data||s.sales)?(s.data||s.sales):{});
