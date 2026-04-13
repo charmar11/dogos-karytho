@@ -4418,8 +4418,11 @@ function fbSaveProd(){
 }
 function fbSaveSales(){
   if(!fbDb)return;
-  // BLOQUEO DE SEGURIDAD: Nunca guardar si estamos en vista consolidada o la venta no es de esta rama
-  if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
+  // BLOQUEO DE SEGURIDAD: Solo blockear si el usuario ES Admin Y está en modo consolidado
+  // Los usuarios normales (CIDOP/picker) siempre deben guardar sus ventas
+  const myRole=safeStorage.getItem(SK_ROLE);
+  const isAdmin=(myRole==='admin' || myRole==='eventos');
+  if(isAdmin && typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
   
   const updates={};
   sales.slice(0,200).forEach(s=>{
@@ -4633,8 +4636,10 @@ function saveProd(){
   fbSaveProd();
 }
 function saveSales(){
-  // Solo guardar ventas locales si NO estamos en vista consolidada de Admin
-  if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
+  // Solo blockear si el usuario ES Admin Y está en modo consolidado
+  const myRole=safeStorage.getItem(SK_ROLE);
+  const isAdmin=(myRole==='admin' || myRole==='eventos');
+  if(isAdmin && typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
   safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
   fbSaveSales();
 }
