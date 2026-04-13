@@ -6824,6 +6824,7 @@ function renderResumenKPIs(){
       const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
       let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
       let hVentas=0, hGastos=0;
+      let totalDailyGoal=0, totalHGoal=0;
       
       keys.forEach(k=>{
         const s=data[k];
@@ -6833,21 +6834,20 @@ function renderResumenKPIs(){
         
         // Priorizar el contador atómico del nodo 'stats' para el total histórico
         const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
-        if(sStats) {
-           hVentas += (sStats.total_sales_money || 0);
-           // Nota: hVentas es acumulado histórico, para el KPI neto y demás
-        }
-        
-        const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
+        if(sStats) hVentas += (sStats.total_sales_money || 0);
+
+        let sDates=new Set();
+        let sHasSalesToday=false;
         Object.values(sSalesObj).forEach(v=>{
           if(!v)return;
           const vDate=toISODate(v.date);
           const vTotal=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
-          if(vDate===today){ tVentas+=vTotal; tTickets++; }
+          if(vDate===today){ tVentas+=vTotal; tTickets++; sHasSalesToday=true; }
+          if(vDate.startsWith(currentMonth)) {
+            if(!sStats) hVentas+=vTotal; // Fallback si no hay stats
+            sDates.add(vDate);
+          }
         });
-        
-        // Sumar al total histórico consolidado (hTickets no se usaba antes pero lo sumamos si fuera necesario)
-        // Nota: sTotalMoney ya es histórico, no necesitamos recalcularlo de salesObj si existe sStats
         
         Object.values(sGasObj).forEach(g=>{
           if(!g)return;
