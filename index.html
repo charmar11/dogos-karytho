@@ -4258,47 +4258,54 @@ function clearDailyGoal(){
   }
 }
 
+let fbListening=false;
+let branchStats = { total_sales_money: 0, total_sales_count: 0 };
+let activeListeners = []; // Para limpieza de memoria y evitar duplicados
+
+function stopFbListeners() {
+  if (activeListeners && activeListeners.length > 0) {
+    activeListeners.forEach(ref => {
+      try { ref.off(); } catch(e) {}
+    });
+  }
+  activeListeners = [];
+  fbListening = false;
+}
+
 function startFbListeners(){
-  if(!fbDb||fbListening)return;
+  if(!fbDb) return;
+  // SIEMPRE apagar antes de encender para asegurar el contexto correcto de currentBranch
+  stopFbListeners();
   fbListening=true;
-  // Sync products
-  getBranchRef('products').on('value',snap=>{
-    const data=snap.val();
-    if(data){
-      products=Object.values(data);
-      nextId=products.reduce((m,p)=>Math.max(m,p.id),99)+1;
-      renderGrid();renderFavStrip();
-      if(document.getElementById('view-productos')?.classList.contains('active'))renderProdAdmin();
-      // Also refresh inventory recipes if inventory screen is open
-      if(document.getElementById('inv-screen')?.classList.contains('active'))renderInvRecipes();
-    }
+
+  // Limpiar estado local para la entrada limpia a la sucursal
+  sales = [];
+  gastos = [];
+  branchStats = { total_sales_money: 0, total_sales_count: 0 };
+
+  // Listener de estadísticas atómicas
+  const statsRef = getBranchRef('stats/summary');
+  statsRef.on('value', snap => {
+    branchStats = snap.val() || { total_sales_money: 0, total_sales_count: 0 };
+    refreshActiveViews();
   });
-  // Sync deleted_sales y deleted_gastos para reaccionar a borrados en tiempo real
-  getBranchRef('deleted_sales').on('value', snap => {
+  activeListeners.push(statsRef);
+
+  // Sync deleted_sales
+  const delSalesRef = getBranchRef('deleted_sales');
+  delSalesRef.on('value', snap => {
     deletedSalesDb = new Set(Object.keys(snap.val()||{}));
     if(sales && sales.length){
       sales = sales.filter(s=>!deletedSalesDb.has(String(s.id)));
       safeStorage.setItem(SK_SALES,JSON.stringify(sales));
-      if(document.getElementById('view-historial')?.classList.contains('active'))renderHistorial();
-      if(document.getElementById('admin-screen')?.classList.contains('active'))renderAdmin();
+      refreshActiveViews();
     }
   });
-  getBranchRef('deleted_gastos').on('value', snap => {
-    deletedGastosDb = new Set(Object.keys(snap.val()||{}));
-    if(gastos && gastos.length){
-      gastos = gastos.filter(g=>!deletedGastosDb.has(String(g.id)));
-      safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-      if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
-      if(document.getElementById('admin-screen')?.classList.contains('active')){
-         if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
-      }
-    }
-  });
+  activeListeners.push(delSalesRef);
 
-  // Sync sales - proteger ventas locales contra pérdida de datos
+  // Sync sales - LAZY LOADING
   const salesRef = getBranchRef('sales');
-  // LAZY LOADING: Solo escuchamos los últimos 1000 registros para mantener la app ligera
-  salesRef.limitToLast(1000).on('value',snap=>{
+  salesRef.limitToLast(800).on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
     const fbIdSet=new Set(fbSales.map(s=>String(s.id)));
@@ -4306,21 +4313,17 @@ function startFbListeners(){
     const localOnly=sales.filter(s=>!fbIdSet.has(String(s.id))&&!deletedSalesDb.has(String(s.id)));
     const seen=new Set();
     const syncedSales=[...fbKept,...localOnly].filter(s=>{const k=String(s.id);if(seen.has(k))return false;seen.add(k);return true;})
-      .sort((a,b)=>(b.timestamp?new Date(b.timestamp):b.id)-(a.timestamp?new Date(a.timestamp):a.id));
+      .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     sales=syncedSales;
     safeStorage.setItem(SK_SALES,JSON.stringify(sales));
     if(sales.length===0){recoverSalesFromBackup();}
-    if(document.getElementById('view-historial')&&document.getElementById('view-historial').classList.contains('active'))renderHistorial();
-    const adminScreen=document.getElementById('admin-screen');
-    if(adminScreen&&adminScreen.classList.contains('active')){
-      renderAdmin();
-      const gastosTab=document.getElementById('adm-tab-gastos');
-      if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
-    }
-    updateGoalBar();
+    refreshActiveViews();
   });
-  // Sync gastos - AGREGAR ESTE LISTENER
-  getBranchRef('gastos').on('value',snap=>{
+  activeListeners.push(salesRef);
+
+  // Sync gastos
+  const gRef = getBranchRef('gastos');
+  gRef.on('value',snap=>{
     const data=snap.val();
     const fbGastos=data?Object.values(data):[];
     const fbGIdSet=new Set(fbGastos.map(g=>String(g.id)));
@@ -4328,33 +4331,38 @@ function startFbListeners(){
     const localGOnly=(gastos||[]).filter(g=>!fbGIdSet.has(String(g.id))&&!deletedGastosDb.has(String(g.id)));
     const seenG=new Set();
     const syncedGastos=[...fbGKept,...localGOnly].filter(g=>{const k=String(g.id);if(seenG.has(k))return false;seenG.add(k);return true;})
-      .sort((a,b)=>(b.registradoEn||b.timestamp||0)-(a.registradoEn||a.timestamp||0));
+      .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     gastos=syncedGastos;
     safeStorage.setItem('dk_gastos_'+currentBranch,JSON.stringify(gastos));
-      // Refresh CIDOP if open
-      if(document.getElementById('cidop-gastos-list'))renderCidopGastosList();
-      // Refresh admin if open
-      const adminScreen=document.getElementById('admin-screen');
-      if(adminScreen&&adminScreen.classList.contains('active')){
-        const gastosTab=document.getElementById('adm-tab-gastos');
-        if(gastosTab&&gastosTab.classList.contains('active')) renderGastos();
-      }
+    refreshActiveViews();
   });
-  // Sync daily goal config from Firebase (override localStorage if found)
-  getBranchRef('config/daily_goal').on('value',snap=>{
+  activeListeners.push(gRef);
+
+  // Sync daily goal
+  const goalRef = getBranchRef('config/daily_goal');
+  goalRef.on('value',snap=>{
     const v=snap.val();
     if(v&&typeof v==='number'&&v>0){
       safeStorage.setItem(SK_DAILY_GOAL,String(v));
       _applyGoal(v);
-    } else {
-      // Only clear if Firebase explicitly has null (goal was deleted from admin)
-      if(snap.exists()===false){
-        safeStorage.removeItem(SK_DAILY_GOAL);
-        _applyGoal(0);
-      }
-      // If Firebase has nothing yet, keep localStorage value
     }
   });
+  activeListeners.push(goalRef);
+}
+
+/**
+ * Función central de reactividad: Refresca solo lo que está visible
+ */
+function refreshActiveViews() {
+  if(document.getElementById('view-historial')?.classList.contains('active')) renderHistorial();
+  if(document.getElementById('view-cobrar')?.classList.contains('active')) renderPOS();
+  const adminScreen=document.getElementById('admin-screen');
+  if(adminScreen && adminScreen.classList.contains('active')){
+    renderAdmin();
+    if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
+    if(document.getElementById('adm-tab-stats')?.classList.contains('active')) renderResumenKPIs();
+  }
+  updateGoalBar();
 }
 
 function fbSaveProd(){
@@ -6811,43 +6819,37 @@ let admBalanceChart7d=null;
 function renderResumenKPIs(){
   const today=todayISO();
   const currentMonth=today.slice(0,7); // "YYYY-MM"
+  
   if(adminViewBranch==='all' && fbDb){
-    Promise.all([
-      fbDb.ref('sucursales').once('value'),
-      fbDb.ref('cidop/gastos').once('value')
-    ]).then(([snap, cidopSnap])=>{
+    fbDb.ref('sucursales').once('value').then(snap=>{
       const data=snap.val()||{};
-      const cidopData=cidopSnap.val()||{};
       const keys=Object.keys(data).filter(k=>k!=='default'&&k!=='');
       let tVentas=0, tGastos=0, tTickets=0, tGasRegs=0;
       let hVentas=0, hGastos=0;
-      let totalDailyGoal=0, totalHGoal=0;
+      
       keys.forEach(k=>{
         const s=data[k];
         const sDailyGoal=(s.config&&s.config.daily_goal)?s.config.daily_goal : dailyGoal;
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
         
-        // Cargar desde Contadores Atómicos (Stats) si existen, si no, fallback al conteo manual
+        // Priorizar el contador atómico del nodo 'stats' para el total histórico
         const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
-        const sTotalMoney = sStats ? sStats.total_sales_money : 0;
-        const sTotalCount = sStats ? sStats.total_sales_count : 0;
-
-        let sDates=new Set();
-        let sHasSalesToday=false;
+        if(sStats) {
+           hVentas += (sStats.total_sales_money || 0);
+           // Nota: hVentas es acumulado histórico, para el KPI neto y demás
+        }
+        
+        const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         Object.values(sSalesObj).forEach(v=>{
           if(!v)return;
           const vDate=toISODate(v.date);
           const vTotal=(typeof v.total==='number')?v.total:(parseFloat(v.total)||0);
-          if(vDate===today){tVentas+=vTotal; tTickets++; sHasSalesToday=true;}
-          if(vDate.startsWith(currentMonth)){
-            hVentas+=vTotal;
-            sDates.add(vDate);
-          }
+          if(vDate===today){ tVentas+=vTotal; tTickets++; }
         });
         
-        // Si no hay stats (sucursal vieja), usamos el conteo manual del mes o histórico local
-        // Nota: hVentas y hGastos siguen siendo mensuales para el dashboard
+        // Sumar al total histórico consolidado (hTickets no se usaba antes pero lo sumamos si fuera necesario)
+        // Nota: sTotalMoney ya es histórico, no necesitamos recalcularlo de salesObj si existe sStats
         
         Object.values(sGasObj).forEach(g=>{
           if(!g)return;
@@ -8603,18 +8605,20 @@ function renderSucursalCard(k,s,isCurrent){
     const salesRaw=s&&(s.data||s.sales);
     const salesData=isValidObject(salesRaw)?salesRaw:{};
     const prodData=isValidObject(s)?(s.products||{}):{};
-    const salesKeys=safeGetKeys(salesData);
-    const prodKeys=safeGetKeys(prodData);
-    const salesCount=salesKeys.length;
-    const productos=prodKeys.length;
+    // OPTIMIZACIÓN: Usar contadores atómicos (stats) para velocidad instantánea en el Dashboard
+    const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
+    const salesCount = sStats ? (sStats.total_sales_count || 0) : safeGetKeys(isValidObject(salesRaw)?salesRaw:{}).length;
+    const totalVentas = sStats ? (sStats.total_sales_money || 0) : 0;
     
-    let totalVentas=0;
-    safeGetValues(salesData).forEach(function(sale){
-      try{
-        if(sale&&typeof sale.total==='number')totalVentas+=sale.total;
-        else if(sale&&sale.total)totalVentas+=parseFloat(sale.total)||0;
-      }catch(e){}
-    });
+    // Fallback manual solo si stats no existe (sucursales antiguas)
+    if (!sStats) {
+      safeGetValues(salesData).forEach(function(sale){
+        try{
+          if(sale&&typeof sale.total==='number')totalVentas+=sale.total;
+          else if(sale&&sale.total)totalVentas+=parseFloat(sale.total)||0;
+        }catch(e){}
+      });
+    }
     
     return '<div class="form-card" style="padding:16px">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
@@ -8657,6 +8661,9 @@ function loadSucursalesList(){
       var data=isValidObject(rawData)?rawData:{};
       var allKeys=safeGetKeys(data);
       var keys=allKeys.filter(function(k){return k&&k!=='default';});
+      
+      // OPTIMIZACIÓN: En lugar de procesar 'sales' masivas aquí,
+      // la función renderSucursalCard usará el nuevo nodo 'stats/summary' para velocidad instantánea
       
       if(keys.length===0){
         list.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Sin sucursales</div><div style="font-size:12px">Crea tu primera sucursal con el botón de arriba</div></div>';
