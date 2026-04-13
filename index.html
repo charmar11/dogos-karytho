@@ -4156,7 +4156,7 @@ function setFbStatus(s){
 /* ─── DAILY GOAL ─── */
 let dailyGoal=0; // 0 = not set
 let admGoalsCache={}; // Cache metas por sucursal para evitar desaparicion al cargar
-const SK_DAILY_GOAL='dg_daily_goal';
+const getGoalKey=()=>'dg_daily_goal_v4_'+currentBranch;
 
 function getTodaySalesTotal(){
   const today=todayISO();
@@ -4242,7 +4242,7 @@ function saveDailyGoal(){
   const v=parseFloat(document.getElementById('adm-goal-input')?.value)||0;
   if(!v||v<=0){showToast('Escribe una meta válida','red');return;}
   // Save to localStorage first (instant, works offline)
-  safeStorage.setItem(SK_DAILY_GOAL,String(v));
+  safeStorage.setItem(getGoalKey(),String(v));
   _applyGoal(v);
   showToast('Meta guardada: $'+v.toFixed(2),'green');
   // Also push to Firebase so other devices sync
@@ -4299,7 +4299,7 @@ function startFbListeners(){
     deletedSalesDb = new Set(Object.keys(snap.val()||{}));
     if(sales && sales.length){
       sales = sales.filter(s=>!deletedSalesDb.has(String(s.id)));
-      safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+      safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
       refreshActiveViews();
     }
   });
@@ -4317,7 +4317,7 @@ function startFbListeners(){
     const syncedSales=[...fbKept,...localOnly].filter(s=>{const k=String(s.id);if(seen.has(k))return false;seen.add(k);return true;})
       .sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     sales=syncedSales;
-    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
     if(sales.length===0){recoverSalesFromBackup();}
     refreshActiveViews();
   });
@@ -4517,12 +4517,12 @@ function renderActivityLog(){
 const SK_PROD='dk_products_v3',SK_SALES='dk_sales_v3',SK_FAVS='dk_favs_v1';
 const SK_INV_PAUSA='dk_inv_pausa_v1';
 const SK_GASTOS='dk_gastos_v1';
-// Rastrea IDs borrados explicitamente para sincronizacion correcta entre dispositivos
-// Sets globales cargados desde Firebase para rastrear borrados en tiempo real
-let deletedSalesDb = new Set();
-let deletedGastosDb = new Set();
 const SK_GASTO_CATS='dk_gasto_cats_v1';
 const SK_UID='dk_uid_v1';
+
+// Claves dinámicas para aislamiento total entre sucursales
+const getSalesKey=()=>SK_SALES+'_'+currentBranch;
+const getGastosKey=()=>SK_GASTOS+'_'+currentBranch;
 // Default categories — user can add/edit/delete
 const DEFAULT_GASTO_CATS=[];
 let gastoCats=[];
@@ -4575,7 +4575,8 @@ let toastTimer=null,chartInstance=null;
 /* ─── Local storage load/save (cache layer) ─── */
 function load(){
   try{products=JSON.parse(safeStorage.getItem(SK_PROD))||JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));}catch{products=JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));}
-  try{sales=JSON.parse(safeStorage.getItem(SK_SALES))||[];}catch{sales=[];}
+  try{sales=JSON.parse(safeStorage.getItem(getSalesKey()))||[];}catch{sales=[];}
+  try{gastos=JSON.parse(safeStorage.getItem(getGastosKey()))||[];}catch{gastos=[];}
   try{favorites=JSON.parse(safeStorage.getItem(SK_FAVS))||[];}catch{favorites=[];}
   nextId=products.reduce((m,p)=>Math.max(m,p.id),99)+1;
 }
@@ -4586,7 +4587,7 @@ function saveProd(){
 function saveSales(){
   // Solo guardar ventas locales si NO estamos en vista consolidada de Admin
   if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
-  safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+  safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
   fbSaveSales();
 }
 const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
@@ -6747,7 +6748,7 @@ function bootAdmin(){
 
       if(localSalesDirty){
         sales=sales.filter(s=>!seen.has(String(s.id)) || !toDelete[currentBranch]?.hasOwnProperty('sales/'+s.id));
-        safeStorage.setItem(SK_SALES, JSON.stringify(sales));
+        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
         renderAdmin();
       }
     }).catch(()=>{});
