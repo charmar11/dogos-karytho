@@ -4361,6 +4361,7 @@ function refreshActiveViews() {
   const adminScreen=document.getElementById('admin-screen');
   if(adminScreen && adminScreen.classList.contains('active')){
     renderAdmin();
+    if(document.getElementById('adm-tab-ventas')?.classList.contains('active')) setAdminRange(adminRange || 'hoy');
     if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
     if(document.getElementById('adm-tab-stats')?.classList.contains('active')) renderResumenKPIs();
   }
