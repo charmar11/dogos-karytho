@@ -5,9 +5,11 @@
 <!-- v2.1 - Sucursales module -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#E02020">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Dogos Karytho">
+<link rel="manifest" href="manifest.json">
 <title>Dogos Karytho</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -3009,6 +3011,15 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
         <option value="">Selecciona una sucursal...</option>
       </select>
     </div>
+
+    <!-- Herramientas de Infraestructura -->
+    <div style="margin-bottom:20px;padding:14px;background:rgba(245,200,0,.04);border:1.5px dashed rgba(245,200,0,.2);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:15px">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:800;color:var(--gold)">🛠️ Sincronización de Totales</div>
+        <div style="font-size:10px;color:var(--text4);margin-top:2px">Usa esto si el "Histórico" de arriba no coincide.</div>
+      </div>
+      <button onclick="recalculateAllTotals()" style="background:var(--gold);color:#111;border:none;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:800;cursor:pointer">Sincronizar</button>
+    </div>
     
     <!-- Visualizaciones Consolidadas -->
     <div id="suc-consolidated-visuals" style="display:none;margin-bottom:16px;">
@@ -3363,7 +3374,50 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
 
 <div class="toast" id="toast"></div>
 
-<script>
+<!-- PWA Install Banner -->
+<div id="pwa-install-banner" class="hidden" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1.5px solid var(--gold);border-radius:18px;padding:12px 20px;display:flex;align-items:center;gap:15px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:10000;animation:slideUp .4s ease">
+  <div style="font-size:20px">?</div>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:800;color:var(--text)">Instalar App</div>
+    <div style="font-size:11px;color:var(--text2)">Usa Dogos Karytho como una app nativa</div>
+  </div>
+  <button id="btn-pwa-install" style="background:var(--gold);color:#111;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">Instalar</button>
+  <button onclick="document.getElementById('pwa-install-banner').classList.add('hidden')" style="background:transparent;border:none;color:var(--text4);font-size:18px;cursor:pointer">✕</button>
+</div>
+
+
+/* ─── PWA: Manifest + Service Worker ─── */
+let deferredPrompt;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('✅ Service Worker registrado'))
+      .catch(err => console.error('❌ Error SW:', err));
+  });
+}
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Solo mostrar si no estamos ya en modo standalone
+  if (!window.matchMedia('(display-mode: standalone)').matches) {
+    document.getElementById('pwa-install-banner').classList.remove('hidden');
+  }
+});
+document.getElementById('btn-pwa-install')?.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to install prompt: ${outcome}`);
+    deferredPrompt = null;
+    document.getElementById('pwa-install-banner').classList.add('hidden');
+  }
+});
+
+/* ── CONFIGURACIÓN GLOBAL ── */
+const CORP_DOMAIN = '@karytho.com';
+/** Sanitizador de HTML para prevención de XSS */
+const h = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
 /* ─── PWA: Manifest + Service Worker inline ─── */
 (function(){
   const manifest={
@@ -3465,15 +3519,15 @@ function renderFirebaseUsersList(){
         const roleColor=u.role==='admin'?'var(--gold)':u.role==='eventos'?'var(--green)':'var(--text3)';
         html+=`
           <div class="user-mgr-card" style="animation-delay:${i*.04}s">
-            <div class="user-mgr-avatar" title="${u.name||'Usuario'}">
+            <div class="user-mgr-avatar" title="${h(u.name||'Usuario')}">
               <span class="avatar-letter">${(u.name||'?').charAt(0).toUpperCase()}</span>
             </div>
             <div class="user-mgr-info">
-              <div class="user-mgr-name">${u.name||'Sin nombre'}</div>
+              <div class="user-mgr-name">${h(u.name||'Sin nombre')}</div>
               <div class="user-mgr-sub" style="color:${roleColor}">${roleLabel} · ${u.branchId||'Sin sucursal'}</div>
             </div>
             <div class="user-mgr-actions">
-              <button class="btn-usr-del" title="Eliminar" onclick="deleteFirebaseUser('${u.uid}','${u.name}')">✕</button>
+              <button class="btn-usr-del" title="Eliminar" onclick="deleteFirebaseUser('${u.uid}','${h(u.name)}')">✕</button>
             </div>
           </div>
         `;
@@ -3537,7 +3591,7 @@ function loginWithFirebase(user,pass,cb){
   
   // CIDOP va al picker (sin cuenta)
   if(user.toUpperCase()==='CIDOP'){
-    auth.signInWithEmailAndPassword('cidop@karytho.com',pass)
+    auth.signInWithEmailAndPassword('cidop' + CORP_DOMAIN, pass)
       .then(cred=>{
         const uid=cred.user.uid;
         currentUid=uid;
@@ -3560,8 +3614,8 @@ function loginWithFirebase(user,pass,cb){
   
   // ADMIN y EVENTOS van directo
   const specialEmails={
-    'ADMIN':'admin@karytho.com',
-    'EVENTOS':'eventos@karytho.com'
+    'ADMIN': 'admin' + CORP_DOMAIN,
+    'EVENTOS': 'eventos' + CORP_DOMAIN
   };
   const specialEmail=specialEmails[user.toUpperCase()];
   
@@ -3590,7 +3644,7 @@ function loginWithFirebase(user,pass,cb){
   // Autenticar primero, luego leer perfil (evita query anonima bloqueada por reglas DB)
   const autoEmail=user.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/\s+/g,'.').replace(/[^a-z0-9.]/g,'')+'@karytho.com';
+    .replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '') + CORP_DOMAIN;
 
   auth.signInWithEmailAndPassword(autoEmail,pass)
     .then(cred=>{
@@ -3809,6 +3863,22 @@ function getBranchRef(path){
   return fbDb.ref(fullPath);
 }
 
+/**
+ * Helper para actualizar estadísticas globales de forma atómica (Transacciones)
+ * @param {number} amount - El monto a sumar (o restar)
+ * @param {number} countChange - Cambio en el número de tickets (1 o -1)
+ */
+function updateBranchStats(amount, countChange) {
+  if (!fbDb || !currentBranch || currentBranch === 'all') return;
+  const statsRef = fbDb.ref('sucursales/' + currentBranch + '/stats/summary');
+  statsRef.transaction(current => {
+    if (!current) current = { total_sales_money: 0, total_sales_count: 0 };
+    current.total_sales_money = (current.total_sales_money || 0) + amount;
+    current.total_sales_count = (current.total_sales_count || 0) + countChange;
+    return current;
+  });
+}
+
 function loadBranchId(uid){
   return new Promise((resolve)=>{
     if(!fbDb){currentBranch='carro1';resolve('carro1');return;}
@@ -3974,8 +4044,8 @@ function renderPresenceBadge(users){
       row.className='online-user-row';
       row.innerHTML=`
         <div id="ou-avatar-${u.name.toLowerCase().replace(/\s/g,'')}" style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--red),#c01818);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden">${u.name.charAt(0)}</div>
-        <span class="online-user-name">${u.name}</span>
-        <span class="online-user-since">desde ${u.since}</span>
+        <span class="online-user-name">${h(u.name)}</span>
+        <span class="online-user-since">desde ${h(u.since)}</span>
       `;
       list.appendChild(row);
       // Load avatar
@@ -4281,7 +4351,9 @@ function startFbListeners(){
   });
 
   // Sync sales - proteger ventas locales contra pérdida de datos
-  getBranchRef('sales').on('value',snap=>{
+  const salesRef = getBranchRef('sales');
+  // LAZY LOADING: Solo escuchamos los últimos 1000 registros para mantener la app ligera
+  salesRef.limitToLast(1000).on('value',snap=>{
     const data=snap.val();
     const fbSales=data?Object.values(data):[];
     const fbIdSet=new Set(fbSales.map(s=>String(s.id)));
@@ -4351,7 +4423,7 @@ function fbSaveSales(){
   if(typeof adminViewBranch!=='undefined' && adminViewBranch==='all') return;
   
   const updates={};
-  sales.slice(0,50).forEach(s=>{
+  sales.slice(0,200).forEach(s=>{
     if(!s.branchOrigin) {
       updates['sales/'+s.id]=s;
     }
@@ -4470,13 +4542,13 @@ function renderActivityLog(){
   if(!data.length){el.innerHTML='<div class="admin-empty">Sin actividad en este filtro</div>';return;}
   el.innerHTML=data.map((e,i)=>{
     const cfg=LOG_ICONS[e.type]||{icon:'📌',color:'c-gray'};
-    return `<div class="log-entry" style="animation-delay:${Math.min(i,.15)*0.03}s">
+    return `<div class="log-entry" style="animation-delay:${Math.min(i, .15) * 0.03}s">
       <div class="log-icon-wrap ${cfg.color}">${cfg.icon}</div>
       <div class="log-content">
-        <div class="log-action">${e.detail}</div>
+        <div class="log-action">${h(e.detail)}</div>
         <div class="log-meta">
-          <span class="log-user-badge">${e.user}</span>
-          <span class="log-time">${e.date} · ${e.time}</span>
+          <span class="log-user-badge">${h(e.user)}</span>
+          <span class="log-time">${h(e.date)} · ${h(e.time)}</span>
         </div>
       </div>
     </div>`;
@@ -5130,7 +5202,7 @@ function agregarGastoCidop(){
   document.getElementById('cidop-gasto-origen').value='caja';
   showToast('✅ Gasto guardado','green');
   if(fbDb){
-    fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>showToast('?? Gasto guardado localmente (sin internet)',''));
+    fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>showToast('📡 Gasto guardado localmente (sin internet)',''));
   }
   renderCidopGastosList();
 }
@@ -5199,7 +5271,7 @@ function _buildGastosHTML(el, gs, period, onDelete, onDateChange, onEdit){
       viewRow.innerHTML=`
         <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}55;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">${g.desc}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${h(g.desc)}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--text4)">${g.fecha}</span>
             <span style="font-size:11px;color:${c.color}">${c.name}</span>
@@ -5386,13 +5458,20 @@ function renderCidopGastosList(){
 
 function confirmarCobro(){
   if(!order.length)return;
-  const cashVal=parseFloat(document.getElementById('cash-input').value)||0;
-  if(cashVal===0){showToast('Elige un billete o escribe la cantidad','red');return;}
   const total=order.reduce((s,o)=>s+o.price*o.qty,0);
   const cash=parseFloat(document.getElementById('cash-input').value)||0;
   const cambio=cash>0?cash-total:null;
   const now=new Date();
-  sales.unshift({id:Date.now(),timestamp:now.toISOString(),time:now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),date:toDateKey(now),hour:now.getHours(),items:order.map(o=>({name:o.productName,var:o.varName,extras:o.extrasStr,qty:o.qty,price:o.price})),total,cash:cash||null,cambio});
+  const saleId = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  sales.unshift({
+    id: saleId,
+    timestamp: now.toISOString(),
+    time: now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+    date: toDateKey(now),
+    hour: now.getHours(),
+    items: order.map(o => ({ name: o.productName, var: o.varName, extras: o.extrasStr, qty: o.qty, price: o.price })),
+    total, cash: cash || null, cambio
+  });
   saveSaleBackup(sales[0]);
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
@@ -5405,6 +5484,9 @@ function confirmarCobro(){
   // Update goal bar & check for celebration
   updateGoalBar();
   checkDailyGoal();
+  
+  // INFRAESTRUCTURA: Actualización atómica de totales históricos
+  updateBranchStats(total, 1);
   const btn=document.getElementById('btn-cobrar');btn.textContent='✓ Cobrado!';btn.classList.add('done');
   showToast(cambio!=null?`✓ Cambio: $${cambio.toFixed(2)}`:`✓ Venta registrada $${total.toFixed(2)}`,'green');
   setTimeout(()=>{btn.textContent='Cobrar';btn.classList.remove('done');},2400);
@@ -5654,6 +5736,10 @@ function deleteSale(id){
       const targetBranch = sale.branchOrigin || currentBranch;
       fbRemoveSecure(fbDb.ref('sucursales/' + targetBranch + '/sales/' + id)).catch(()=>{});
       fbWriteSecure(fbDb.ref('sucursales/' + targetBranch + '/deleted_sales/' + id), Date.now()).catch(()=>{});
+      
+      // INFRAESTRUCTURA: Descontar del total histórico de forma atómica
+      const amountToDeduct = (typeof sale.total === 'number') ? sale.total : (parseFloat(sale.total) || 0);
+      updateBranchStats(-amountToDeduct, -1);
     }
     renderHistorial();
     logActivity('venta_del',desc);
@@ -6734,9 +6820,12 @@ function renderAdmin(){
   if(gf&&!gf.value) gf.value=todayISO();
 
   // Global stats
-  const total=sales.reduce((s,v)=>s+v.total,0);
-  document.getElementById('adm-total-count').textContent=sales.length;
-  document.getElementById('adm-total-money').textContent='$'+total.toFixed(2);
+  // Priorizar el contador atómico del nodo 'stats' para el total histórico
+  const totalMoney = (adminViewBranch === 'all') ? 0 : branchStats.total_sales_money;
+  const totalCount = (adminViewBranch === 'all') ? '-' : branchStats.total_sales_count;
+  
+  document.getElementById('adm-total-count').textContent = totalCount;
+  document.getElementById('adm-total-money').textContent = '$' + totalMoney.toFixed(2);
   const sorted=[...sales].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
   document.getElementById('adm-first-date').textContent=sorted.length?sorted[0].date:'—';
   document.getElementById('adm-last-date').textContent=sorted.length?sorted[sorted.length-1].date:'—';
@@ -6794,6 +6883,11 @@ function renderResumenKPIs(){
         const sSalesObj=s&&(s.data||s.sales)?(s.data||s.sales):{};
         const sGasObj=s&&s.gastos?s.gastos:{};
         
+        // Cargar desde Contadores Atómicos (Stats) si existen, si no, fallback al conteo manual
+        const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
+        const sTotalMoney = sStats ? sStats.total_sales_money : 0;
+        const sTotalCount = sStats ? sStats.total_sales_count : 0;
+
         let sDates=new Set();
         let sHasSalesToday=false;
         Object.values(sSalesObj).forEach(v=>{
@@ -6806,6 +6900,10 @@ function renderResumenKPIs(){
             sDates.add(vDate);
           }
         });
+        
+        // Si no hay stats (sucursal vieja), usamos el conteo manual del mes o histórico local
+        // Nota: hVentas y hGastos siguen siendo mensuales para el dashboard
+        
         Object.values(sGasObj).forEach(g=>{
           if(!g)return;
           const gDate=normFecha(g.fecha);
@@ -6818,7 +6916,7 @@ function renderResumenKPIs(){
         if(sHasSalesToday) totalDailyGoal += sDailyGoal;
       });
 
-      // Sumar gastos de CIDOP (externos/administrativos)
+      // Sumar gastos de CIDOP
       Object.values(cidopData).forEach(g=>{
         if(!g) return;
         const gDate=normFecha(g.fecha);
@@ -6843,10 +6941,45 @@ function renderResumenKPIs(){
     const gastosMes=gastos.filter(g=>normFecha(g.fecha).startsWith(currentMonth));
     const hGastos=gastosMes.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
     
-    // El valor de 'dailyGoal' ya es específico de la sucursal si se seleccionó una,
-    // gracias a los listeners de Firebase que se inician al cambiar de sucursal.
     _peUpdateResumenKPIs(tVentas, tGastos, tTickets, gastosHoy.length, hVentas, hGastos, hDates.size, dailyGoal, dailyGoal * hDates.size);
   }
+}
+
+/**
+ * Función de Infraestructura: Recalcula los contadores atómicos basados en los datos reales de Firebase.
+ * Útil para migrar sucursales viejas al nuevo sistema de stats.
+ */
+async function recalculateAllTotals() {
+  if (!fbDb) return;
+  const target = adminViewBranch === 'all' ? 'Todas las sucursales' : currentBranch;
+  customConfirm(`¿Recalcular totales históricos de ${target}? Esto pondrá al día los contadores de dinero y tickets.`, 'Sincronizar', async () => {
+    showToast('⏳ Iniciando sincronización de totales...', 'gold');
+    
+    const branches = adminViewBranch === 'all' 
+      ? (await fbDb.ref('sucursales').once('value')).val() 
+      : { [currentBranch]: (await fbDb.ref('sucursales/' + currentBranch).once('value')).val() };
+    
+    for (const bId in branches) {
+      if (!bId || bId === 'default') continue;
+      const bData = branches[bId];
+      const bSales = bData.sales || {};
+      let totalMoney = 0;
+      let totalCount = 0;
+      Object.values(bSales).forEach(s => {
+        if (!s) return;
+        totalMoney += (typeof s.total === 'number') ? s.total : (parseFloat(s.total) || 0);
+        totalCount++;
+      });
+      
+      await fbDb.ref('sucursales/' + bId + '/stats/summary').set({
+        total_sales_money: totalMoney,
+        total_sales_count: totalCount
+      });
+    }
+    
+    showToast('✅ Totales sincronizados correctamente', 'green');
+    renderResumenKPIs();
+  });
 }
 
 function _peUpdateResumenKPIs(totalVentas, totalGastos, cnt, gasLen, hVentas, hGastos, hDays, overrideDailyGoal, overrideHGoal){
@@ -7249,15 +7382,19 @@ function adminHandleAvatarUpload(e){
       else{if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}}
       canvas.width=w;canvas.height=h;
       canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const compressed=canvas.toDataURL('image/jpeg',0.75);
-      if(!fbDb){showToast('Sin conexion','red');return;}
-      fbDb.ref(getAvatarKey(name)).set(compressed).then(()=>{
-        avatarCache[name]=compressed;
-        renderAdminUsersHTML(CIDOP_MEMBERS);
-        renderPickerGrid(currentActiveNames);
-        showToast('Foto de '+name+' actualizada','green');
-        logActivity('prod_edit','Foto actualizada — '+name);
-      }).catch(()=>showToast('Error al subir la foto','red'));
+      canvas.toBlob(blob => {
+        if(!fbDb){showToast('Sin conexion','red');return;}
+        const storageRef = firebase.storage().ref('avatars/' + name + '.jpg');
+        storageRef.put(blob).then(snap => snap.ref.getDownloadURL()).then(url => {
+          fbDb.ref(getAvatarKey(name)).set(url).then(()=>{
+            avatarCache[name]=url;
+            renderAdminUsersHTML(CIDOP_MEMBERS);
+            renderPickerGrid(currentActiveNames);
+            showToast('Foto de '+h(name)+' actualizada','green');
+            logActivity('prod_edit','Foto actualizada - '+name);
+          });
+        }).catch(()=>showToast('Error al subir la foto a Storage','red'));
+      }, 'image/jpeg', 0.75);
     };
     img.src=ev.target.result;
   };
@@ -7668,7 +7805,7 @@ function renderGastoCatsList(box){
     row.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:7px';
     row.innerHTML=`
       <div style="width:34px;height:34px;border-radius:8px;background:${c.color}22;border:1.5px solid ${c.color}66;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${c.icon}</div>
-      <span style="flex:1;font-size:14px;font-weight:600;color:var(--text)">${c.name}</span>
+      <span style="flex:1;font-size:14px;font-weight:600;color:var(--text)">${h(c.name)}</span>
       <div style="width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0"></div>
       <button data-id="${c.id}" style="background:transparent;border:none;color:var(--text4);font-size:14px;cursor:pointer;flex-shrink:0;transition:color .15s"
           onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text4)'">✕</button>`;
@@ -9216,6 +9353,37 @@ const avatarCache={};
 
 function getAvatarKey(name){return 'avatars/'+name.toLowerCase().replace(/\s+/g,'_');}
 
+/* ── RESET DE INGREDIENTE ── */
+let currentResetIngId = null;
+function openIngResetModal(id) {
+  const ing = ingredients.find(i => i.id === id);
+  if (!ing) return;
+  currentResetIngId = id;
+  const title = document.getElementById('ing-reset-title');
+  if (title) title.textContent = 'Resetear: ' + h(ing.name);
+  document.getElementById('ing-reset-modal').classList.remove('hidden');
+}
+function doIngReset(type) {
+  if (!currentResetIngId || !fbDb) return;
+  const ing = ingredients.find(i => i.id === currentResetIngId);
+  if (!ing) return;
+
+  const updates = {};
+  if (type === 'stock' || type === 'todo') updates.stock = 0;
+  if (type === 'precio' || type === 'todo') {
+    updates.avgPrice = 0;
+    updates.priceHistory = null;
+  }
+  if (type === 'gasto' || type === 'todo') updates.totalCostPaid = 0;
+
+  fbUpdateSecure(getBranchRef('ingredients/' + currentResetIngId), updates)
+    .then(() => {
+      showToast('Ingrediente reseteado: ' + type, 'green');
+      document.getElementById('ing-reset-modal').classList.add('hidden');
+    })
+    .catch(() => showToast('Error al resetear', 'red'));
+}
+
 function loadAvatar(name,cb){
   if(avatarCache[name]){cb(avatarCache[name]);return;}
   if(!fbDb){cb(null);return;}
@@ -9776,7 +9944,7 @@ function renderEvResumen(){
       border:1px solid ${negativo?'rgba(245,116,116,.35)':'rgba(42,184,184,.15)'}`;
     row.innerHTML=`
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h(r.name)}</div>
         <div style="font-size:11px;color:var(--text4);margin-top:1px">
           Stock actual: <strong style="color:var(--text2)">${r.stock} ${r.unit}</strong>
           &nbsp;−&nbsp;
@@ -11538,7 +11706,7 @@ function createNewUser(){
   // Auto-build email from name: "Juan Perez" -> "juan.perez@karytho.com"
   const email=name.toLowerCase().replace(/\s+/g,'.')
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9.]/g,'')+'@karytho.com';
+    .replace(/[^a-z0-9.]/g, '') + CORP_DOMAIN;
   
   const btn=document.getElementById('btn-create-user');
   btn.disabled=true;
@@ -11748,7 +11916,7 @@ window.openCreateUserForm = openCreateUserForm;
 <!-- ===== DAILY GOAL CELEBRATION OVERLAY ===== -->
 <div id="goal-celebration" style="display:none"></div>
 
-<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="9cce72db-d471-44cd-802e-ee041f4e6028"></script>
+<!-- Script de Replit eliminado por seguridad -->
 
 <!-- ===== PICKER MEMBER MODAL ===== -->
 <div id="pickermember-overlay" class="cash-overlay hidden" style="z-index:9999" onclick="closePickerMemberOutside(event)">
