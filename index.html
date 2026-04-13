@@ -6731,36 +6731,136 @@ function onAdminBranchChange(){
   const listEl = document.getElementById('adm-ventas-list');
   if(listEl) listEl.innerHTML = '<div class="admin-empty">Cargando datos de sucursal...</div>';
 
-  if(adminViewBranch==='all'){
-    currentBranch='carro1';
-    fbListening=false;
-    // Attach new listeners — they will update sales/gastos and call renderAdmin() when data arrives
-    if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
-    if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
-    
-    // FORZAR actualización inmediata de la pestaña de Ventas al cambiar a modo consolidado
+  // Función helper para renderizar ventas inmediatamente
+  const renderVentasInmediato = () => {
     const ventasTab = document.getElementById('adm-tab-ventas');
     if(ventasTab && ventasTab.classList.contains('active')){
       setAdminRange(adminRange || 'hoy');
+    }
+  };
+
+  if(adminViewBranch==='all'){
+    currentBranch='carro1';
+    fbListening=false;
+    
+    // Obtener datos inmediatos de Firebase para modo consolidado
+    if(fbDb){
+      fbDb.ref('sucursales').once('value').then(snap => {
+        const data = snap.val() || {};
+        const keys = Object.keys(data).filter(k => k && k !== 'default' && k !== '');
+        const allSales = [];
+        
+        keys.forEach(k => {
+          const s = data[k] || {};
+          const delSet = new Set(Object.keys(s.deleted_sales || {}));
+          const salesObj = (s.data || s.sales) ? (s.data || s.sales) : {};
+          Object.values(salesObj).forEach(sale => {
+            if (!delSet.has(String(sale.id))) {
+              sale.branchOrigin = k;
+              allSales.push(sale);
+            }
+          });
+        });
+        
+        sales = allSales.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
+        
+        // Calcular stats consolidados
+        let totalMoney = 0, totalCount = 0;
+        keys.forEach(k => {
+          const s = data[k] || {};
+          const sStats = s.stats && s.stats.summary ? s.stats.summary : null;
+          if(sStats) {
+            totalMoney += (sStats.total_sales_money || 0);
+            totalCount += (sStats.total_sales_count || 0);
+          }
+        });
+        consolidatedBranchStats = { total_sales_money: totalMoney, total_sales_count: totalCount };
+        
+        renderVentasInmediato();
+      });
+      
+      // También cargar gastos consolidados inmediatamente
+      fbDb.ref('sucursales').once('value').then(snap => {
+        const data = snap.val() || {};
+        const keys = Object.keys(data).filter(k => k && k !== 'default' && k !== '');
+        const allGastos = [];
+        
+        keys.forEach(branchId => {
+          const branchData = data[branchId];
+          const splitGastos = branchData && branchData.gastos;
+          const delGSet = new Set(Object.keys((branchData && branchData.deleted_gastos) || {}));
+          if(splitGastos){
+            Object.values(splitGastos).forEach(g => {
+              if(g && g.id && !delGSet.has(String(g.id))) {
+                const gc = Object.assign({}, g);
+                gc._branchId = branchId;
+                allGastos.push(gc);
+              }
+            });
+          }
+        });
+        
+        gastos = allGastos.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        renderGastos();
+      });
+      
+      // Configurar listeners para actualizaciones en tiempo real
+      if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
+      if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
     }
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[]; gastos=[]; // LIMPIEZA TOTAL DE MEMORIA
-    // Forzar limpieza de caches heredadas si existen
+    sales=[]; gastos=[];
     safeStorage.removeItem('dk_sales_v3');
     safeStorage.removeItem('dk_gastos_v1');
-    if(typeof startFbListeners==='function') startFbListeners();
-    if(typeof loadGastos==='function') loadGastos();
     
-    // FORZAR actualización inmediata de la pestaña de Ventas al cambiar de sucursal
-    const ventasTab = document.getElementById('adm-tab-ventas');
-    if(ventasTab && ventasTab.classList.contains('active')){
-      setAdminRange(adminRange || 'hoy');
+    // Obtener datos inmediatos de Firebase para la sucursal específica
+    if(fbDb){
+      const targetBranch = adminViewBranch;
+      
+      // Cargar ventas inmediatamente
+      fbDb.ref('sucursales/' + targetBranch + '/sales').once('value').then(snap => {
+        const data = snap.val() || {};
+        const delSet = new Set(Object.keys(data.deleted_sales || {}));
+        sales = Object.values(data).filter(s => s && !delSet.has(String(s.id)))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
+        renderVentasInmediato();
+      }).catch(() => {
+        sales = [];
+        renderVentasInmediato();
+      });
+      
+      // Cargar gastos inmediatamente
+      fbDb.ref('sucursales/' + targetBranch + '/gastos').once('value').then(snap => {
+        const data = snap.val() || {};
+        const delSet = new Set(Object.keys(data.deleted_gastos || {}));
+        gastos = Object.values(data).filter(g => g && g.id && !delSet.has(String(g.id)))
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        safeStorage.setItem(getGastosKey(), JSON.stringify(gastos));
+        renderGastos();
+      }).catch(() => {
+        gastos = [];
+        renderGastos();
+      });
+      
+      // Cargar stats inmediatamente
+      fbDb.ref('sucursales/' + targetBranch + '/stats/summary').once('value').then(snap => {
+        branchStats = snap.val() || { total_sales_money: 0, total_sales_count: 0 };
+      }).catch(() => {
+        branchStats = { total_sales_money: 0, total_sales_count: 0 };
+      });
+      
+      // Configurar listeners para actualizaciones en tiempo real
+      if(typeof startFbListeners==='function') startFbListeners();
+      if(typeof loadGastos==='function') loadGastos();
     }
   }
-  // renderAdmin() is intentionally NOT called here —
-  // the Firebase listeners will call it once real data arrives, preventing the flash of zeros.
+  
+  // renderAdmin() se llama automáticamente cuando llegan los datos de los listeners
+  // Esto previene el flash de ceros mientras carga
 
   // Reload users tab if open
   const usuariosTab=document.getElementById('adm-tab-usuarios');
