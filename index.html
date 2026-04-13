@@ -3807,15 +3807,14 @@ let currentUid=null;
 
 function getBranchRef(path){
   if(!fbDb)return null;
-  // Asegurar que currentBranch tenga un valor válido
   let targetBranch = currentBranch;
   if(!targetBranch || targetBranch==='default'){
     targetBranch = 'carro1';
   }
-  // Si estamos en modo Admin y hay una sucursal seleccionada manualmente para ver,
-  // usamos esa. Si no, usamos la sucursal asignada al usuario (currentBranch).
-  const target = (typeof adminViewBranch !== 'undefined' && adminViewBranch === 'branch' && sucSelectedBranch) 
-                 ? sucSelectedBranch : targetBranch;
+  // Si estamos en Admin y hay una sucursal específica seleccionada (no 'all'), usar esa
+  // Esto corrige el problema de listeners configurándose en la sucursal incorrecta
+  const target = (typeof adminViewBranch !== 'undefined' && adminViewBranch !== 'all' && adminViewBranch) 
+               ? adminViewBranch : targetBranch;
   const fullPath = 'sucursales/'+target+(path?'/'+path:'');
   return fbDb.ref(fullPath);
 }
@@ -6904,8 +6903,8 @@ function bootAdmin(){
 
   renderAdmin();
   fbListening=false;
-  setTimeout(function(){loadAdminBranchSelector();},1500);
   setTimeout(async ()=>{
+    await loadAdminBranchSelector();
     if(!currentBranch || currentBranch==='default'){
       await initSessionBranch();
     }
