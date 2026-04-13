@@ -3705,6 +3705,9 @@ function selectPerson(name){
   safeStorage.setItem(SK_ROLE,'user');
   safeStorage.removeItem(SK_SESSION);
   safeStorage.setItem(SK_DISPLAY,name);
+  // Para CIDOP/picker, siempre usar carro1 (sucursal por defecto)
+  currentBranch='carro1';
+  currentUid=safeStorage.getItem(SK_UID);
   document.getElementById('picker-screen').classList.remove('active');
   bootApp();
 }
@@ -3804,10 +3807,15 @@ let currentUid=null;
 
 function getBranchRef(path){
   if(!fbDb)return null;
+  // Asegurar que currentBranch tenga un valor válido
+  let targetBranch = currentBranch;
+  if(!targetBranch || targetBranch==='default'){
+    targetBranch = 'carro1';
+  }
   // Si estamos en modo Admin y hay una sucursal seleccionada manualmente para ver,
   // usamos esa. Si no, usamos la sucursal asignada al usuario (currentBranch).
   const target = (typeof adminViewBranch !== 'undefined' && adminViewBranch === 'branch' && sucSelectedBranch) 
-                 ? sucSelectedBranch : currentBranch;
+                 ? sucSelectedBranch : targetBranch;
   const fullPath = 'sucursales/'+target+(path?'/'+path:'');
   return fbDb.ref(fullPath);
 }
@@ -4305,13 +4313,20 @@ function startFbListeners(){
   stopFbListeners();
   fbListening=true;
 
-  // Limpiar estado local para la entrada limpia a la sucursal
-  sales = [];
-  gastos = [];
+  // Asegurar currentBranch válido antes de cualquier operación
+  if(!currentBranch || currentBranch==='default'){
+    currentBranch='carro1';
+  }
+
+  // NO limpiar ventas indiscriminadamente - mantener ventas locales que pueden estar esperando sync
+  // Solo limpiar stats y gastos (se recargan desde Firebase)
   branchStats = { total_sales_money: 0, total_sales_count: 0 };
-  // Limpiar TAMBIN la clave heredada antigua para borrar cualquier dato fantasma de versiones previas
-  safeStorage.removeItem(SK_SALES);
-  safeStorage.removeItem(SK_GASTOS);
+  // NO limpiar sales = [] aquí - las ventas locales se fusionan con Firebase en el listener de abajo
+  // Limpiar solo la clave antigua si existe (para evitar duplicados)
+  const oldKey='dk_sales_v3';
+  if(safeStorage.getItem(oldKey) && !safeStorage.getItem(getSalesKey())){
+    safeStorage.removeItem(oldKey);
+  }
 
   // Listener de estadísticas atómicas
   const statsRef = getBranchRef('stats/summary');
@@ -4628,9 +4643,16 @@ const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 /* ─── Boot app after login ─── */
 function bootApp(){
   document.getElementById('main-app').style.display='block';
-  // Limpieza unica: eliminar claves globales heredadas que causan filtraciones entre sucursales
-  safeStorage.removeItem('dk_sales_v3');
-  safeStorage.removeItem('dk_gastos_v1');
+  // NO borrar ventas indiscriminadamente - las ventas se sincronizan con Firebase
+  // Solo limpar caches heredadas muy antiguas si existen (versiones old)
+  const oldSalesKey='dk_sales_v3'; // antigua key sin branch
+  const oldGastosKey='dk_gastos_v1';
+  if(safeStorage.getItem(oldSalesKey) && !safeStorage.getItem(getSalesKey())){
+    safeStorage.removeItem(oldSalesKey);
+  }
+  if(safeStorage.getItem(oldGastosKey) && !safeStorage.getItem(getGastosKey())){
+    safeStorage.removeItem(oldGastosKey);
+  }
   load();
   loadInvData();
   updateDate();renderGrid();renderFavStrip();renderOrder();
@@ -4644,7 +4666,8 @@ function bootApp(){
   const displayName=safeStorage.getItem(SK_DISPLAY)||'Usuario';
   setTimeout(async ()=>{
     if(!currentBranch || currentBranch==='default'){
-      await initSessionBranch();
+      currentBranch='carro1'; // Default para CIDOP/picker
+    }
     }
     startFbListeners(); // registra productos, ventas y meta diaria
     startPresence(displayName);
