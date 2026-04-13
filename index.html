@@ -3798,7 +3798,7 @@ function adminLogout(){
 
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
-let fbDb=null,fbConnected=false,fbListening=false,branchStats={total_sales_money:0,total_sales_count:0},activeListeners=[];
+let fbDb=null,fbConnected=false,fbListening=false,branchStats={total_sales_money:0,total_sales_count:0},activeListeners=[],consolidatedBranchStats={total_sales_money:0,total_sales_count:0};
 let currentBranch='default';
 let currentUid=null;
 
@@ -4277,7 +4277,7 @@ function saveDailyGoal(){
 }
 
 function clearDailyGoal(){
-  safeStorage.removeItem(SK_DAILY_GOAL);
+  safeStorage.removeItem(getGoalKey());
   _applyGoal(0);
   const input=document.getElementById('adm-goal-input');
   if(input)input.value='';
@@ -4309,6 +4309,9 @@ function startFbListeners(){
   sales = [];
   gastos = [];
   branchStats = { total_sales_money: 0, total_sales_count: 0 };
+  // Limpiar TAMBIN la clave heredada antigua para borrar cualquier dato fantasma de versiones previas
+  safeStorage.removeItem(SK_SALES);
+  safeStorage.removeItem(SK_GASTOS);
 
   // Listener de estadísticas atómicas
   const statsRef = getBranchRef('stats/summary');
@@ -4370,7 +4373,7 @@ function startFbListeners(){
   goalRef.on('value',snap=>{
     const v=snap.val();
     if(v&&typeof v==='number'&&v>0){
-      safeStorage.setItem(SK_DAILY_GOAL,String(v));
+      safeStorage.setItem(getGoalKey(),String(v));
       _applyGoal(v);
     }
   });
@@ -4388,7 +4391,7 @@ function refreshActiveViews() {
     renderAdmin();
     if(document.getElementById('adm-tab-ventas')?.classList.contains('active')) setAdminRange(adminRange || 'hoy');
     if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
-    if(document.getElementById('adm-tab-stats')?.classList.contains('active')) renderResumenKPIs();
+    if(document.getElementById('adm-tab-resumen')?.classList.contains('active')) renderResumenKPIs();
   }
   updateGoalBar();
 }
@@ -4455,7 +4458,8 @@ function recoverSalesFromBackup(){
   });
   if(recovered.length){
     sales=recovered.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-    safeStorage.setItem(SK_SALES,JSON.stringify(sales));
+    // IMPORTANTE: Usar la clave aislada por sucursal para no contaminar otras sucursales
+    safeStorage.setItem(getSalesKey(),JSON.stringify(sales));
     fbSaveSales();
     showToast(`🔄 ${recovered.length} venta(s) recuperada(s) de backup`,'gold');
   }
@@ -4624,14 +4628,16 @@ const saveFavs=()=>safeStorage.setItem(SK_FAVS,JSON.stringify(favorites));
 /* ─── Boot app after login ─── */
 function bootApp(){
   document.getElementById('main-app').style.display='block';
+  // Limpieza unica: eliminar claves globales heredadas que causan filtraciones entre sucursales
+  safeStorage.removeItem('dk_sales_v3');
+  safeStorage.removeItem('dk_gastos_v1');
   load();
-  loadInvData(); // load ingredients + recipes so descontarInventario works
+  loadInvData();
   updateDate();renderGrid();renderFavStrip();renderOrder();
-  // Load saved daily goal from localStorage immediately (before Firebase arrives)
-  const _lsGoal=parseFloat(safeStorage.getItem(SK_DAILY_GOAL)||'0');
+  const _lsGoal=parseFloat(safeStorage.getItem(getGoalKey())||'0');
   if(_lsGoal>0) _applyGoal(_lsGoal);
   setFbStatus('connecting');
-  initFirebase(FB_CONFIG); // <-- fbDb queda listo aquí
+  initFirebase(FB_CONFIG);
   // Ahora que fbDb existe, registrar listeners de gastos
   loadGastoCats();
   if(typeof loadGastos==='function') loadGastos();
@@ -5464,12 +5470,17 @@ function confirmarCobro(){
   saveSales();
   const orderSnapshot=order.map(o=>({name:o.productName,varName:o.varName||'Normal',extrasStr:o.extrasStr||'',qty:o.qty}));
   clearOrderSilent();closeCash();
+  // FORZAR render inmediato de la vista de cobrar (no esperar al listener de Firebase)
+  if(document.getElementById('view-cobrar')?.classList.contains('active')){
+    renderOrder();bumpTotal();
+  }
   logActivity('venta',`Venta registrada — $${total.toFixed(2)} (${sales[0].items.length} producto${sales[0].items.length!==1?'s':''})`);
   descontarInventario(orderSnapshot);
   // Refresh gastos chart if admin gastos tab is open (ingresos changed)
   const _gastosTab=document.getElementById('adm-tab-gastos');
   if(_gastosTab&&_gastosTab.classList.contains('active')) renderGastos();
-  // Update goal bar & check for celebration
+  // Refresh Admin views (KPIs, lists, etc.) in real time
+  refreshActiveViews();
   updateGoalBar();
   checkDailyGoal();
   
@@ -6640,7 +6651,7 @@ function saveNewProduct(){
 
 /* ─── Admin panel ─── */
 let adminRange='hoy';
-let adminViewBranch='';
+let adminViewBranch='all';
 
 function loadAdminBranchSelector(){
   var select=document.getElementById('admin-branch-select');
@@ -6715,6 +6726,10 @@ function onAdminBranchChange(){
     const el=document.getElementById(id);
     if(el){el.style.opacity='0.35';el.style.transition='opacity .15s';}
   });
+  
+  // Limpiar lista de ventas visual para evitar confusión mientras carga
+  const listEl = document.getElementById('adm-ventas-list');
+  if(listEl) listEl.innerHTML = '<div class="admin-empty">Cargando datos de sucursal...</div>';
 
   if(adminViewBranch==='all'){
     currentBranch='carro1';
@@ -6725,7 +6740,10 @@ function onAdminBranchChange(){
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
-    sales=[];gastos=[];
+    sales=[]; gastos=[]; // LIMPIEZA TOTAL DE MEMORIA
+    // Forzar limpieza de caches heredadas si existen
+    safeStorage.removeItem('dk_sales_v3');
+    safeStorage.removeItem('dk_gastos_v1');
     if(typeof startFbListeners==='function') startFbListeners();
     if(typeof loadGastos==='function') loadGastos();
   }
@@ -6775,8 +6793,15 @@ function renderAdmin(){
 
   // Global stats
   // Priorizar el contador atómico del nodo 'stats' para el total histórico
-  const totalMoney = (adminViewBranch === 'all') ? 0 : branchStats.total_sales_money;
-  const totalCount = (adminViewBranch === 'all') ? '-' : branchStats.total_sales_count;
+  // Usar stats consolidados si estamos en modo "Todas", sino usar branchStats del carro actual
+  let totalMoney, totalCount;
+  if (adminViewBranch === 'all') {
+    totalMoney = consolidatedBranchStats.total_sales_money;
+    totalCount = consolidatedBranchStats.total_sales_count;
+  } else {
+    totalMoney = branchStats.total_sales_money;
+    totalCount = branchStats.total_sales_count;
+  }
   
   document.getElementById('adm-total-count').textContent = totalCount;
   document.getElementById('adm-total-money').textContent = '$' + totalMoney.toFixed(2);
@@ -7509,6 +7534,19 @@ function loadVentasConsolidadas(){
     });
     allSales.sort(function(a,b){return b.timestamp-a.timestamp;});
     sales=allSales;
+    
+    // Calcular stats consolidados de todas las sucursales
+    var totalMoney=0,totalCount=0;
+    keys.forEach(function(k){
+      var s=data[k]||{};
+      var sStats=s.stats&&s.stats.summary?s.stats.summary:null;
+      if(sStats){
+        totalMoney+=(sStats.total_sales_money||0);
+        totalCount+=(sStats.total_sales_count||0);
+      }
+    });
+    consolidatedBranchStats={total_sales_money:totalMoney,total_sales_count:totalCount};
+    
     if(document.getElementById('admin-screen')&&document.getElementById('admin-screen').classList.contains('active')){
       renderAdmin();
       var gastosTab=document.getElementById('adm-tab-gastos');
