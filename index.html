@@ -6737,6 +6737,12 @@ function onAdminBranchChange(){
     // Attach new listeners — they will update sales/gastos and call renderAdmin() when data arrives
     if(typeof loadVentasConsolidadas==='function') loadVentasConsolidadas();
     if(typeof loadGastosConsolidados==='function') loadGastosConsolidados();
+    
+    // FORZAR actualización inmediata de la pestaña de Ventas al cambiar a modo consolidado
+    const ventasTab = document.getElementById('adm-tab-ventas');
+    if(ventasTab && ventasTab.classList.contains('active')){
+      setAdminRange(adminRange || 'hoy');
+    }
   } else {
     currentBranch=adminViewBranch;
     fbListening=false;
@@ -6746,6 +6752,12 @@ function onAdminBranchChange(){
     safeStorage.removeItem('dk_gastos_v1');
     if(typeof startFbListeners==='function') startFbListeners();
     if(typeof loadGastos==='function') loadGastos();
+    
+    // FORZAR actualización inmediata de la pestaña de Ventas al cambiar de sucursal
+    const ventasTab = document.getElementById('adm-tab-ventas');
+    if(ventasTab && ventasTab.classList.contains('active')){
+      setAdminRange(adminRange || 'hoy');
+    }
   }
   // renderAdmin() is intentionally NOT called here —
   // the Firebase listeners will call it once real data arrives, preventing the flash of zeros.
