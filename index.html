@@ -3375,17 +3375,19 @@ oninput="recalcCorte()" onkeydown="if(event.key==='Enter'){event.preventDefault(
 <div class="toast" id="toast"></div>
 
 <!-- PWA Install Banner -->
-<div id="pwa-install-banner" class="hidden" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1.5px solid var(--gold);border-radius:18px;padding:12px 20px;display:flex;align-items:center;gap:15px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:10000;animation:slideUp .4s ease">
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1.5px solid var(--gold);border-radius:18px;padding:12px 20px;align-items:center;gap:15px;box-shadow:0 8px 30px rgba(0,0,0,.5);z-index:10000;animation:slideUp .4s ease">
   <div style="font-size:20px">?</div>
   <div style="flex:1">
     <div style="font-size:13px;font-weight:800;color:var(--text)">Instalar App</div>
     <div style="font-size:11px;color:var(--text2)">Usa Dogos Karytho como una app nativa</div>
   </div>
   <button id="btn-pwa-install" style="background:var(--gold);color:#111;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer">Instalar</button>
-  <button onclick="document.getElementById('pwa-install-banner').classList.add('hidden')" style="background:transparent;border:none;color:var(--text4);font-size:18px;cursor:pointer">✕</button>
+  <button onclick="this.parentElement.style.display='none'" style="background:transparent;border:none;color:var(--text4);font-size:18px;cursor:pointer">✕</button>
 </div>
 
 
+
+<script>
 /* ─── PWA: Manifest + Service Worker ─── */
 let deferredPrompt;
 if ('serviceWorker' in navigator) {
@@ -3398,18 +3400,18 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  // Solo mostrar si no estamos ya en modo standalone
   if (!window.matchMedia('(display-mode: standalone)').matches) {
-    document.getElementById('pwa-install-banner').classList.remove('hidden');
+    const b = document.getElementById('pwa-install-banner');
+    if(b) b.style.display = 'flex';
   }
 });
 document.getElementById('btn-pwa-install')?.addEventListener('click', async () => {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to install prompt: ${outcome}`);
     deferredPrompt = null;
-    document.getElementById('pwa-install-banner').classList.add('hidden');
+    const b = document.getElementById('pwa-install-banner');
+    if(b) b.style.display = 'none';
   }
 });
 
@@ -3418,64 +3420,7 @@ const CORP_DOMAIN = '@karytho.com';
 /** Sanitizador de HTML para prevención de XSS */
 const h = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
-/* ─── PWA: Manifest + Service Worker inline ─── */
-(function(){
-  const manifest={
-    name:'Dogos Karytho',short_name:'Karytho',
-    description:'Caja registradora - Dogos Karytho',
-    start_url:'.',display:'standalone',
-    background_color:'#0f0f0f',theme_color:'#E02020',
-    orientation:'portrait-primary',
-    icons:[
-      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23E02020"/><text y=".9em" font-size="80">🌭</text></svg>',sizes:'192x192',type:'image/svg+xml'},
-      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%23E02020"/><text y=".9em" font-size="80">🌭</text></svg>',sizes:'512x512',type:'image/svg+xml'}
-    ]
-  };
-  const mb=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-  const ml=document.createElement('link');ml.rel='manifest';ml.href=URL.createObjectURL(mb);
-  document.head.appendChild(ml);
-
-  if('serviceWorker' in navigator){
-    const swCode=`
-      const CACHE='dogos-karytho-v1';
-      self.addEventListener('install',e=>{self.skipWaiting();});
-      self.addEventListener('activate',e=>{
-        e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
-        self.clients.claim();
-      });
-      self.addEventListener('fetch',e=>{
-        if(e.request.method!=='GET')return;
-        e.respondWith(caches.open(CACHE).then(cache=>
-          cache.match(e.request).then(cached=>{
-            const fresh=fetch(e.request).then(res=>{if(res&&res.status===200)cache.put(e.request,res.clone());return res;}).catch(()=>null);
-            return cached||fresh;
-          })
-        ));
-      });
-    `;
-    const sb=new Blob([swCode],{type:'application/javascript'});
-    const sUrl=URL.createObjectURL(sb);
-    navigator.serviceWorker.register(sUrl).catch(()=>{});
-  }
-})();
-
-/* ─── PWA Install prompt ─── */
-let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();deferredPrompt=e;
-  document.getElementById('install-banner').classList.remove('hidden');
-});
-document.getElementById('btn-install').addEventListener('click',async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();
-  const{outcome}=await deferredPrompt.userChoice;
-  deferredPrompt=null;
-  document.getElementById('install-banner').classList.add('hidden');
-  if(outcome==='accepted')showToast('App instalada correctamente','green');
-});
-window.addEventListener('appinstalled',()=>{
-  document.getElementById('install-banner').classList.add('hidden');
-});
+/* ─── Storage keys ─── */
 
 /* ─── Storage keys ─── */
 // Fallback storage for WebViews that block localStorage
