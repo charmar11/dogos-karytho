@@ -5199,6 +5199,7 @@ function agregarGastoCidop(){
     fbWriteSecure(getBranchRef('gastos/'+g.id),g).catch(()=>showToast('📡 Gasto guardado localmente (sin internet)',''));
   }
   renderCidopGastosList();
+  refreshActiveViews();
 }
 
 function setCidopGastosPeriod(p){
@@ -5741,6 +5742,7 @@ function deleteSale(id){
       updateBranchStats(-amountToDeduct, -1);
     }
     renderHistorial();
+    refreshActiveViews();
     logActivity('venta_del',desc);
     showToast('Venta eliminada e inventario restaurado');
   });
@@ -7646,6 +7648,8 @@ function loadVentasConsolidadas(){
     
     if(document.getElementById('admin-screen')&&document.getElementById('admin-screen').classList.contains('active')){
       renderAdmin();
+      var ventasTab=document.getElementById('adm-tab-ventas');
+      if(ventasTab&&ventasTab.classList.contains('active'))setAdminRange(adminRange||'hoy');
       var gastosTab=document.getElementById('adm-tab-gastos');
       if(gastosTab&&gastosTab.classList.contains('active'))renderGastos();
     }
@@ -7673,10 +7677,15 @@ function loadGastosConsolidados(){
       }
     });
     gastos=allGastos.sort(function(a,b){return b.timestamp-a.timestamp;});
-    var admTab=document.getElementById('adm-tab-gastos');
-    if(admTab&&admTab.classList.contains('active'))renderGastos();
-    var resTab=document.getElementById('adm-tab-resumen');
-    if(resTab&&resTab.classList.contains('active'))renderAdmin();
+    var admTab=document.getElementById('admin-screen');
+    if(admTab&&admTab.classList.contains('active')){
+      var ventasTab=document.getElementById('adm-tab-ventas');
+      if(ventasTab&&ventasTab.classList.contains('active'))setAdminRange(adminRange||'hoy');
+      var gastosTab=document.getElementById('adm-tab-gastos');
+      if(gastosTab&&gastosTab.classList.contains('active'))renderGastos();
+      var resTab=document.getElementById('adm-tab-resumen');
+      if(resTab&&resTab.classList.contains('active'))renderAdmin();
+    }
   };
   window._sucGastosRef=fbDb.ref('sucursales');
   window._sucGastosRef.on('value',window._sucGastosHandler);
@@ -7697,6 +7706,7 @@ function eliminarGasto(id){
     deletedGastosDb.add(String(id));
     renderGastos();
     renderCidopGastosList();
+    refreshActiveViews();
     showToast('Gasto eliminado','green');
     // Remove from Firebase — use correct branch
     if(fbDb){
@@ -8601,10 +8611,12 @@ function setAdminTab(tab){
   document.querySelectorAll('.admin-tab-view').forEach(v=>v.classList.remove('active'));
   document.getElementById('adm-tab-'+tab).classList.add('active');
   if(tab==='ventas'){
-    setAdminRange(adminRange);
+    setAdminRange(adminRange||'hoy');
     const dateRow=document.querySelector('.date-picker-row');
-    if(dateRow)dateRow.style.display=adminRange==='hoy'?'':'none';
+    if(dateRow)dateRow.display=adminRange==='hoy'?'':'none';
   }
+  if(tab==='gastos')renderGastos();
+  if(tab==='resumen')renderResumenKPIs();
   if(tab==='usuarios')loadUsersForAdmin();
   if(tab==='actividad'){
     renderActivityLog();
