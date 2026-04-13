@@ -4548,6 +4548,10 @@ const SK_UID='dk_uid_v1';
 // Claves dinámicas para aislamiento total entre sucursales
 const getSalesKey=()=>SK_SALES+'_'+currentBranch;
 const getGastosKey=()=>SK_GASTOS+'_'+currentBranch;
+
+// Sets globales para rastrear borrados en tiempo real (sincroniza entre dispositivos)
+let deletedSalesDb = new Set();
+let deletedGastosDb = new Set();
 // Default categories — user can add/edit/delete
 const DEFAULT_GASTO_CATS=[];
 let gastoCats=[];
@@ -6739,45 +6743,11 @@ function bootAdmin(){
   load();
   document.getElementById('admin-screen').classList.add('active');
   if(!fbDb)initFirebase(FB_CONFIG);
-  const _lsGoal=parseFloat(safeStorage.getItem(SK_DAILY_GOAL)||'0');
+  const _lsGoal=parseFloat(safeStorage.getItem(getGoalKey())||'0');
   if(_lsGoal>0) _applyGoal(_lsGoal);
   
-  // LIMPIA MASIVA: Deduplicador inteligente de IDs
-  // Borra clones en Firebase y también en el localStorage del navegador
-  if(fbDb) {
-    fbDb.ref('sucursales').once('value').then(snap=>{
-      const data=snap.val(); if(!data)return;
-      const seen=new Set();
-      const priorities=['carro1','eventos','carro2']; 
-      const toDelete={};
-      let localSalesDirty=false;
-
-      priorities.forEach(b => {
-        if(data[b] && data[b].sales){
-          Object.keys(data[b].sales).forEach(id => {
-            if(seen.has(id)){
-               if(!toDelete[b]) toDelete[b]={};
-               toDelete[b]['sales/'+id]=null;
-               // Si es la sucursal actual, marcar para borrar localmente también
-               if(b===currentBranch) localSalesDirty=true;
-            } else {
-               seen.add(id);
-            }
-          });
-        }
-      });
-
-      Object.keys(toDelete).forEach(b => {
-        fbDb.ref('sucursales/'+b).update(toDelete[b]);
-      });
-
-      if(localSalesDirty){
-        sales=sales.filter(s=>!seen.has(String(s.id)) || !toDelete[currentBranch]?.hasOwnProperty('sales/'+s.id));
-        safeStorage.setItem(getSalesKey(), JSON.stringify(sales));
-        renderAdmin();
-      }
-    }).catch(()=>{});
-  }
+  // Optimizacion: El deduplicador masivo ya no corre auto (ahorra datos y acelera la carga).
+  // Usa el boton "Mantenimiento" en la pestana de Sucursales para correrlo manualmente.
 
   renderAdmin();
   fbListening=false;
