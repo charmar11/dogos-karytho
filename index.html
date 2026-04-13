@@ -3798,7 +3798,7 @@ function adminLogout(){
 
 /* ─── Firebase ─── */
 const SK_FB='dk_firebase_cfg';
-let fbDb=null,fbConnected=false,fbListening=false;
+let fbDb=null,fbConnected=false,fbListening=false,branchStats={total_sales_money:0,total_sales_count:0},activeListeners=[];
 let currentBranch='default';
 let currentUid=null;
 
@@ -4258,9 +4258,7 @@ function clearDailyGoal(){
   }
 }
 
-let fbListening=false;
-let branchStats = { total_sales_money: 0, total_sales_count: 0 };
-let activeListeners = []; // Para limpieza de memoria y evitar duplicados
+// Gestión de oyentes y estadísticas globales (Declaradas arriba)
 
 function stopFbListeners() {
   if (activeListeners && activeListeners.length > 0) {
