@@ -4411,7 +4411,9 @@ function getSaleBackup(id){
   }catch{return null;}
 }
 function recoverSalesFromBackup(){
-  const keys=Object.keys(safeStorage).filter(k=>k.startsWith(SK_SALES_BACKUP));
+  // Solo recuperar ventas que pertenecen a la sucursal que estamos viendo actualmente
+  const prefix = SK_SALES_BACKUP + currentBranch + '_';
+  const keys=Object.keys(safeStorage).filter(k=>k.startsWith(prefix));
   if(!keys.length)return;
   const recovered=[];
   keys.forEach(k=>{
