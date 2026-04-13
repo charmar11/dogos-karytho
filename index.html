@@ -4403,10 +4403,19 @@ function refreshActiveViews() {
   if(document.getElementById('view-cobrar')?.classList.contains('active')) renderPOS();
   const adminScreen=document.getElementById('admin-screen');
   if(adminScreen && adminScreen.classList.contains('active')){
+    // SIEMPRE actualizar las 3 pestañas principales del Admin (no solo la activa)
+    // Esto asegura actualización en tiempo real sin necesidad de cambiar de pestaña
     renderAdmin();
-    if(document.getElementById('adm-tab-ventas')?.classList.contains('active')) setAdminRange(adminRange || 'hoy');
-    if(document.getElementById('adm-tab-gastos')?.classList.contains('active')) renderGastos();
-    if(document.getElementById('adm-tab-resumen')?.classList.contains('active')) renderResumenKPIs();
+    // Siempre actualizar ventas y gastos cuando hay cambios
+    if(document.getElementById('adm-tab-ventas')){
+      setAdminRange(adminRange || 'hoy');
+    }
+    if(document.getElementById('adm-tab-gastos')){
+      renderGastos();
+    }
+    if(document.getElementById('adm-tab-resumen')){
+      renderResumenKPIs();
+    }
   }
   updateGoalBar();
 }
