@@ -2016,41 +2016,7 @@ position:sticky;top:0;z-index:20;
   <div class="sec-label">🏆 Mas vendidos</div>
   <div class="form-card" style="padding:12px 15px;margin-bottom:4px"><div id="top-products-list"><div class="no-data" style="padding:8px 0">Sin datos</div></div></div>
   <div class="sec-label">📋 Ventas registradas</div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="cidop-ventas-period-btns">
-    <button class="period-tab active" onclick="setCidopVentasPeriod('hoy')">Hoy</button>
-    <button class="period-tab" onclick="setCidopVentasPeriod('semana')">Semana</button>
-    <button class="period-tab" onclick="setCidopVentasPeriod('mes')">Mes</button>
-    <button class="period-tab" onclick="setCidopVentasPeriod('todo')">Todo</button>
-  </div>
-  <div id="cidop-ventas-search-dia" style="margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <input type="date" id="cidop-ventas-fecha-dia"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="cidopVentasNavDia(this.value)"/>
-      <button onclick="cidopVentasNavHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Hoy</button>
-    </div>
-  </div>
-  <div id="cidop-ventas-search-semana" style="display:none;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Desde</span>
-      <input type="date" id="cidop-ventas-sem-desde"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="cidopVentasSemManual()"/>
-      <span style="font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;min-width:36px">Hasta</span>
-      <input type="date" id="cidop-ventas-sem-hasta"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="cidopVentasSemManual()"/>
-      <button onclick="cidopVentasSemHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 10px;cursor:pointer;white-space:nowrap">Esta semana</button>
-    </div>
-  </div>
-  <div id="cidop-ventas-search-mes" style="display:none;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <input type="month" id="cidop-ventas-mes-input"
-        style="flex:1;background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-weight:600;outline:none;color-scheme:dark"
-        onchange="cidopVentasMesManual(this.value)"/>
-      <button onclick="cidopVentasMesHoy()" style="background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.3);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;padding:8px 12px;cursor:pointer;white-space:nowrap">Este mes</button>
-    </div>
-  </div>
+  <button id="hist-sort-btn" onclick="toggleHistVentasSort()" style="background:var(--bg3);border:1.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;margin-bottom:10px">↓ Más reciente</button>
   <div id="sales-list"><div class="no-data">Sin ventas</div></div>
 </div>
 
@@ -4820,7 +4786,7 @@ function setTab(tab){
     document.getElementById('view-'+t).classList.toggle('active',t===tab);
     document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
   });
-  if(tab==='historial'){ initCidopVentas(); renderHistorial(); updateGoalBar(); }
+  if(tab==='historial'){ renderHistorial(); updateGoalBar(); }
   if(tab==='productos') renderProdAdmin();
   if(tab==='gastos')    initCidopGastos();
 }
@@ -4828,8 +4794,16 @@ function setTab(tab){
 let histNavOffset=0; // kept for compat (unused after refactor)
 let histDiaISO='';       // YYYY-MM-DD seleccionado en Historial
 let histSemDesde='';     // YYYY-MM-DD inicio rango semana
-let histSemHasta='';     // YYYY-MM-DD fin rango semana
 let histMesYM='';        // YYYY-MM seleccionado
+
+let histVentasSortDesc=true; // true = más recientes primero
+
+function toggleHistVentasSort(){
+  histVentasSortDesc=!histVentasSortDesc;
+  const btn=document.getElementById('hist-sort-btn');
+  btn.textContent=histVentasSortDesc?'↓ Más reciente':'↑ Más antiguo';
+  renderHistorial();
+}
 
 function _histThisWeek(){
   const now=new Date();
@@ -5151,84 +5125,6 @@ let cidopGastosDiaISO='';       // YYYY-MM-DD seleccionado para Día
 let cidopGastosSemDesde='';     // YYYY-MM-DD inicio de semana
 let cidopGastosSemHasta='';     // YYYY-MM-DD fin de semana
 let cidopGastosMesYM='';        // YYYY-MM para el mes
-
-/* ── CIDOP Ventas ── */
-let cidopVentasPeriod='hoy';
-let cidopVentasDiaISO='';       // YYYY-MM-DD seleccionado para Día
-let cidopVentasSemDesde='';     // YYYY-MM-DD inicio de semana
-let cidopVentasSemHasta='';     // YYYY-MM-DD fin de semana
-let cidopVentasMesYM='';        // YYYY-MM para el mes
-
-function getCidopVentasDiaISO(){ return cidopVentasDiaISO||todayISO(); }
-function cidopVentasNavDia(val){ if(!val)return; cidopVentasDiaISO=val; renderHistorial(); }
-function cidopVentasNavHoy(){ cidopVentasDiaISO=todayISO(); const el=document.getElementById('cidop-ventas-fecha-dia');if(el)el.value=cidopVentasDiaISO; renderHistorial(); }
-function _syncCidopVentasDiaInput(){ const el=document.getElementById('cidop-ventas-fecha-dia'); if(el) el.value=getCidopVentasDiaISO(); }
-
-function _thisVentasWeekRange(){
-  const now=new Date(); const dow=(now.getDay()+6)%7;
-  const mon=new Date(now); mon.setDate(now.getDate()-dow);
-  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
-  return{desde:localISODate(mon),hasta:localISODate(sun)};
-}
-function getCidopVentasSemRange(){ return{mon:cidopVentasSemDesde,sun:cidopVentasSemHasta}; }
-function cidopVentasSemManual(){
-  const d=document.getElementById('cidop-ventas-sem-desde');
-  const h=document.getElementById('cidop-ventas-sem-hasta');
-  if(!d||!h)return;
-  cidopVentasSemDesde=d.value;
-  cidopVentasSemHasta=h.value;
-  renderHistorial();
-}
-function cidopVentasSemHoy(){
-  const{desde,hasta}=_thisVentasWeekRange();
-  cidopVentasSemDesde=desde; cidopVentasSemHasta=hasta;
-  document.getElementById('cidop-ventas-sem-desde').value=desde;
-  document.getElementById('cidop-ventas-sem-hasta').value=hasta;
-  renderHistorial();
-}
-function _syncCidopVentasSemInputs(){
-  document.getElementById('cidop-ventas-sem-desde').value=cidopVentasSemDesde;
-  document.getElementById('cidop-ventas-sem-hasta').value=cidopVentasSemHasta;
-}
-
-function _thisVentasMesYM(){
-  const now=new Date(); return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-}
-function getCidopVentasMesYM(){ return cidopVentasMesYM||_thisVentasMesYM(); }
-function cidopVentasMesManual(val){ if(!val)return; cidopVentasMesYM=val; renderHistorial(); }
-function cidopVentasMesHoy(){ cidopVentasMesYM=_thisVentasMesYM(); const el=document.getElementById('cidop-ventas-mes-input');if(el)el.value=cidopVentasMesYM; renderHistorial(); }
-function _syncCidopVentasMesInput(){ const el=document.getElementById('cidop-ventas-mes-input'); if(el) el.value=cidopVentasMesYM||_thisVentasMesYM(); }
-
-function setCidopVentasPeriod(p){
-  cidopVentasPeriod=p;
-  document.querySelectorAll('#cidop-ventas-period-btns .period-tab').forEach((b,i)=>{
-    b.classList.toggle('active',['hoy','semana','mes','todo'][i]===p);
-  });
-  const sd=document.getElementById('cidop-ventas-search-dia');
-  const ss=document.getElementById('cidop-ventas-search-semana');
-  const sm=document.getElementById('cidop-ventas-search-mes');
-  if(sd) sd.style.display=p==='hoy'?'':'none';
-  if(ss) ss.style.display=p==='semana'?'':'none';
-  if(sm) sm.style.display=p==='mes'?'':'none';
-  if(p==='semana'&&!cidopVentasSemDesde){
-    const{desde,hasta}=_thisVentasWeekRange();
-    cidopVentasSemDesde=desde; cidopVentasSemHasta=hasta;
-  }
-  if(p==='semana') _syncCidopVentasSemInputs();
-  if(p==='mes') _syncCidopVentasMesInput();
-  if(p==='hoy') _syncCidopVentasDiaInput();
-  renderHistorial();
-}
-
-function initCidopVentas(){
-  cidopVentasDiaISO=todayISO();
-  const{desde,hasta}=_thisVentasWeekRange();
-  cidopVentasSemDesde=desde; cidopVentasSemHasta=hasta;
-  cidopVentasMesYM=_thisVentasMesYM();
-  _syncCidopVentasDiaInput();
-  _syncCidopVentasSemInputs();
-  _syncCidopVentasMesInput();
-}
 
 // ── helper: fecha local como YYYY-MM-DD (sin desfase UTC) ──
 function localISODate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -5705,55 +5601,22 @@ function renderChart(ps){
 
 /* ─── Historial ─── */
 function renderHistorial(){
-  // Use cidopVentasPeriod for filtering sales list (more recent first = reverse chronological)
-  let filteredSales = [];
-  const today = todayISO();
+  const nav=getNavSales();
+  let ps=nav.filtered;
   
-  if(cidopVentasPeriod === 'hoy'){
-    filteredSales = sales.filter(s => toISODate(s.date) === today);
-  } else if(cidopVentasPeriod === 'semana'){
-    const {mon:desde, sun:hasta} = getCidopVentasSemRange();
-    filteredSales = sales.filter(s => { const iso = toISODate(s.date); return iso >= desde && iso <= hasta; });
-  } else if(cidopVentasPeriod === 'mes'){
-    const ym = getCidopVentasMesYM();
-    const firstISO = ym + '-01';
-    const lastISO = ym + '-31';
-    filteredSales = sales.filter(s => { const iso = toISODate(s.date); return iso >= firstISO && iso <= lastISO; });
-  } else {
-    filteredSales = [...sales];
-  }
+  // Sort based on toggle setting
+  ps.sort((a,b) => histVentasSortDesc 
+    ? new Date(b.timestamp) - new Date(a.timestamp) 
+    : new Date(a.timestamp) - new Date(b.timestamp));
   
-  // Sort by timestamp descending (most recent first)
-  filteredSales.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-  
-  const ps = filteredSales;
-  const total = ps.reduce((s,v)=>s+v.total,0);
-  const avg = ps.length?total/ps.length:0;
+  const total=ps.reduce((s,v)=>s+v.total,0);
+  const avg=ps.length?total/ps.length:0;
 
   // Stats
   document.getElementById('stat-count').textContent=ps.length;
   document.getElementById('stat-total').textContent='$'+total.toFixed(2);
   document.getElementById('stat-avg').textContent='Promedio: $'+avg.toFixed(2);
   
-  // Label based on cidopVentasPeriod
-  const periodLabels = { hoy: 'Hoy', semana: 'Esta semana', mes: 'Este mes', todo: 'Todo' };
-  document.getElementById('stat-period-lbl').textContent=periodLabels[cidopVentasPeriod] || 'Todo';
-
-  // Nav panels visibility for cidopVentasPeriod selectors
-  if(cidopVentasPeriod==='todo'){
-    ['cidop-ventas-search-dia','cidop-ventas-search-semana','cidop-ventas-search-mes'].forEach(id=>{
-      const el=document.getElementById(id); if(el) el.style.display='none';
-    });
-  } else {
-    // Show the appropriate selector based on period
-    const sd = document.getElementById('cidop-ventas-search-dia');
-    const ss = document.getElementById('cidop-ventas-search-semana');
-    const sm = document.getElementById('cidop-ventas-search-mes');
-    if(sd) sd.style.display = cidopVentasPeriod === 'hoy' ? '' : 'none';
-    if(ss) ss.style.display = cidopVentasPeriod === 'semana' ? '' : 'none';
-    if(sm) sm.style.display = cidopVentasPeriod === 'mes' ? '' : 'none';
-  }
-
   renderChart(ps);
 
   // Top products
@@ -5780,8 +5643,8 @@ function renderHistorial(){
   const list=document.getElementById('sales-list');
   if(!ps.length){list.innerHTML='<div class="no-data">Sin ventas en este periodo</div>';return;}
 
-  // ── HOY: individual sales by hour ──
-  if(cidopVentasPeriod==='hoy'){
+  // ── DIA: individual sales by hour ──
+  if(currentPeriod==='dia'){
     list.innerHTML=ps.map((sale,i)=>{
       const its=sale.items.map(it=>`${it.qty}x ${it.name}${it.var&&it.var!=='Normal'?' ('+it.var+')':''}${it.extras?' +'+it.extras:''}`).join('<br>');
       const cambioHtml=sale.cambio!=null?`<span class="sale-cambio-badge">Cambio $${sale.cambio.toFixed(2)}</span>`:'';
@@ -5841,7 +5704,7 @@ function renderHistorial(){
   }
 
   // ── SEMANA: accordion by day ──
-  if(cidopVentasPeriod==='semana'){
+  if(currentPeriod==='semana'){
     // Group sales by ISO date
     const byDay={};
     ps.forEach(s=>{const k=toISODate(s.date);if(!byDay[k])byDay[k]=[];byDay[k].push(s);});
@@ -5856,7 +5719,7 @@ function renderHistorial(){
   }
 
   // ── MES: accordion by week ──
-  if(cidopVentasPeriod==='mes'){
+  if(currentPeriod==='mes'){
     // Group by Monday of week
     const byWeek={};
     ps.forEach(s=>{
