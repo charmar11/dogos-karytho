@@ -9,11 +9,11 @@ let serviceAccount;
 try {
   let saData = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (saData) {
-    // Limpieza agresiva de caracteres de escape mal formateados
     saData = saData.trim();
-    // Reparar posibles errores de escape en la llave privada
-    if (saData.includes('\\n')) {
-      // Si el JSON viene con escapes dobles, los normalizamos
+    // Si no empieza con '{', asumimos que es Base64 (método a prueba de errores)
+    if (!saData.startsWith('{')) {
+      console.log('📦 Detectado formato Base64, decodificando...');
+      saData = Buffer.from(saData, 'base64').toString('utf8');
     }
     serviceAccount = JSON.parse(saData);
   } else {
@@ -21,15 +21,7 @@ try {
   }
 } catch (err) {
   console.error('❌ Error fatal al cargar la Service Account:', err.message);
-  console.log('Intentando limpieza de emergencia...');
-  try {
-     // Segundo intento de limpieza si el primero falló
-     let rawSa = process.env.FIREBASE_SERVICE_ACCOUNT.replace(/\n/g, '\\n');
-     serviceAccount = JSON.parse(rawSa);
-  } catch (secondErr) {
-     console.error('❌ Falló incluso con limpieza de emergencia.');
-     process.exit(1);
-  }
+  process.exit(1);
 }
 
 admin.initializeApp({
