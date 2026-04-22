@@ -16,11 +16,32 @@ try {
       saData = Buffer.from(saData, 'base64').toString('utf8');
     }
     serviceAccount = JSON.parse(saData);
+    console.log('✅ JSON parseado correctamente.');
 
-    // Patch crítico para entornos como Render/Heroku:
-    // Asegura que los saltos de línea de la llave privada se interpreten correctamente
     if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      console.log('🔑 Sanatizando Private Key... (Longitud original:', serviceAccount.private_key.length, ')');
+      
+      // Limpieza ultra-agresiva:
+      // 1. Reemplaza escapes literales \\n por saltos de línea reales
+      // 2. Normaliza saltos de línea
+      // 3. Asegura que el formato PEM sea exacto
+      let pk = serviceAccount.private_key;
+      pk = pk.replace(/\\n/g, '\n'); 
+      pk = pk.replace(/\r\n/g, '\n');
+      
+      // Si por alguna razón los saltos de línea desaparecieron, los restauramos
+      // (Buscamos el inicio y final y nos aseguramos de que haya saltos de línea)
+      if (!pk.includes('\n') && pk.includes('-----BEGIN PRIVATE KEY-----')) {
+        console.log('⚠️ Detectada llave sin saltos de línea, intentando reconstruir PEM...');
+        const header = '-----BEGIN PRIVATE KEY-----';
+        const footer = '-----END PRIVATE KEY-----';
+        let core = pk.replace(header, '').replace(footer, '').replace(/\s/g, '');
+        // Dividir en bloques de 64 caracteres si es necesario, o simplemente poner un salto tras el header
+        pk = `${header}\n${core}\n${footer}\n`;
+      }
+      
+      serviceAccount.private_key = pk;
+      console.log('🔑 Longitud final:', serviceAccount.private_key.length);
     }
   } else {
     serviceAccount = require('./service-account.json');
