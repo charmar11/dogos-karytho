@@ -1,0 +1,88 @@
+require('dotenv').config();
+const { Telegraf } = require('telegraf');
+const express = require('express');
+const admin = require('firebase-admin');
+const { handleVentas, handleGastos, handleCorte, handleStart } = require('./commands');
+
+// Initialize Firebase
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+  : require('./service-account.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: process.env.FIREBASE_DATABASE_URL
+});
+
+const db = admin.database();
+
+// Initialize Telegram Bot
+const bot = new Telegraf(process.env.BOT_TOKEN);
+
+// Global Middleware for Authorization
+bot.use(async (ctx, next) => {
+  const chatId = ctx.chat?.id.toString();
+  if (!chatId) return;
+
+  const whitelistSnap = await db.ref('config/telegram/whitelist').once('value');
+  const whitelist = whitelistSnap.val() || [];
+
+  if (whitelist.includes(chatId) || ctx.message?.text === '/start') {
+    return next();
+  }
+  
+  console.log(`🚫 Bloqueado acceso de: ${chatId}`);
+  ctx.reply('⚠️ No estás autorizado para usar este bot.');
+});
+
+// Bot Commands
+bot.start((ctx) => handleStart(ctx, db));
+bot.command('ventas', (ctx) => handleVentas(ctx, db));
+bot.command('gastos', (ctx) => handleGastos(ctx, db));
+bot.command('corte', (ctx) => handleCorte(ctx, db));
+bot.help((ctx) => ctx.reply('Comandos disponibles:\n/ventas - Resumen de hoy\n/gastos - Gastos registrados\n/corte - Estado del corte actual'));
+
+// HTTP Server for Notifications
+const app = express();
+app.use(express.json());
+
+app.post('/notify', async (req, res) => {
+  const { secret, type, message, sucursalId } = req.body;
+
+  if (secret !== process.env.NOTIFY_SECRET) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    // Find chat_id for this sucursal
+    const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
+    const mappings = mappingsSnap.val() || {};
+    
+    // Find all chatIds mapped to this sucursalId
+    const targetChatIds = Object.keys(mappings).filter(id => mappings[id] === sucursalId);
+
+    if (targetChatIds.length === 0) {
+      console.log(`⚠️ No mapping found for sucursal: ${sucursalId}`);
+      return res.status(404).json({ error: 'No mapping found' });
+    }
+
+    for (const chatId of targetChatIds) {
+      await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`📡 Notifier server running on port ${PORT}`);
+  bot.launch().then(() => console.log('🤖 Bot results: LIVE'));
+});
+
+// Graceful stop
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
