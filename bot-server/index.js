@@ -1,65 +1,58 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const express = require('express');
+const fs = require('fs');
 const admin = require('firebase-admin');
 const { handleVentas, handleGastos, handleCorte, handleStart } = require('./commands');
 
 // Initialize Firebase
 let serviceAccount;
+const SECRET_PATH = '/etc/secrets/service-account.json'; // Ruta estándar en Render
+
 try {
-  let saData = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (saData) {
-    saData = saData.trim();
-    // Si no empieza con '{', asumimos que es Base64 (método a prueba de errores)
+  if (fs.existsSync(SECRET_PATH)) {
+    console.log('📄 Detectado Secret File en Render, cargando...');
+    serviceAccount = JSON.parse(fs.readFileSync(SECRET_PATH, 'utf8'));
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    let saData = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
     if (!saData.startsWith('{')) {
       console.log('📦 Detectado formato Base64, decodificando...');
       saData = Buffer.from(saData, 'base64').toString('utf8');
     }
     const saObj = JSON.parse(saData);
-    console.log('✅ JSON parseado correctamente.');
-
-    // Extraer campos con sanitización agresiva
-    const projectId = saObj.project_id || saObj.projectId;
-    const clientEmail = (saObj.client_email || saObj.clientEmail || '').trim();
-    let privateKey = saObj.private_key || saObj.privateKey || '';
-
-    if (privateKey) {
-      console.log('🔑 Sanatizando Private Key (RSA Standard)...');
-      // Extraer solo el contenido base64
-      const core = privateKey
-        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-        .replace(/-----END PRIVATE KEY-----/g, '')
-        .replace(/\\n/g, '')
-        .replace(/\n/g, '')
-        .replace(/\r/g, '')
-        .replace(/\s+/g, '');
-      
-      // Re-formatear con saltos exactos (64 chars)
+    
+    // Sanitización RSA para compatibilidad total
+    let pk = saObj.private_key || saObj.privateKey || '';
+    if (pk && !pk.includes('\n')) {
+      const core = pk.replace(/-----BEGIN PRIVATE KEY-----/g, '')
+                     .replace(/-----END PRIVATE KEY-----/g, '')
+                     .replace(/\s+/g, '');
       const matches = core.match(/.{1,64}/g);
-      privateKey = `-----BEGIN PRIVATE KEY-----\n${matches.join('\n')}\n-----END PRIVATE KEY-----\n`;
+      pk = `-----BEGIN PRIVATE KEY-----\n${matches.join('\n')}\n-----END PRIVATE KEY-----\n`;
     }
 
     serviceAccount = {
-      projectId: projectId,
-      clientEmail: clientEmail,
-      privateKey: privateKey
+      projectId: saObj.project_id || saObj.projectId,
+      clientEmail: saObj.client_email || saObj.clientEmail,
+      privateKey: pk
     };
-    
-    console.log('🚀 Configuración de credenciales lista.');
-    console.log('📌 Project:', serviceAccount.projectId);
-    console.log('📌 Email:', serviceAccount.clientEmail);
   } else {
-    serviceAccount = require('./service-account.json');
+    serviceAccount = JSON.parse(fs.readFileSync('./service-account.json', 'utf8'));
   }
+  
+  if (!serviceAccount.privateKey && !serviceAccount.private_key) {
+     throw new Error('No se encontró private_key en la configuración.');
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: process.env.FIREBASE_DATABASE_URL
+  });
+  console.log('🔥 Firebase Admin inicializado correctamente.');
 } catch (err) {
-  console.error('❌ Error fatal al cargar la Service Account:', err.message);
+  console.error('❌ Error fatal al cargar configuración:', err.message);
   process.exit(1);
 }
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.FIREBASE_DATABASE_URL
-});
 
 const db = admin.database();
 
