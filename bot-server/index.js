@@ -42,6 +42,8 @@ try {
       
       serviceAccount.private_key = pk;
       console.log('🔑 Longitud final:', serviceAccount.private_key.length);
+      console.log('📝 Inicio de llave:', JSON.stringify(pk.substring(0, 40)));
+      console.log('📝 Fin de llave:', JSON.stringify(pk.substring(pk.length - 40)));
     }
   } else {
     serviceAccount = require('./service-account.json');
