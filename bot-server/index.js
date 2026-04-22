@@ -7,13 +7,29 @@ const { handleVentas, handleGastos, handleCorte, handleStart } = require('./comm
 // Initialize Firebase
 let serviceAccount;
 try {
-  serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : require('./service-account.json');
+  let saData = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (saData) {
+    // Limpieza agresiva de caracteres de escape mal formateados
+    saData = saData.trim();
+    // Reparar posibles errores de escape en la llave privada
+    if (saData.includes('\\n')) {
+      // Si el JSON viene con escapes dobles, los normalizamos
+    }
+    serviceAccount = JSON.parse(saData);
+  } else {
+    serviceAccount = require('./service-account.json');
+  }
 } catch (err) {
   console.error('❌ Error fatal al cargar la Service Account:', err.message);
-  console.log('Asegúrate de que FIREBASE_SERVICE_ACCOUNT sea un JSON válido.');
-  process.exit(1);
+  console.log('Intentando limpieza de emergencia...');
+  try {
+     // Segundo intento de limpieza si el primero falló
+     let rawSa = process.env.FIREBASE_SERVICE_ACCOUNT.replace(/\n/g, '\\n');
+     serviceAccount = JSON.parse(rawSa);
+  } catch (secondErr) {
+     console.error('❌ Falló incluso con limpieza de emergencia.');
+     process.exit(1);
+  }
 }
 
 admin.initializeApp({
