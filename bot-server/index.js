@@ -15,33 +15,39 @@ try {
       console.log('📦 Detectado formato Base64, decodificando...');
       saData = Buffer.from(saData, 'base64').toString('utf8');
     }
-    serviceAccount = JSON.parse(saData);
+    const saObj = JSON.parse(saData);
     console.log('✅ JSON parseado correctamente.');
 
-    if (serviceAccount.private_key) {
-      console.log('🔑 Sanatizando Private Key... (Longitud original:', serviceAccount.private_key.length, ')');
-      
-      // Reparar PEM dañado o mal formateado
-      let rawKey = serviceAccount.private_key;
-      
-      // 1. Extraer solo la parte base64 del centro (ignorando headers/footer y espacios)
-      let body = rawKey
+    // Extraer campos con sanitización agresiva
+    const projectId = saObj.project_id || saObj.projectId;
+    const clientEmail = (saObj.client_email || saObj.clientEmail || '').trim();
+    let privateKey = saObj.private_key || saObj.privateKey || '';
+
+    if (privateKey) {
+      console.log('🔑 Sanatizando Private Key (RSA Standard)...');
+      // Extraer solo el contenido base64
+      const core = privateKey
         .replace(/-----BEGIN PRIVATE KEY-----/g, '')
         .replace(/-----END PRIVATE KEY-----/g, '')
         .replace(/\\n/g, '')
         .replace(/\n/g, '')
+        .replace(/\r/g, '')
         .replace(/\s+/g, '');
-        
-      // 2. Reconstruir con saltos de línea estrictos cada 64 caracteres (estándar RSA)
-      const matches = body.match(/.{1,64}/g);
-      const formattedBody = matches ? matches.join('\n') : body;
       
-      const finalKey = `-----BEGIN PRIVATE KEY-----\n${formattedBody}\n-----END PRIVATE KEY-----\n`;
-      
-      serviceAccount.private_key = finalKey;
-      console.log('🔑 Llave reconstruida y formateada con éxito.');
-      console.log('📝 Inicio final:', JSON.stringify(serviceAccount.private_key.substring(0, 40)));
+      // Re-formatear con saltos exactos (64 chars)
+      const matches = core.match(/.{1,64}/g);
+      privateKey = `-----BEGIN PRIVATE KEY-----\n${matches.join('\n')}\n-----END PRIVATE KEY-----\n`;
     }
+
+    serviceAccount = {
+      projectId: projectId,
+      clientEmail: clientEmail,
+      privateKey: privateKey
+    };
+    
+    console.log('🚀 Configuración de credenciales lista.');
+    console.log('📌 Project:', serviceAccount.projectId);
+    console.log('📌 Email:', serviceAccount.clientEmail);
   } else {
     serviceAccount = require('./service-account.json');
   }
