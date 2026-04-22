@@ -6,16 +6,22 @@ const getTodayLocal = () => {
 };
 
 const getAssignedBranches = async (chatId, db) => {
-  const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
-  const mapping = mappingsSnap.val()?.[chatId];
-  if (!mapping) return [];
-  
-  if (mapping === 'all') {
-    const sucursalesSnap = await db.ref('sucursales').once('value');
-    return Object.keys(sucursalesSnap.val() || {});
+  try {
+    const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
+    const mapping = mappingsSnap.val()?.[chatId];
+    if (!mapping) return [];
+    
+    if (mapping === 'all') {
+      const sucursalesSnap = await db.ref('sucursales').once('value');
+      const sucursales = sucursalesSnap.val() || {};
+      return Object.keys(sucursales);
+    }
+    
+    return Array.isArray(mapping) ? mapping : [mapping];
+  } catch (e) {
+    console.error('Error fetching branches:', e);
+    return [];
   }
-  
-  return Array.isArray(mapping) ? mapping : [mapping];
 };
 
 const handleStart = async (ctx, db) => {
@@ -39,12 +45,15 @@ const handleVentas = async (ctx, db) => {
       const data = snap.val();
       if (!data) continue;
 
-      // Soportar campo timestamp o date
-      const sales = Object.values(data.sales || {}).filter(s => 
-        (s.timestamp?.startsWith(today)) || (s.date === today)
-      );
+      // Filtrado robusto de ventas
+      const sales = Object.values(data.sales || {}).filter(s => {
+        const sTimestamp = String(s.timestamp || '');
+        const sDate = String(s.date || '');
+        // Intentar coincidencia con hoy en formato ISO (YYYY-MM-DD) o Local (D/M/YYYY)
+        return sTimestamp.startsWith(today) || sDate === today || sDate === today.split('-').reverse().map(x => parseInt(x)).join('/');
+      });
       
-      const totalBranch = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+      const totalBranch = sales.reduce((sum, s) => sum + (parseFloat(s.total || s.amount || s.monto || 0)), 0);
       const countBranch = sales.length;
 
       totalGlobal += totalBranch;
@@ -83,12 +92,17 @@ const handleGastos = async (ctx, db) => {
       const data = snap.val();
       if (!data) continue;
 
-      // Soportar fecha/date y monto/amount
-      const gastos = Object.values(data.gastos || {}).filter(g => 
-        (g.fecha === today) || (g.date === today) || (g.timestamp?.startsWith(today))
-      );
+      // Filtrado robusto de gastos
+      const todayAlt = today.split('-').reverse().map(x => parseInt(x)).join('/');
+      const gastos = Object.values(data.gastos || {}).filter(g => {
+        const gFecha = String(g.fecha || '');
+        const gDate = String(g.date || '');
+        const gTs = String(g.timestamp || '');
+        return gFecha === today || gDate === today || gTs.startsWith(today) || 
+               gFecha === todayAlt || gDate === todayAlt;
+      });
       
-      const totalBranch = gastos.reduce((sum, g) => sum + (g.monto || g.amount || 0), 0);
+      const totalBranch = gastos.reduce((sum, g) => sum + (parseFloat(g.monto || g.amount || 0)), 0);
       
       totalGlobal += totalBranch;
 
