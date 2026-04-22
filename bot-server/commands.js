@@ -1,3 +1,10 @@
+const getTodayLocal = () => {
+  // Ajuste para Culiacán (GMT-7)
+  const options = { timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('fr-CA', options); // fr-CA gives YYYY-MM-DD
+  return formatter.format(new Date());
+};
+
 const getAssignedBranches = async (chatId, db) => {
   const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
   const mapping = mappingsSnap.val()?.[chatId];
@@ -22,7 +29,7 @@ const handleVentas = async (ctx, db) => {
     const branchIds = await getAssignedBranches(chatId, db);
     if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocal();
     let totalGlobal = 0;
     let globalCount = 0;
     let breakdown = '';
@@ -32,7 +39,11 @@ const handleVentas = async (ctx, db) => {
       const data = snap.val();
       if (!data) continue;
 
-      const sales = Object.values(data.sales || {}).filter(s => s.timestamp?.startsWith(today));
+      // Soportar campo timestamp o date
+      const sales = Object.values(data.sales || {}).filter(s => 
+        (s.timestamp?.startsWith(today)) || (s.date === today)
+      );
+      
       const totalBranch = sales.reduce((sum, s) => sum + (s.total || 0), 0);
       const countBranch = sales.length;
 
@@ -63,7 +74,7 @@ const handleGastos = async (ctx, db) => {
     const branchIds = await getAssignedBranches(chatId, db);
     if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocal();
     let totalGlobal = 0;
     let breakdown = '';
 
@@ -72,19 +83,31 @@ const handleGastos = async (ctx, db) => {
       const data = snap.val();
       if (!data) continue;
 
-      const gastos = Object.values(data.gastos || {}).filter(g => (g.fecha || g.date)?.startsWith(today));
+      // Soportar fecha/date y monto/amount
+      const gastos = Object.values(data.gastos || {}).filter(g => 
+        (g.fecha === today) || (g.date === today) || (g.timestamp?.startsWith(today))
+      );
+      
       const totalBranch = gastos.reduce((sum, g) => sum + (g.monto || g.amount || 0), 0);
       
       totalGlobal += totalBranch;
 
       const name = data.config?.name || id;
       breakdown += `• ${name}: <b>$${totalBranch.toLocaleString()}</b>\n`;
+      
+      // Detalle de gastos si hay pocos
+      if (branchIds.length === 1 && gastos.length > 0) {
+        gastos.forEach(g => {
+          breakdown += `  - ${g.desc || 'Sin desc'}: $${(g.monto || g.amount)}\n`;
+        });
+      }
     }
 
     let msg = `💸 <b>Gastos Totales - Hoy</b>\n`;
+    msg += `📅 Fecha local: ${today}\n`;
     msg += `━━━━━━━━━━━━━━━\n`;
     msg += `💰 TOTAL GASTOS: <b>$${totalGlobal.toLocaleString()}</b>\n\n`;
-    msg += `<b>Desglose por sucursal:</b>\n${breakdown}`;
+    msg += breakdown ? `<b>Desglose:</b>\n${breakdown}` : `<i>No se encontraron gastos en ninguna sucursal.</i>`;
     
     ctx.reply(msg, { parse_mode: 'HTML' });
   } catch (err) {
@@ -99,8 +122,9 @@ const handleCorte = async (ctx, db) => {
     const branchIds = await getAssignedBranches(chatId, db);
     if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayLocal();
     let msg = `✂️ <b>Corte Estimado (Red Global)</b>\n`;
+    msg += `📅 Fecha: ${today}\n`;
     msg += `━━━━━━━━━━━━━━━\n\n`;
 
     for (const id of branchIds) {
@@ -108,8 +132,12 @@ const handleCorte = async (ctx, db) => {
       const data = snap.val();
       if (!data) continue;
 
-      const sales = Object.values(data.sales || {}).filter(s => s.timestamp?.startsWith(today));
-      const gastos = Object.values(data.gastos || {}).filter(g => (g.fecha || g.date)?.startsWith(today));
+      const sales = Object.values(data.sales || {}).filter(s => 
+        (s.timestamp?.startsWith(today)) || (s.date === today)
+      );
+      const gastos = Object.values(data.gastos || {}).filter(g => 
+        (g.fecha === today) || (g.date === today) || (g.timestamp?.startsWith(today))
+      );
       
       const v = sales.reduce((sum, s) => sum + (s.total || 0), 0);
       const g = gastos.reduce((sum, g) => sum + (g.monto || g.amount || 0), 0);
