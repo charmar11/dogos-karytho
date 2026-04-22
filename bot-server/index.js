@@ -21,29 +21,26 @@ try {
     if (serviceAccount.private_key) {
       console.log('🔑 Sanatizando Private Key... (Longitud original:', serviceAccount.private_key.length, ')');
       
-      // Limpieza ultra-agresiva:
-      // 1. Reemplaza escapes literales \\n por saltos de línea reales
-      // 2. Normaliza saltos de línea
-      // 3. Asegura que el formato PEM sea exacto
-      let pk = serviceAccount.private_key;
-      pk = pk.replace(/\\n/g, '\n'); 
-      pk = pk.replace(/\r\n/g, '\n');
+      // Reparar PEM dañado o mal formateado
+      let rawKey = serviceAccount.private_key;
       
-      // Si por alguna razón los saltos de línea desaparecieron, los restauramos
-      // (Buscamos el inicio y final y nos aseguramos de que haya saltos de línea)
-      if (!pk.includes('\n') && pk.includes('-----BEGIN PRIVATE KEY-----')) {
-        console.log('⚠️ Detectada llave sin saltos de línea, intentando reconstruir PEM...');
-        const header = '-----BEGIN PRIVATE KEY-----';
-        const footer = '-----END PRIVATE KEY-----';
-        let core = pk.replace(header, '').replace(footer, '').replace(/\s/g, '');
-        // Dividir en bloques de 64 caracteres si es necesario, o simplemente poner un salto tras el header
-        pk = `${header}\n${core}\n${footer}\n`;
-      }
+      // 1. Extraer solo la parte base64 del centro (ignorando headers/footer y espacios)
+      let body = rawKey
+        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+        .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/\\n/g, '')
+        .replace(/\n/g, '')
+        .replace(/\s+/g, '');
+        
+      // 2. Reconstruir con saltos de línea estrictos cada 64 caracteres (estándar RSA)
+      const matches = body.match(/.{1,64}/g);
+      const formattedBody = matches ? matches.join('\n') : body;
       
-      serviceAccount.private_key = pk;
-      console.log('🔑 Longitud final:', serviceAccount.private_key.length);
-      console.log('📝 Inicio de llave:', JSON.stringify(pk.substring(0, 40)));
-      console.log('📝 Fin de llave:', JSON.stringify(pk.substring(pk.length - 40)));
+      const finalKey = `-----BEGIN PRIVATE KEY-----\n${formattedBody}\n-----END PRIVATE KEY-----\n`;
+      
+      serviceAccount.private_key = finalKey;
+      console.log('🔑 Llave reconstruida y formateada con éxito.');
+      console.log('📝 Inicio final:', JSON.stringify(serviceAccount.private_key.substring(0, 40)));
     }
   } else {
     serviceAccount = require('./service-account.json');
