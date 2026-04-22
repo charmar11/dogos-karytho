@@ -1,32 +1,54 @@
+const getAssignedBranches = async (chatId, db) => {
+  const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
+  const mapping = mappingsSnap.val()?.[chatId];
+  if (!mapping) return [];
+  
+  if (mapping === 'all') {
+    const sucursalesSnap = await db.ref('sucursales').once('value');
+    return Object.keys(sucursalesSnap.val() || {});
+  }
+  
+  return Array.isArray(mapping) ? mapping : [mapping];
+};
+
 const handleStart = async (ctx, db) => {
   const chatId = ctx.chat.id.toString();
-  ctx.reply(`👋 ¡Hola! Tu Chat ID es: <code>${chatId}</code>\n\nSi no puedes usar los comandos, asegúrate de que este ID esté en la lista blanca de Firebase.`, { parse_mode: 'HTML' });
+  ctx.reply(`👋 ¡Hola! Tu Chat ID es: <code>${chatId}</code>\n\nSi eres administrador, asegúrate de estar configurado para ver todas las sucursales.`, { parse_mode: 'HTML' });
 };
 
 const handleVentas = async (ctx, db) => {
   const chatId = ctx.chat.id.toString();
   try {
-    const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
-    const branchId = mappingsSnap.val()?.[chatId];
-
-    if (!branchId) return ctx.reply('❌ No tienes una sucursal asignada.');
+    const branchIds = await getAssignedBranches(chatId, db);
+    if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
     const today = new Date().toISOString().split('T')[0];
-    const branchSnap = await db.ref(`sucursales/${branchId}`).once('value');
-    const branch = branchSnap.val();
+    let totalGlobal = 0;
+    let globalCount = 0;
+    let breakdown = '';
 
-    if (!branch) return ctx.reply('❌ No se encontró información de la sucursal.');
+    for (const id of branchIds) {
+      const snap = await db.ref(`sucursales/${id}`).once('value');
+      const data = snap.val();
+      if (!data) continue;
 
-    const sales = Object.values(branch.sales || {}).filter(s => s.timestamp?.startsWith(today));
-    const totalVentas = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-    const count = sales.length;
+      const sales = Object.values(data.sales || {}).filter(s => s.timestamp?.startsWith(today));
+      const totalBranch = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+      const countBranch = sales.length;
 
-    let msg = `📊 <b>Resumen de Ventas - ${branch.config?.name || branchId}</b>\n`;
+      totalGlobal += totalBranch;
+      globalCount += countBranch;
+      
+      const name = data.config?.name || id;
+      breakdown += `• ${name}: <b>$${totalBranch.toLocaleString()}</b> (<i>${countBranch} tks</i>)\n`;
+    }
+
+    let msg = `📊 <b>Ventas Totales - Hoy</b>\n`;
     msg += `📅 Fecha: ${today}\n`;
     msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `💰 Total: <b>$${totalVentas.toLocaleString()}</b>\n`;
-    msg += `🛒 Tickets: <b>${count}</b>\n`;
-    msg += `🎟️ Promedio: <b>$${count > 0 ? (totalVentas / count).toFixed(2) : 0}</b>\n`;
+    msg += `💰 TOTAL GLOBAL: <b>$${totalGlobal.toLocaleString()}</b>\n`;
+    msg += `🛒 Tickets Totales: <b>${globalCount}</b>\n\n`;
+    msg += `<b>Desglose:</b>\n${breakdown}`;
     
     ctx.reply(msg, { parse_mode: 'HTML' });
   } catch (err) {
@@ -38,30 +60,35 @@ const handleVentas = async (ctx, db) => {
 const handleGastos = async (ctx, db) => {
   const chatId = ctx.chat.id.toString();
   try {
-    const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
-    const branchId = mappingsSnap.val()?.[chatId];
+    const branchIds = await getAssignedBranches(chatId, db);
+    if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
     const today = new Date().toISOString().split('T')[0];
-    const branchSnap = await db.ref(`sucursales/${branchId}/gastos`).once('value');
-    const gastosData = branchSnap.val() || {};
-    
-    const gastos = Object.values(gastosData).filter(g => g.date?.startsWith(today));
-    const total = gastos.reduce((sum, g) => sum + (g.amount || 0), 0);
+    let totalGlobal = 0;
+    let breakdown = '';
 
-    let msg = `💸 <b>Gastos de Hoy</b>\n`;
-    msg += `━━━━━━━━━━━━━━━\n`;
-    if (gastos.length === 0) {
-      msg += `<i>No hay gastos registrados.</i>\n`;
-    } else {
-      gastos.forEach(g => {
-        msg += `• ${g.desc || 'Gasto'}: <b>$${g.amount}</b>\n`;
-      });
-      msg += `━━━━━━━━━━━━━━━\n`;
-      msg += `💰 Total Gastos: <b>$${total}</b>`;
+    for (const id of branchIds) {
+      const snap = await db.ref(`sucursales/${id}`).once('value');
+      const data = snap.val();
+      if (!data) continue;
+
+      const gastos = Object.values(data.gastos || {}).filter(g => (g.fecha || g.date)?.startsWith(today));
+      const totalBranch = gastos.reduce((sum, g) => sum + (g.monto || g.amount || 0), 0);
+      
+      totalGlobal += totalBranch;
+
+      const name = data.config?.name || id;
+      breakdown += `• ${name}: <b>$${totalBranch.toLocaleString()}</b>\n`;
     }
+
+    let msg = `💸 <b>Gastos Totales - Hoy</b>\n`;
+    msg += `━━━━━━━━━━━━━━━\n`;
+    msg += `💰 TOTAL GASTOS: <b>$${totalGlobal.toLocaleString()}</b>\n\n`;
+    msg += `<b>Desglose por sucursal:</b>\n${breakdown}`;
     
     ctx.reply(msg, { parse_mode: 'HTML' });
   } catch (err) {
+    console.error(err);
     ctx.reply('❌ Error al obtener gastos.');
   }
 };
@@ -69,29 +96,32 @@ const handleGastos = async (ctx, db) => {
 const handleCorte = async (ctx, db) => {
   const chatId = ctx.chat.id.toString();
   try {
-    const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
-    const branchId = mappingsSnap.val()?.[chatId];
+    const branchIds = await getAssignedBranches(chatId, db);
+    if (branchIds.length === 0) return ctx.reply('❌ No tienes sucursales asignadas.');
 
-    const branchSnap = await db.ref(`sucursales/${branchId}`).once('value');
-    const branch = branchSnap.val();
-
-    // Lógica simplificada de corte basada en ventas vs gastos
     const today = new Date().toISOString().split('T')[0];
-    const sales = Object.values(branch.sales || {}).filter(s => s.timestamp?.startsWith(today));
-    const gastos = Object.values(branch.gastos || {}).filter(g => g.date?.startsWith(today));
-    
-    const totalBruto = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-    const totalGastos = gastos.reduce((sum, g) => sum + (g.amount || 0), 0);
-    const neto = totalBruto - totalGastos;
+    let msg = `✂️ <b>Corte Estimado (Red Global)</b>\n`;
+    msg += `━━━━━━━━━━━━━━━\n\n`;
 
-    let msg = `✂️ <b>Estado de Caja (Estimado)</b>\n`;
-    msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `➕ Ventas: <code>$${totalBruto}</code>\n`;
-    msg += `➖ Gastos: <code>$${totalGastos}</code>\n`;
-    msg += `💰 <b>Efectivo Ideal: $${neto}</b>\n`;
-    msg += `━━━━━━━━━━━━━━━\n`;
-    msg += `⚠️ <i>Este es un cálculo en tiempo real, no un cierre fiscal.</i>`;
+    for (const id of branchIds) {
+      const snap = await db.ref(`sucursales/${id}`).once('value');
+      const data = snap.val();
+      if (!data) continue;
 
+      const sales = Object.values(data.sales || {}).filter(s => s.timestamp?.startsWith(today));
+      const gastos = Object.values(data.gastos || {}).filter(g => (g.fecha || g.date)?.startsWith(today));
+      
+      const v = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+      const g = gastos.reduce((sum, g) => sum + (g.monto || g.amount || 0), 0);
+      const name = data.config?.name || id;
+
+      msg += `📍 <b>${name}</b>\n`;
+      msg += `  Ventas: $${v.toLocaleString()}\n`;
+      msg += `  Gastos: $${g.toLocaleString()}\n`;
+      msg += `  <b>Neto: $${(v - g).toLocaleString()}</b>\n\n`;
+    }
+
+    msg += `⚠️ <i>Estimación en tiempo real.</i>`;
     ctx.reply(msg, { parse_mode: 'HTML' });
   } catch (err) {
     ctx.reply('❌ Error al calcular corte.');
