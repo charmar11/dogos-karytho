@@ -5,9 +5,16 @@ const admin = require('firebase-admin');
 const { handleVentas, handleGastos, handleCorte, handleStart } = require('./commands');
 
 // Initialize Firebase
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : require('./service-account.json');
+let serviceAccount;
+try {
+  serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    : require('./service-account.json');
+} catch (err) {
+  console.error('❌ Error fatal al cargar la Service Account:', err.message);
+  console.log('Asegúrate de que FIREBASE_SERVICE_ACCOUNT sea un JSON válido.');
+  process.exit(1);
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),

@@ -8,7 +8,9 @@ services:
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
-        value: 20.0.0
+        value: 20
+      - key: NPM_CONFIG_PRODUCTION
+        value: false
       - key: BOT_TOKEN
         sync: false
       - key: FIREBASE_DATABASE_URL
