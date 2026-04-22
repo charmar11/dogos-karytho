@@ -16,6 +16,12 @@ try {
       saData = Buffer.from(saData, 'base64').toString('utf8');
     }
     serviceAccount = JSON.parse(saData);
+
+    // Patch crítico para entornos como Render/Heroku:
+    // Asegura que los saltos de línea de la llave privada se interpreten correctamente
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
   } else {
     serviceAccount = require('./service-account.json');
   }
