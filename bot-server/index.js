@@ -66,24 +66,51 @@ bot.use(async (ctx, next) => {
 
   const whitelistSnap = await db.ref('config/telegram/whitelist').once('value');
   const whitelist = whitelistSnap.val() || [];
+  const mappingsSnap = await db.ref('config/telegram/mappings').once('value');
+  const mappings = mappingsSnap.val() || {};
 
-  if (whitelist.includes(chatId) || ctx.message?.text === '/start') {
+  if (whitelist.includes(chatId) || mappings[chatId] || ctx.message?.text === '/start') {
     return next();
   }
   
   console.log(`🚫 Bloqueado acceso de: ${chatId}`);
-  ctx.reply('⚠️ No estás autorizado para usar este bot.');
+  ctx.reply(`⚠️ No estás autorizado para usar este bot.\nTu ID de chat es: <code>${chatId}</code>\nSolicita acceso al administrador.`, { parse_mode: 'HTML' });
 });
 
 // Bot Commands
+// Bot Commands registration for menu
+bot.telegram.setMyCommands([
+  { command: 'ventas', description: 'Resumen de ventas de hoy' },
+  { command: 'sales', description: 'Daily sales summary' },
+  { command: 'gastos', description: 'Gastos de hoy' },
+  { command: 'expenses', description: 'Daily expenses' },
+  { command: 'corte', description: 'Corte estimado' },
+  { command: 'start', description: 'Iniciar bot y ver ID' },
+  { command: 'help', description: 'Ayuda' }
+]);
+
 bot.start((ctx) => handleStart(ctx, db));
-bot.command('ventas', (ctx) => handleVentas(ctx, db));
-bot.command('gastos', (ctx) => handleGastos(ctx, db));
+bot.command(['ventas', 'sales'], (ctx) => handleVentas(ctx, db));
+bot.command(['gastos', 'expenses'], (ctx) => handleGastos(ctx, db));
 bot.command('corte', (ctx) => handleCorte(ctx, db));
-bot.help((ctx) => ctx.reply('Comandos disponibles:\n/ventas - Resumen de hoy\n/gastos - Gastos registrados\n/corte - Estado del corte actual'));
+bot.help((ctx) => ctx.reply('Comandos disponibles:\n/ventas o /sales - Resumen de hoy\n/gastos o /expenses - Gastos registrados\n/corte - Estado del corte actual'));
 
 // HTTP Server for Notifications
 const app = express();
+const cors = require('cors');
+
+const allowedOrigins = ['http://localhost:8081', 'https://dogos-karytho.web.app', 'https://dogos-karytho.firebaseapp.com'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(express.json());
 
 app.post('/notify', async (req, res) => {
